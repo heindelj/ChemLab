@@ -1,0 +1,12 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/heindelj/dev/c++_projects/ChemLab/src/main.cpp
+raylib.h
+/home/heindelj/dev/c++_projects/ChemLab/src/raylib.h
+

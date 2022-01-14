@@ -8,7 +8,7 @@ int main()
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Window title");
     SetTargetFPS(60);
 
-    Texture2D texture = LoadTexture(ASSETS_PATH"test.png");
+    Texture2D texture = LoadTexture("assets/test.png");
 
     while (!WindowShouldClose())
     {

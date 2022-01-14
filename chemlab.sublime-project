@@ -1,0 +1,22 @@
+{
+	"build_systems":
+	[
+		{
+			"file_regex": "(.+[^:]):(\\d+):(\\d+): (?:fatal )?((?:error|warning): .+)$",
+			"name": "Build ChemLab",
+			"shell_cmd": "make",
+			"working_dir": "${project_path}"
+		},
+			{
+                "name": "Execute ChemLab",
+                "shell_cmd": "./ChemLab",
+                "working_dir": "${project_path}"
+            }
+	],
+	"folders":
+	[
+		{
+			"path": "src"
+		}
+	]
+}

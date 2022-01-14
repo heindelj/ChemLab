@@ -1,0 +1,3 @@
+/home/heindelj/dev/c++_projects/ChemLab/CMakeFiles/rebuild_cache.dir
+/home/heindelj/dev/c++_projects/ChemLab/CMakeFiles/edit_cache.dir
+/home/heindelj/dev/c++_projects/ChemLab/CMakeFiles/ChemLab.dir
