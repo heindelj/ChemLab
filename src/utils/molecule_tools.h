@@ -10,11 +10,13 @@
 
 typedef Eigen::Matrix<double, Eigen::Dynamic, 3> MatrixX3d;
 struct Atoms {
+	uint32_t natoms;
 	MatrixX3d xyz;
 	std::vector<std::string> labels;
 };
 
 struct Frames {
+	uint32_t nframes;
 	std::vector<Atoms> atoms;
 	std::vector<std::string> headers;
 };
@@ -29,7 +31,7 @@ Frames readXYZ(const std::string& file)
 	}
 	
 	// Everything that goes in the Frames object
-	std::vector<uint32_t> numAtoms;
+	uint32_t nframes = 0;
 	std::vector<std::string> headers;
 	std::vector<Atoms> frames;
 
@@ -43,18 +45,19 @@ Frames readXYZ(const std::string& file)
 			continue; // skip lines with only white space between frames
 		} else { // Parse an entire frame
 
-
+			nframes += 1;
 			// store the number of atoms and comment line, then parse by tokens
-			numAtoms.push_back(std::stoi(line));
+			uint32_t natoms = std::stoi(line);
 
 			std::getline(infile, line);
 			headers.push_back(line);
 
 			//read all of the coordinates and atom labels and store in an Atoms object
 			Atoms atoms;
+			atoms.natoms = natoms;
 			MatrixX3d coordinates;
-			coordinates.resize(numAtoms[numAtoms.size()-1], 3);
-			for (int i = 0; i < numAtoms[numAtoms.size()-1]; ++i)
+			coordinates.resize(natoms, 3);
+			for (int i = 0; i < natoms; ++i)
 			{
 				std::getline(infile, line);
 				std::istringstream iss(line);
@@ -72,5 +75,5 @@ Frames readXYZ(const std::string& file)
 			frames.push_back(atoms);
 		}
 	}
-	return Frames(frames, headers);
+	return Frames(nframes, frames, headers);
 }

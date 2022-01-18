@@ -3,6 +3,7 @@
 
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/camera.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/main.cpp
+CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/atomic_data.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/debug.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/molecule_tools.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/raymath_glm_conversions.h

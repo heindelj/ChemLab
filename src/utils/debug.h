@@ -38,14 +38,14 @@ void debug(const glm::mat4& m) {
 }
 
 void debug(const Atoms& atoms) {
-	for (int i = 0 ; i < atoms.labels.size(); ++i) {
+	for (int i = 0 ; i < atoms.natoms; ++i) {
 		std::cout << atoms.labels[i] << " " << atoms.xyz(i, 0) << " " << atoms.xyz(i, 1) << " " << atoms.xyz(i, 2) << std::endl;
 	}
 }
 
 void debug(const Frames& frames) {
-	for (int i = 0 ; i < frames.headers.size(); ++i) {
-		std::cout << frames.atoms[i].labels.size() << std::endl;
+	for (int i = 0 ; i < frames.nframes; ++i) {
+		std::cout << frames.atoms[i].natoms << std::endl;
 		std::cout << frames.headers[i] << std::endl;
 		debug(frames.atoms[i]);
 	}
