@@ -39,7 +39,7 @@ void debug(const glm::mat4& m) {
 
 void debug(const Atoms& atoms) {
 	for (int i = 0 ; i < atoms.natoms; ++i) {
-		std::cout << atoms.labels[i] << " " << atoms.xyz(i, 0) << " " << atoms.xyz(i, 1) << " " << atoms.xyz(i, 2) << std::endl;
+		std::cout << atoms.labels[i] << " " << atoms.xyz[i].x << " " << atoms.xyz[i].y  << " " << atoms.xyz[i].z  << std::endl;
 	}
 }
 

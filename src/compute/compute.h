@@ -1,16 +1,28 @@
 #pragma once
+/////////////////////////////////////////////////////////////////
+// Currently this isn't used for anything, but this will
+// be where we add all of the conversion to eigen and implement
+// force fields, optimizations, basin hopping, etc.
+// Everything compute intensive takes place over here while
+// everything rendering related happens in a separate module
+// working with different representations of the data.
+/////////////////////////////////////////////////////////////////
 
-struct RenderData {
-	Color color;
-	float vdwRadius;
-	float covalentRadius;
-};
 
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <filesystem>
+
+#include <Eigen/Dense>
+
+typedef Eigen::Matrix<double, Eigen::Dynamic, 3> MatrixX3d;
 struct Atoms {
 	uint32_t natoms;
-	std::vector<Vector3> xyz;
+	MatrixX3d xyz;
 	std::vector<std::string> labels;
-	std::vector<RenderData> renderData;
 };
 
 struct Frames {
@@ -20,13 +32,6 @@ struct Frames {
 };
 
 #include "debug.h"
-
-RenderData GetRenderData(const std::string& atomLabel) {
-	if (atomColors.count(atomLabel) && atomVdwRadii.count(atomLabel))
-		return (RenderData){atomColors[atomLabel], atomVdwRadii[atomLabel], cvoalentRadii[atomLabel]};
-	else // There should be default element data we use for this situation.
-		throw std::invalid_argument("Not a valid element.");
-}
 
 Frames readXYZ(const std::string& file)
 {
@@ -60,20 +65,21 @@ Frames readXYZ(const std::string& file)
 			//read all of the coordinates and atom labels and store in an Atoms object
 			Atoms atoms;
 			atoms.natoms = natoms;
-			std::vector<Vector3> coordinates;
-			coordinates.reserve(natoms);
+			MatrixX3d coordinates;
+			coordinates.resize(natoms, 3);
 			for (int i = 0; i < natoms; ++i)
 			{
 				std::getline(infile, line);
 				std::istringstream iss(line);
-				std::string atomLabel;
-				float x, y, z;
-				if (!(iss >> atomLabel >> x >> y >> z))
-					throw "File does not have appropriate atomLabel x y z format.";
+				std::string atom_label;
+				double x, y, z;
+				if (!(iss >> atom_label >> x >> y >> z))
+					throw "File does not have appropriate atom_label x y z format.";
 
-				atoms.labels.push_back(atomLabel);
-				atoms.renderData.push_back(GetRenderData(atomLabel));
-				coordinates.push_back((Vector3){x, y, z});
+				atoms.labels.push_back(atom_label);
+				coordinates(i, 0) = x;
+				coordinates(i, 1) = y;
+				coordinates(i, 2) = z;
 			}
 			atoms.xyz = coordinates;
 			frames.push_back(atoms);

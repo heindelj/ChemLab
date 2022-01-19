@@ -1,14 +1,4 @@
-#include <map>
-
-// NOTE(JOE): Currently this is unused. The idea is that we will store all
-// attributes of atoms relevant to rendering and we can look it up to send
-// to shaders, etc. The data will be pulled from some global dictionaries
-// as needed containing the relevant data for all atoms.
-struct AtomicData {
-	Color color;
-	float radius;
-	float charge;
-};
+#pragma once
 
 std::map<std::string, Color> atomColors = {
 	{"H",  Color(255,255,255,255)},
@@ -119,5 +109,120 @@ std::map<std::string, Color> atomColors = {
 	{"Sg", Color(217,0,69,255)},	
 	{"Bh", Color(224,0,56,255)},	
 	{"Hs", Color(230,0,46,255)},	
-	{"Mt", Color(235,0,38)}
+	{"Mt", Color(235,0,38,255)}
 };
+
+// Not all atoms have a van der Waal's raius defined.
+// Because of this, we will have to fallback to the default radius
+// included in this map.
+std::map<std::string, float> atomVdwRadii = {
+{"H"	,1.20},
+{"Zn"	,1.39},
+{"He"	,1.40},
+{"Cu"	,1.40},
+{"F"	,1.47},
+{"O"	,1.52},
+{"Ne"	,1.54},
+{"N"	,1.55},
+{"Hg"	,1.55},
+{"Cd"	,1.58},
+{"Ni"	,1.63},
+{"Pd"	,1.63},
+{"Au"	,1.66},
+{"C"	,1.70},
+{"Ag"	,1.72},
+{"Mg"	,1.73},
+{"Cl"	,1.75},
+{"Pt"	,1.75},
+{"P"	,1.80},
+{"S"	,1.80},
+{"Li"	,1.82},
+{"As"	,1.85},
+{"Br"	,1.85},
+{"U"	,1.86},
+{"Ga"	,1.87},
+{"Ar"	,1.88},
+{"Se"	,1.90},
+{"In"	,1.93},
+{"Tl"	,1.96},
+{"I"	,1.98},
+{"Kr"	,2.02},
+{"Pb"	,2.02},
+{"Te"	,2.06},
+{"Si"	,2.10},
+{"Xe"	,2.16},
+{"Sn"	,2.17},
+{"Na"	,2.27},
+{"default" ,1.80}};
+
+// From https://jcheminf.biomedcentral.com/articles/10.1186/1758-2946-4-26#MOESM1
+// A rule-based algorithm for automatic bond type perception
+std::map<std::string, float> covalentRadii = {
+{"H", 0.23},
+{"Ar", 1.57},
+{"Br", 1.21},
+{"I", 1.40},
+{"He", 0.93},
+{"K", 1.33},
+{"Kr", 1.91},
+{"Xe", 1.98},
+{"Li", 0.68},
+{"Ca", 0.99},
+{"Rb", 1.47},
+{"Cs", 1.67},
+{"Be", 0.35},
+{"Sc", 1.44},
+{"Sr", 1.12},
+{"Ba", 1.34},
+{"B", 0.83},
+{"Ti", 1.47},
+{"Y", 1.78},
+{"La", 1.87},
+{"C", 0.68},
+{"V", 1.33},
+{"Zr", 1.56},
+{"Ce", 1.83},
+{"N", 0.68},
+{"Cr", 1.35},
+{"Nb", 1.48},
+{"Pr", 1.82},
+{"O", 0.68},
+{"Mn", 1.35},
+{"Mo", 1.47},
+{"Nd", 1.81},
+{"F", 0.64},
+{"Fe", 1.34},
+{"Tc", 1.35},
+{"Pm", 1.80},
+{"Ne", 1.12},
+{"Co", 1.33},
+{"Ru", 1.40},
+{"Sm", 1.80},
+{"Na", 0.97},
+{"Ni", 1.50},
+{"Rh", 1.45},
+{"Eu", 1.99},
+{"Mg", 1.10},
+{"Cu", 1.52},
+{"Pd", 1.50},
+{"Gd", 1.79},
+{"Al", 1.35},
+{"Zn", 1.45},
+{"Ag", 1.59},
+{"Tb", 1.76},
+{"Si", 1.20},
+{"Ga", 1.22},
+{"Cd", 1.69},
+{"Dy", 1.75},
+{"P", 1.05},
+{"Ge", 1.17},
+{"In", 1.63},
+{"Ho", 1.74},
+{"S", 1.02},
+{"As", 1.21},
+{"Sn", 1.46},
+{"Er", 1.73},
+{"Cl", 0.99},
+{"Se", 1.22},
+{"Te", 1.47},
+{"Tm", 1.72}}

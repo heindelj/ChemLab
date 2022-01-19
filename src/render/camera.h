@@ -1,11 +1,4 @@
 #pragma once
-#include "raylib.h"
-#include "utils/raymath_glm_conversions.h"
-
-#include <glm/vec3.hpp>
-#include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
-#include <glm/ext/matrix_transform.hpp> // glm::rotate
 
 void rotateAroundTargetView(Camera3D& camera, Vector3 target) {
     Vector2 mouseDelta = GetMouseDelta();
