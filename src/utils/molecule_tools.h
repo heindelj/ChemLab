@@ -1,29 +1,8 @@
 #pragma once
 
-struct RenderData {
-	Color color;
-	float vdwRadius;
-	float covalentRadius;
-};
-
-struct Atoms {
-	uint32_t natoms;
-	std::vector<Vector3> xyz;
-	std::vector<std::string> labels;
-	std::vector<RenderData> renderData;
-};
-
-struct Frames {
-	uint32_t nframes;
-	std::vector<Atoms> atoms;
-	std::vector<std::string> headers;
-};
-
-#include "debug.h"
-
 RenderData GetRenderData(const std::string& atomLabel) {
 	if (atomColors.count(atomLabel) && atomVdwRadii.count(atomLabel))
-		return (RenderData){atomColors[atomLabel], atomVdwRadii[atomLabel], cvoalentRadii[atomLabel]};
+		return (RenderData){atomColors[atomLabel], atomVdwRadii[atomLabel], covalentRadii[atomLabel]};
 	else // There should be default element data we use for this situation.
 		throw std::invalid_argument("Not a valid element.");
 }
@@ -76,6 +55,7 @@ Frames readXYZ(const std::string& file)
 				coordinates.push_back((Vector3){x, y, z});
 			}
 			atoms.xyz = coordinates;
+			atoms.covalentBondList = makeCovalentBondList(atoms);
 			frames.push_back(atoms);
 		}
 	}

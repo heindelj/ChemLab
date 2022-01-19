@@ -225,4 +225,4 @@ std::map<std::string, float> covalentRadii = {
 {"Cl", 0.99},
 {"Se", 1.22},
 {"Te", 1.47},
-{"Tm", 1.72}}
+{"Tm", 1.72}};

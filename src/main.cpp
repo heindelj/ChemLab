@@ -92,7 +92,7 @@ int main(void)
             //EndShaderMode();
 
             BeginMode3D(camera);
-                DrawAtoms(frames.atoms[0], SPHERES);
+                DrawAtoms(frames.atoms[0], BALL_AND_STICK);
 
                 // Can do the highlighting here for selected objects
                 //if (sphereHitInfo.hit)
