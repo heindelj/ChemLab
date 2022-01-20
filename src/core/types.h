@@ -1,3 +1,22 @@
+enum RenderStyle {
+	BALL_AND_STICK,
+	STICKS,
+	SPHERES
+};
+
+enum InteractionMode {
+	VIEW,
+	EDIT
+};
+
+struct ActiveContext {
+	InteractionMode mode;
+	RenderStyle style;
+	Camera3D camera;
+	uint32_t frame;
+	std::vector<uint32_t> selection; // May want to use some better type for this because it will be resized as selections occur
+};
+
 struct RenderData {
 	Color color;
 	float vdwRadius;

@@ -22,8 +22,9 @@
 #include "raylib.h"
 #include "raymath.h"
 
-// custom types
+// core
 #include "core/types.h"
+#include "core/input.h"
 
 // debug
 #include "utils/debug.h"

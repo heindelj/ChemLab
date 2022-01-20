@@ -5,7 +5,6 @@
 int main(void)
 {
     Frames frames = readXYZ("assets/test_xyz_file.xyz");
-    //debug(frames.atoms[0].xyz.row(1));
 
     // Initialization
     //--------------------------------------------------------------------------------------

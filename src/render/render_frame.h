@@ -1,10 +1,13 @@
 #pragma once
 
-enum RenderStyle {
-	BALL_AND_STICK,
-	STICKS,
-	SPHERES
-};
+///////////////////////////////////////////////////////////////////////////////
+// This file contains all rendering operations we might need to do.			 //
+// So, it handles drawing different styles of molecule. Displaying text 	 //
+// for geometry information. Drawing hydrogen bonds and lines to the cursor, //
+// highlighting atoms, etc. Everything graphics goes in here. 				 //
+// Different modes then call these functions as needed. 					 //
+///////////////////////////////////////////////////////////////////////////////
+
 
 void DrawBallAndStick(const Atoms& atoms) {
 	for (int i = 0; i < atoms.natoms; i++) {
@@ -16,9 +19,9 @@ void DrawBallAndStick(const Atoms& atoms) {
 			if (g_colorBonds) {
 				Vector3 atom1Pos = atoms.xyz[atoms.covalentBondList.pairs[i].first];
 				Vector3 atom2Pos = atoms.xyz[atoms.covalentBondList.pairs[i].second];
-				Vector3 differenceVector = Vector3Subtract(atom2Pos, atom1Pos);
+				Vector3 differenceVector = atom2Pos - atom1Pos;
 				
-				Vector3 middlePos = Vector3Add(atom1Pos, Vector3Scale(differenceVector, 0.5));
+				Vector3 middlePos = atom1Pos + 0.5f * differenceVector;
 				DrawCylinderEx(atom1Pos, middlePos, g_stickRadius, g_stickRadius, 12, atoms.renderData[atoms.covalentBondList.pairs[i].first].color);
 				DrawCylinderEx(middlePos, atom2Pos, g_stickRadius, g_stickRadius, 12, atoms.renderData[atoms.covalentBondList.pairs[i].second].color);
 			} else {
@@ -56,27 +59,24 @@ void DrawAtoms(const Atoms& atoms, RenderStyle style) {
 }
 
 void DrawDashedLineFromPointToPoint(const Vector2& pointA, const Vector2 pointB) {
-	//Vector2 mousePosition = GetMousePosition();
-	//Vector2 pointScreenSpace = GetWorldToScreen(point, camera);
-
 	// Make evenly spaced points in screen space
 	float dashLength = 5.0f; // length of dash in pixels
-	Vector2 differenceVector = Vector2Subtract(pointB, pointA);
+	Vector2 differenceVector = pointB - pointA;
 
-	int numDashes = (int)(Vector2Length(differenceVector) / dashLength / 2);
-	float numPartialDashes = (Vector2Length(differenceVector) / dashLength / 2) - (float)numDashes;
+	int numDashes = (int)(norm(differenceVector) / dashLength / 2);
+	float numPartialDashes = (norm(differenceVector) / dashLength / 2) - (float)numDashes;
 
 	Vector2 lineBegin = pointA;
-	Vector2 lineEnd = Vector2Add(lineBegin, Vector2Scale(differenceVector, dashLength / Vector2Length(differenceVector)));
+	Vector2 lineEnd = lineBegin + differenceVector * (dashLength / norm(differenceVector));
 
 	for (int i = 0; i < numDashes; i++) {
 		DrawLineEx(lineBegin, lineEnd, 2.0f, YELLOW);
-		lineBegin = Vector2Add(lineBegin, Vector2Scale(differenceVector, 2 * dashLength / Vector2Length(differenceVector)));
-		lineEnd = Vector2Add(lineEnd, Vector2Scale(differenceVector, 2 * dashLength / Vector2Length(differenceVector)));
+		lineBegin = lineBegin + differenceVector * (2 * dashLength / norm(differenceVector));
+		lineEnd = lineEnd + differenceVector * (2 * dashLength / norm(differenceVector));
 	}
 
 	// Draw the extra bit that goes to the end point
-	lineEnd = Vector2Add(lineBegin, Vector2Scale(differenceVector, numPartialDashes * dashLength / Vector2Length(differenceVector)));
+	lineEnd = lineBegin + differenceVector * (numPartialDashes * dashLength / norm(differenceVector));
 	DrawLineEx(lineBegin, lineEnd, 2.0f, YELLOW);
 }
 
@@ -90,9 +90,9 @@ void DrawLineBetweenAtoms(const Atoms& atoms, const int i, const int j, const Ca
 	// We'll see.
 
 	// Draws a dashed line from atom i to atom j, accounting for the van der Waal's radius of each atom.
-	Vector3 differenceVector    = Vector3Subtract(atoms.xyz[j], atoms.xyz[i]);
-	Vector3 startPos = Vector3Add(atoms.xyz[i], Vector3Scale(differenceVector, (atoms.renderData[i].vdwRadius * g_ballScale) / Vector3Length(differenceVector)));
-	Vector3 endPos   = Vector3Subtract(atoms.xyz[j], Vector3Scale(differenceVector, (atoms.renderData[j].vdwRadius * g_ballScale) / Vector3Length(differenceVector)));
+	Vector3 differenceVector    = atoms.xyz[j] - atoms.xyz[i];
+	Vector3 startPos = atoms.xyz[i] + differenceVector * ((atoms.renderData[i].vdwRadius * g_ballScale) / norm(differenceVector));
+	Vector3 endPos   = atoms.xyz[j] - differenceVector * ((atoms.renderData[j].vdwRadius * g_ballScale) / norm(differenceVector));
 
 	if (g_dashedLine) {
 		DrawDashedLineFromPointToPoint(GetWorldToScreen(startPos, camera), GetWorldToScreen(endPos, camera));
