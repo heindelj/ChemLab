@@ -104,6 +104,7 @@ int main(void)
 
             //OverlayNumbers(frames.atoms[0], camera);
             DrawLineBetweenAtoms(frames.atoms[0], 1, 3, camera);
+            DrawDashedLineFromPointToCursor(GetWorldToScreen(frames.atoms[0].xyz[0], camera));
             DrawText("Welcome to the third dimension!", 10, 40, 20, DARKGRAY);
 
             DrawFPS(10, 10);

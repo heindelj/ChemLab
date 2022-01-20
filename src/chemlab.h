@@ -34,6 +34,7 @@
 #include "utils/raymath_glm_conversions.h"
 
 // actual code
+#include "utils/math_utils.h"
 #include "utils/geometry.h"
 #include "utils/molecule_tools.h"
 #include "render/camera.h"

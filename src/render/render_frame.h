@@ -55,6 +55,35 @@ void DrawAtoms(const Atoms& atoms, RenderStyle style) {
 	}
 }
 
+void DrawDashedLineFromPointToPoint(const Vector2& pointA, const Vector2 pointB) {
+	//Vector2 mousePosition = GetMousePosition();
+	//Vector2 pointScreenSpace = GetWorldToScreen(point, camera);
+
+	// Make evenly spaced points in screen space
+	float dashLength = 5.0f; // length of dash in pixels
+	Vector2 differenceVector = Vector2Subtract(pointB, pointA);
+
+	int numDashes = (int)(Vector2Length(differenceVector) / dashLength / 2);
+	float numPartialDashes = (Vector2Length(differenceVector) / dashLength / 2) - (float)numDashes;
+
+	Vector2 lineBegin = pointA;
+	Vector2 lineEnd = Vector2Add(lineBegin, Vector2Scale(differenceVector, dashLength / Vector2Length(differenceVector)));
+
+	for (int i = 0; i < numDashes; i++) {
+		DrawLineEx(lineBegin, lineEnd, 2.0f, YELLOW);
+		lineBegin = Vector2Add(lineBegin, Vector2Scale(differenceVector, 2 * dashLength / Vector2Length(differenceVector)));
+		lineEnd = Vector2Add(lineEnd, Vector2Scale(differenceVector, 2 * dashLength / Vector2Length(differenceVector)));
+	}
+
+	// Draw the extra bit that goes to the end point
+	lineEnd = Vector2Add(lineBegin, Vector2Scale(differenceVector, numPartialDashes * dashLength / Vector2Length(differenceVector)));
+	DrawLineEx(lineBegin, lineEnd, 2.0f, YELLOW);
+}
+
+void DrawDashedLineFromPointToCursor(const Vector2& point) {
+	DrawDashedLineFromPointToPoint(point, GetMousePosition());
+}
+
 void DrawLineBetweenAtoms(const Atoms& atoms, const int i, const int j, const Camera3D& camera) {
 	// SPEED: I'm doing this with world to screen space transformations and multiple draw calls.
 	// It may be that for visual integrity, we want to use cylinders or for speed we want to use a custom shader.
@@ -66,22 +95,7 @@ void DrawLineBetweenAtoms(const Atoms& atoms, const int i, const int j, const Ca
 	Vector3 endPos   = Vector3Subtract(atoms.xyz[j], Vector3Scale(differenceVector, (atoms.renderData[j].vdwRadius * g_ballScale) / Vector3Length(differenceVector)));
 
 	if (g_dashedLine) {
-		int twiceNumDashes = (int)(Vector3Length(Vector3Subtract(endPos, startPos)) / g_dashEvery) + 2; // Plus two because we always need one dash.
-		float dashFractionOfTotal = g_dashEvery / Vector3Length(Vector3Subtract(endPos, startPos));
-		Vector3 currentStartPos = (Vector3){startPos.x, startPos.y, startPos.z};
-		Vector3 currentEndPos   = (Vector3){startPos.x, startPos.y, startPos.z};
-		for (int i = 0; i < twiceNumDashes; i++) {
-			if (i % 2) {
-				currentStartPos = Vector3Add(startPos, Vector3Scale(differenceVector, i * dashFractionOfTotal / Vector3Length(differenceVector)));
-				currentEndPos = Vector3Add(startPos, Vector3Scale(differenceVector, (i + 1) * dashFractionOfTotal / Vector3Length(differenceVector)));
-				if ((i + 1) * dashFractionOfTotal / Vector3Length(differenceVector) > 1.0f) {
-					currentEndPos = endPos;
-				}
-				Vector2 currentStartPosScreenSpace = GetWorldToScreen(currentStartPos, camera);
-				Vector2 currentEndPosScreenSpace   = GetWorldToScreen(currentEndPos, camera);
-				DrawLineEx(currentStartPosScreenSpace, currentEndPosScreenSpace, g_hbondWidth, g_hbondColor);
-			}
-		}
+		DrawDashedLineFromPointToPoint(GetWorldToScreen(startPos, camera), GetWorldToScreen(endPos, camera));
 	} else {
 		Vector2 startPosScreenSpace = GetWorldToScreen(startPos, camera);
 		Vector2 endPosScreenSpace   = GetWorldToScreen(endPos, camera);
