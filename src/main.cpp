@@ -102,6 +102,8 @@ int main(void)
                 DrawGrid(10, 1.0f);
             EndMode3D();
 
+            //OverlayNumbers(frames.atoms[0], camera);
+            DrawLineBetweenAtoms(frames.atoms[0], 1, 3, camera);
             DrawText("Welcome to the third dimension!", 10, 40, 20, DARKGRAY);
 
             DrawFPS(10, 10);
