@@ -22,7 +22,8 @@ struct ActiveContext {
 	Camera3D camera;
 
 	double timeOfLastClick;
-	std::vector<uint32_t> selection;
+	std::array<int, 4> viewSelection;
+	std::vector<std::array<int, 4>> permanentSelection;
 	SelectionStep selectionStep;
 };
 

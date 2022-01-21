@@ -12,6 +12,7 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include <array>
 #include <utility>
 #include <string>
 #include <algorithm>
@@ -20,6 +21,7 @@
 
 // external
 #include "raylib.h"
+#include "rlgl.h"
 #include "raymath.h"
 
 // core

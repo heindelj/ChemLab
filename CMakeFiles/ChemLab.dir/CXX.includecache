@@ -27,6 +27,8 @@ iostream
 -
 vector
 -
+array
+-
 utility
 -
 string
@@ -39,6 +41,8 @@ stdexcept
 -
 raylib.h
 /home/heindelj/dev/c++_projects/ChemLab/src/raylib.h
+rlgl.h
+/home/heindelj/dev/c++_projects/ChemLab/src/rlgl.h
 raymath.h
 /home/heindelj/dev/c++_projects/ChemLab/src/raymath.h
 core/types.h

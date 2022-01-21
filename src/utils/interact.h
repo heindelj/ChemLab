@@ -13,8 +13,6 @@ int TestRayAgainstAtoms(Ray ray, const Atoms& atoms) {
 		// Check if we got a collision and then make sure we don't
 		// overwrite a collision with a closer object
 		if (collisionInfo.hit) {
-			debug("Collided with index: ");
-			debug(i);
 			if (collisonIndex == -1) {
 				collisonIndex = i;
 				collisionDistance = collisionInfo.distance;

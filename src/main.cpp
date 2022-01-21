@@ -25,6 +25,7 @@ int main(void)
     context.style = BALL_AND_STICK;
     context.camera = camera;
     context.timeOfLastClick = 0.0;
+    context.viewSelection.fill(-1);
     context.selectionStep = NONE;
 
     //Ray ray = { 0 };        // Picking ray
