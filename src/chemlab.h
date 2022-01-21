@@ -40,3 +40,7 @@
 #include "utils/molecule_tools.h"
 #include "render/camera.h"
 #include "render/render_frame.h"
+#include "utils/interact.h"
+
+// modes
+#include "render/view_mode.h"

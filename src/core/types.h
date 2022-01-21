@@ -9,12 +9,21 @@ enum InteractionMode {
 	EDIT
 };
 
+enum SelectionStep {
+	NONE,
+	DISTANCE,
+	ANGLE,
+	DIHEDRAL
+};
+
 struct ActiveContext {
 	InteractionMode mode;
 	RenderStyle style;
 	Camera3D camera;
-	uint32_t frame;
-	std::vector<uint32_t> selection; // May want to use some better type for this because it will be resized as selections occur
+
+	double timeOfLastClick;
+	std::vector<uint32_t> selection;
+	SelectionStep selectionStep;
 };
 
 struct RenderData {

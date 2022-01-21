@@ -8,9 +8,11 @@ CMakeFiles/ChemLab.dir/src/main.cpp.o: src/main.cpp
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/camera.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/globals.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/render_frame.h
+CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/view_mode.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/atomic_data.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/debug.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/geometry.h
+CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/interact.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/math_utils.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/molecule_tools.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/raymath_glm_conversions.h
