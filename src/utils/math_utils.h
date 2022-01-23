@@ -89,6 +89,10 @@ inline Vector3 homogenize(const Vector4& v) {
 	return (Vector3){v.x/v.w, v.y/v.w, v.z/v.w};
 }
 
+inline Vector3 midpoint(const Vector3& v1, const Vector3& v2) {
+	return (v1 + v2) * 0.5f;
+}
+
 ////////////////////////////////
 //     Vector4 operations     //
 ////////////////////////////////
