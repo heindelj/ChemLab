@@ -9,6 +9,28 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 
+////// MODEL DRAWING METHODS //////
+
+void BallAndStickModel::Draw() {
+	for(int i = 0; i < this->numSpheres; i++)
+		DrawMesh(this->sphereMesh, this->materials[i], this->transforms[i]);
+	for(int i = this->numSpheres; i < (this->numSpheres + this->numSticks); i++) {
+		DrawMesh(this->stickMesh, this->materials[i], this->transforms[i]);
+	}
+}
+
+
+void SpheresModel::Draw() {
+	for(int i = 0; i < this->numSpheres; i++)
+		DrawMesh(this->sphereMesh, this->materials[i], this->transforms[i]);
+}
+
+void DrawSticksModel(const SticksModel& model) {
+
+}
+
+///// DIRECT DRAWING METHODS //////
+
 void DrawBallAndStick(const Atoms& atoms) {
 	for (int i = 0; i < atoms.natoms; i++) {
 	    DrawSphere(atoms.xyz[i], atoms.renderData[i].vdwRadius * g_ballScale, atoms.renderData[i].color);
@@ -58,7 +80,7 @@ void DrawAtoms(const Atoms& atoms, RenderStyle style) {
 	}
 }
 
-void DrawDashedLineFromPointToPoint(const Vector2& pointA, const Vector2& pointB, const Color& color) {
+void DrawDashedLineFromPointToPoint(const Vector2& pointA, const Vector2& pointB, const float width, const Color& color) {
 	// Make evenly spaced points in screen space
 	float dashLength = 5.0f; // length of dash in pixels
 	Vector2 differenceVector = pointB - pointA;
@@ -77,27 +99,37 @@ void DrawDashedLineFromPointToPoint(const Vector2& pointA, const Vector2& pointB
 
 	// Draw the extra bit that goes to the end point
 	lineEnd = lineBegin + differenceVector * (numPartialDashes * dashLength / norm(differenceVector));
-	DrawLineEx(lineBegin, lineEnd, 2.0f, color);
+	DrawLineEx(lineBegin, lineEnd, width, color);
 }
 
-void DrawDashedLineFromPointToCursor(const Vector2& point, const Color& color) {
-	DrawDashedLineFromPointToPoint(point, GetMousePosition(), color);
+void DrawDashedLineFromPointToCursor(const Vector2& point, const float width, const Color& color) {
+	DrawDashedLineFromPointToPoint(point, GetMousePosition(), width, color);
 }
 
-void DrawLineBetweenAtoms(const Atoms& atoms, const int i, const int j, const Camera3D& camera, const Color& color) {
+void DrawLineBetweenPoints(const Vector3& v1, const Vector3& v2, const Camera3D& camera, const float width, const Color& color, const bool dashed=true) {
+	if (dashed) {
+		DrawDashedLineFromPointToPoint(GetWorldToScreen(v1, camera), GetWorldToScreen(v2, camera), width, color);
+	} else {
+		DrawLineEx(GetWorldToScreen(v1, camera), GetWorldToScreen(v2, camera), width, color);
+	}
+}
+
+void DrawLineBetweenPoints(const MolecularModel& model, const int i, const int j, const Camera3D& camera, const float width, const Color& color, const bool dashed=true) {
+
+	DrawLineBetweenPoints(PositionVectorFromTransform(model.transforms[i]), PositionVectorFromTransform(model.transforms[j]), camera, width, color, dashed);
+}
+
+void DrawLineBetweenAtoms(const Atoms& atoms, const int i, const int j, const Camera3D& camera, const float width, const Color& color, const bool dashed=true) {
 	// Draws a dashed line from atom i to atom j, accounting for the van der Waal's radius of each atom.
 	Vector3 differenceVector    = atoms.xyz[j] - atoms.xyz[i];
 	Vector3 startPos = atoms.xyz[i] + differenceVector * ((atoms.renderData[i].vdwRadius * g_ballScale) / norm(differenceVector));
 	Vector3 endPos   = atoms.xyz[j] - differenceVector * ((atoms.renderData[j].vdwRadius * g_ballScale) / norm(differenceVector));
 
-	if (g_dashedLine) {
-		DrawDashedLineFromPointToPoint(GetWorldToScreen(startPos, camera), GetWorldToScreen(endPos, camera), color);
+	if (dashed) {
+		DrawDashedLineFromPointToPoint(GetWorldToScreen(startPos, camera), GetWorldToScreen(endPos, camera), width, color);
 	} else {
-		Vector2 startPosScreenSpace = GetWorldToScreen(startPos, camera);
-		Vector2 endPosScreenSpace   = GetWorldToScreen(endPos, camera);
-		DrawLineEx(startPosScreenSpace, endPosScreenSpace, g_hbondWidth, color);	
+		DrawLineEx(GetWorldToScreen(startPos, camera), GetWorldToScreen(endPos, camera), width, color);
 	}
-
 }
 
 void OverlaySpheres(const Atoms& atoms) {

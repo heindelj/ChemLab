@@ -22,9 +22,52 @@ struct ActiveContext {
 	Camera3D camera;
 
 	double timeOfLastClick;
+	float lineWidth;
 	std::array<int, 4> viewSelection;
 	std::vector<std::array<int, 4>> permanentSelection;
 	SelectionStep selectionStep;
+};
+
+// Having a base MolecularModel class makes it easier to do things like hit detection
+// and geometry editing in a manner that is independent of the style with which we draw the molecule.
+struct MolecularModel
+{
+	std::vector<Matrix> transforms;
+
+	virtual void Draw() = 0;
+	virtual int TestRayAgainst(Ray ray) = 0;
+};
+
+struct BallAndStickModel : MolecularModel {
+	uint32_t numSpheres;
+	uint32_t numSticks;
+
+	Mesh sphereMesh;
+	Mesh stickMesh;
+	std::vector<Material> materials;
+
+	void Draw() override;
+	int  TestRayAgainst(Ray ray) override;
+};
+
+struct SpheresModel : MolecularModel {
+	uint32_t numSpheres;
+
+	Mesh sphereMesh;
+	std::vector<Material> materials;
+
+	void Draw() override;
+	int  TestRayAgainst(Ray ray) override;
+};
+
+struct SticksModel : MolecularModel {
+	uint32_t numSticks;
+
+	Mesh stickMesh;
+	std::vector<Material> materials;
+
+	void Draw() override;
+	int  TestRayAgainst(Ray ray) override;
 };
 
 struct RenderData {

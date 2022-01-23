@@ -9,6 +9,8 @@ int main(void)
     const int screenWidth = 800;
     const int screenHeight = 450;
 
+
+    SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(screenWidth, screenHeight, "ChemLab");
 
     // Define the camera to look into our 3d world
@@ -24,11 +26,12 @@ int main(void)
     context.mode = VIEW;
     context.style = BALL_AND_STICK;
     context.camera = camera;
+    context.lineWidth = 3.0f;
     context.timeOfLastClick = 0.0;
     context.viewSelection.fill(-1);
     context.selectionStep = NONE;
 
-    //Ray ray = { 0 };        // Picking ray
+    BallAndStickModel model = BallAndStickModelFromAtoms(frames.atoms[0]);
 
     ///////// Outline Shader variables, etc. ///////////
     //Shader shdrOutline = LoadShader(0, "assets/shaders/outline.fs");
@@ -91,7 +94,7 @@ int main(void)
 
             ClearBackground(Color(30, 30, 30, 255));
 
-            ViewModeFrame(frames.atoms[0], context);
+            ViewModeFrame(model, context);
 
             // Render generated texture with an outline
             //BeginShaderMode(shdrOutline);
@@ -107,7 +110,6 @@ int main(void)
                 //    DrawSphere(Vector3((float)frames.atoms[0].xyz.row(0)(0), (float)frames.atoms[0].xyz.row(0)(1), (float)frames.atoms[0].xyz.row(0)(2)), 01f, //YELLOW);//
 
 
-            //    DrawGrid(10, 1.0f);
             //EndMode3D();
 
             //OverlayNumbers(frames.atoms[0], camera);

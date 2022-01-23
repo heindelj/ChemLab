@@ -36,6 +36,13 @@ void debug(const glm::mat4& m) {
 	std::cout << "[ " << m[3].x << ", " << m[3].y <<  ", " << m[3].z << ", " << m[3].w << " ]" << std::endl;
 }
 
+void debug(const Matrix& m) {
+	std::cout << "[ " << m.m0 << ", " << m.m4 <<  ", " << m.m8  << ", " << m.m12 << " ]" << std::endl;
+	std::cout << "[ " << m.m1 << ", " << m.m5 <<  ", " << m.m9  << ", " << m.m13 << " ]" << std::endl;
+	std::cout << "[ " << m.m2 << ", " << m.m6 <<  ", " << m.m10 << ", " << m.m14 << " ]" << std::endl;
+	std::cout << "[ " << m.m3 << ", " << m.m7 <<  ", " << m.m11 << ", " << m.m15 << " ]" << std::endl;
+}
+
 void debug(const Atoms& atoms) {
 	for (int i = 0 ; i < atoms.natoms; ++i) {
 		std::cout << atoms.labels[i] << " " << atoms.xyz[i].x << " " << atoms.xyz[i].y  << " " << atoms.xyz[i].z  << std::endl;

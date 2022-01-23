@@ -13,7 +13,7 @@ CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/atomic_data.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/debug.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/geometry.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/interact.h
+CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/load_and_create.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/math_utils.h
-CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/molecule_tools.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/raymath_glm_conversions.h
 

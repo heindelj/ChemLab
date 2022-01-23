@@ -14,13 +14,18 @@ void ResetViewSelection(ActiveContext& context) {
 	context.viewSelection.fill(-1);
 }
 
-void OnClickReleaseViewNone(Atoms& atoms, ActiveContext& context) {
-	assert(NumberOfValidIndices(context.viewSelection) == 0);
+double GetTimeSinceClick(ActiveContext& context) {
 	double timeSinceClick = GetTime() - context.timeOfLastClick;
 	context.timeOfLastClick = context.timeOfLastClick + timeSinceClick;
+	return timeSinceClick;
+}
+
+void OnClickReleaseViewNone(MolecularModel& model, ActiveContext& context) {
+	assert(NumberOfValidIndices(context.viewSelection) == 0);
+	double timeSinceClick = GetTimeSinceClick(context);
 
 	if (timeSinceClick <= 0.5) {
-		int collisionIndex = TestRayAgainstAtoms(GetMouseRay(GetMousePosition(), context.camera), atoms);
+		int collisionIndex = model.TestRayAgainst(GetMouseRay(GetMousePosition(), context.camera));
 		if (collisionIndex != -1) {
 			// Store collision index for future use in displaying geometric info.
 			context.selectionStep = DISTANCE;
@@ -32,12 +37,11 @@ void OnClickReleaseViewNone(Atoms& atoms, ActiveContext& context) {
 
 }
 
-void OnClickReleaseViewDistance(Atoms& atoms, ActiveContext& context) {
+void OnClickReleaseViewDistance(MolecularModel& model, ActiveContext& context) {
 	assert(NumberOfValidIndices(context.viewSelection) == 1);
-	double timeSinceClick = GetTime() - context.timeOfLastClick;
-	context.timeOfLastClick = context.timeOfLastClick + timeSinceClick;
+	double timeSinceClick = GetTimeSinceClick(context);
 
-	int collisionIndex = TestRayAgainstAtoms(GetMouseRay(GetMousePosition(), context.camera), atoms);
+	int collisionIndex = model.TestRayAgainst(GetMouseRay(GetMousePosition(), context.camera));
 	if (collisionIndex != -1 && collisionIndex != context.viewSelection[0]) {
 		context.viewSelection[1] = collisionIndex;
 		context.selectionStep = ANGLE;
@@ -46,12 +50,11 @@ void OnClickReleaseViewDistance(Atoms& atoms, ActiveContext& context) {
 	}
 }
 
-void OnClickReleaseViewAngle(Atoms& atoms, ActiveContext& context) {
+void OnClickReleaseViewAngle(MolecularModel& model, ActiveContext& context) {
 	assert(NumberOfValidIndices(context.viewSelection) == 2);
-	double timeSinceClick = GetTime() - context.timeOfLastClick;
-	context.timeOfLastClick = context.timeOfLastClick + timeSinceClick;
+	double timeSinceClick = GetTimeSinceClick(context);
 
-	int collisionIndex = TestRayAgainstAtoms(GetMouseRay(GetMousePosition(), context.camera), atoms);
+	int collisionIndex = model.TestRayAgainst(GetMouseRay(GetMousePosition(), context.camera));
 	if (collisionIndex != -1 && collisionIndex != context.viewSelection[0] && collisionIndex != context.viewSelection[1]) {
 		context.viewSelection [2] = collisionIndex;
 		context.selectionStep = DIHEDRAL;
@@ -60,12 +63,11 @@ void OnClickReleaseViewAngle(Atoms& atoms, ActiveContext& context) {
 	}
 }
 
-void OnClickReleaseViewDihedral(Atoms& atoms, ActiveContext& context) {
+void OnClickReleaseViewDihedral(MolecularModel& model, ActiveContext& context) {
 	assert(NumberOfValidIndices(context.viewSelection) == 3);
-	double timeSinceClick = GetTime() - context.timeOfLastClick;
-	context.timeOfLastClick = context.timeOfLastClick + timeSinceClick;
+	double timeSinceClick = GetTimeSinceClick(context);
 
-	int collisionIndex = TestRayAgainstAtoms(GetMouseRay(GetMousePosition(), context.camera), atoms);
+	int collisionIndex = model.TestRayAgainst(GetMouseRay(GetMousePosition(), context.camera));
 	if (collisionIndex != -1 && collisionIndex != context.viewSelection[0] && collisionIndex != context.viewSelection[1] && collisionIndex != context.viewSelection[2]) {
 		context.viewSelection[3] = collisionIndex;
 		context.permanentSelection.push_back(context.viewSelection);
@@ -75,10 +77,10 @@ void OnClickReleaseViewDihedral(Atoms& atoms, ActiveContext& context) {
 	}
 }
 
-void ViewModeFrame(Atoms& atoms, ActiveContext& context) {
+void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
 
 	BeginMode3D(context.camera);
-	    DrawAtoms(atoms, context.style);
+	    model.Draw();
 	    DrawGrid(10, 1.0f);
 	EndMode3D();
 
@@ -86,16 +88,16 @@ void ViewModeFrame(Atoms& atoms, ActiveContext& context) {
 	if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
 		switch(context.selectionStep) {
 			case NONE :
-				OnClickReleaseViewNone(atoms, context);
+				OnClickReleaseViewNone(model, context);
 				break;
 			case DISTANCE :
-				OnClickReleaseViewDistance(atoms, context);
+				OnClickReleaseViewDistance(model, context);
 				break;
 			case ANGLE :
-				OnClickReleaseViewAngle(atoms, context);
+				OnClickReleaseViewAngle(model, context);
 				break;
 			case DIHEDRAL :
-				OnClickReleaseViewDihedral(atoms, context);
+				OnClickReleaseViewDihedral(model, context);
 				break;
 		}
 	}
@@ -108,25 +110,24 @@ void ViewModeFrame(Atoms& atoms, ActiveContext& context) {
 		case NONE :
 			break;
 		case DISTANCE :
-			DrawDashedLineFromPointToCursor(GetWorldToScreen(atoms.xyz[context.viewSelection[0]], context.camera), PURPLE);
+			DrawDashedLineFromPointToCursor(GetWorldToScreen(PositionVectorFromTransform(model.transforms[context.viewSelection[0]]), context.camera), context.lineWidth, PURPLE);
 			break;
 		case ANGLE :
 			// Also need to draw the distance label
-			DrawDashedLineFromPointToCursor(GetWorldToScreen(atoms.xyz[context.viewSelection[1]], context.camera), PURPLE);
-			DrawLineBetweenAtoms(atoms, context.viewSelection[0], context.viewSelection[1], context.camera, PURPLE);
+			DrawDashedLineFromPointToCursor(GetWorldToScreen(PositionVectorFromTransform(model.transforms[context.viewSelection[1]]), context.camera), context.lineWidth, PURPLE);
+			DrawLineBetweenPoints(model, context.viewSelection[0], context.viewSelection[1], context.camera, context.lineWidth, PURPLE);
 			break;
 		case DIHEDRAL :
-			DrawDashedLineFromPointToCursor(GetWorldToScreen(atoms.xyz[context.viewSelection[2]], context.camera), PURPLE);
-			DrawLineBetweenAtoms(atoms, context.viewSelection[0], context.viewSelection[1], context.camera, PURPLE);
-			DrawLineBetweenAtoms(atoms, context.viewSelection[1], context.viewSelection[2], context.camera, PURPLE);
+			DrawDashedLineFromPointToCursor(GetWorldToScreen(PositionVectorFromTransform(model.transforms[context.viewSelection[2]]), context.camera), context.lineWidth, PURPLE);
+			DrawLineBetweenPoints(model, context.viewSelection[0], context.viewSelection[1], context.camera, context.lineWidth, PURPLE);
+			DrawLineBetweenPoints(model, context.viewSelection[1], context.viewSelection[2], context.camera, context.lineWidth, PURPLE);
 			break;
 	}
 
 	// Draw any completed selections we've stored
 	for (int i = 0; i < context.permanentSelection.size(); i++) {
-		DrawLineBetweenAtoms(atoms, context.permanentSelection[i][0], context.permanentSelection[i][1], context.camera, RAYWHITE);
-		DrawLineBetweenAtoms(atoms, context.permanentSelection[i][1], context.permanentSelection[i][2], context.camera, RAYWHITE);
-		DrawLineBetweenAtoms(atoms, context.permanentSelection[i][2], context.permanentSelection[i][3], context.camera, RAYWHITE);
+		DrawLineBetweenPoints(model, context.permanentSelection[i][0], context.permanentSelection[i][1], context.camera, context.lineWidth, GREEN);
+		DrawLineBetweenPoints(model, context.permanentSelection[i][1], context.permanentSelection[i][2], context.camera, context.lineWidth, GREEN);
+		DrawLineBetweenPoints(model, context.permanentSelection[i][2], context.permanentSelection[i][3], context.camera, context.lineWidth, GREEN);
 	}
-	rlEnableDepthTest();
 }
