@@ -71,6 +71,12 @@ utils/interact.h
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/interact.h
 render/view_mode.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/view_mode.h
+render/edit_mode.h
+/home/heindelj/dev/c++_projects/ChemLab/src/render/edit_mode.h
+core/frame.h
+/home/heindelj/dev/c++_projects/ChemLab/src/core/frame.h
+
+/home/heindelj/dev/c++_projects/ChemLab/src/core/frame.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/core/input.h
 
@@ -81,6 +87,8 @@ chemlab.h
 /home/heindelj/dev/c++_projects/ChemLab/src/chemlab.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/render/camera.h
+
+/home/heindelj/dev/c++_projects/ChemLab/src/render/edit_mode.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/render/globals.h
 

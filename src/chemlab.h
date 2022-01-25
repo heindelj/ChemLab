@@ -46,3 +46,7 @@
 
 // modes
 #include "render/view_mode.h"
+#include "render/edit_mode.h"
+
+// handling things independent of mode
+#include "core/frame.h"

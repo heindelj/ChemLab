@@ -14,9 +14,8 @@
 void BallAndStickModel::Draw() {
 	for(int i = 0; i < this->numSpheres; i++)
 		DrawMesh(this->sphereMesh, this->materials[i], this->transforms[i]);
-	for(int i = this->numSpheres; i < (this->numSpheres + this->numSticks); i++) {
+	for(int i = this->numSpheres; i < (this->numSpheres + this->numSticks); i++)
 		DrawMesh(this->stickMesh, this->materials[i], this->transforms[i]);
-	}
 }
 
 
@@ -25,8 +24,9 @@ void SpheresModel::Draw() {
 		DrawMesh(this->sphereMesh, this->materials[i], this->transforms[i]);
 }
 
-void DrawSticksModel(const SticksModel& model) {
-
+void SticksModel::Draw() {
+	for(int i = 0; i < this->numSticks; i++)
+		DrawMesh(this->stickMesh, this->materials[i], this->transforms[i]);
 }
 
 ///// DIRECT DRAWING METHODS //////

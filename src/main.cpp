@@ -30,14 +30,16 @@ int main(void)
     context.timeOfLastClick = 0.0;
     context.viewSelection.fill(-1);
     context.selectionStep = NONE;
-
-    BallAndStickModel model = BallAndStickModelFromAtoms(frames.atoms[0]);
+    context.frames = &frames;
+    context.model = BallAndStickModelFromAtoms(frames.atoms[0]);
+    context.activeFrame = 0;
+    context.numFrames = frames.nframes;
 
     ///////// Outline Shader variables, etc. ///////////
     //Shader shdrOutline = LoadShader(0, "assets/shaders/outline.fs");
 
     //float outlineSize = 2.0f;
-    //float outlineColor[4] = { 1.0f, 1.0f, 0.0f, 1.0f };     // Normalized YELLOW color 
+    //float outlineColor[4] = { 1.0f, 1.0f, 0.0f, 1.0f };     // Normalized YELLOW color
     //float textureSize[2] = { (float)screenWidth, (float)screenHeight };
     
     // Get shader locations
@@ -94,7 +96,8 @@ int main(void)
 
             ClearBackground(Color(30, 30, 30, 255));
 
-            ViewModeFrame(model, context);
+            DoFrame(context);
+            //ViewModeFrame(model, context);
 
             // Render generated texture with an outline
             //BeginShaderMode(shdrOutline);
@@ -115,7 +118,7 @@ int main(void)
             //OverlayNumbers(frames.atoms[0], camera);
             //DrawLineBetweenAtoms(frames.atoms[0], 1, 3, camera);
             //DrawDashedLineFromPointToCursor(GetWorldToScreen(frames.atoms[0].xyz[0], camera));
-            DrawText("Welcome to the third dimension!", 10, 40, 20, DARKGRAY);
+            //DrawText("Welcome to the third dimension!", 10, 40, 20, DARKGRAY);
 
             DrawFPS(10, 10);
 

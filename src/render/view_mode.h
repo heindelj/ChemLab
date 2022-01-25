@@ -160,7 +160,7 @@ void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
 			// Get the text for distance and draw it
 			char str[32];
 		    sprintf(str, "%.2f", dihedralAngle);
-			Vector2 textPos = GetWorldToScreen(PositionVectorFromTransform(model.transforms[context.viewSelection[2]]) + midpoint(r2, r3), context.camera);
+			Vector2 textPos = GetWorldToScreen(PositionVectorFromTransform(model.transforms[context.viewSelection[2]]) + midpoint(r1, r2), context.camera);
 			DrawText(str, textPos.x, textPos.y, 20, SKYBLUE);
 
 		DrawLineBetweenPoints(model, context.permanentSelection[i][0], context.permanentSelection[i][1], context.camera, context.lineWidth, GREEN);
