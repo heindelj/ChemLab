@@ -121,5 +121,9 @@ struct ActiveContext {
 	SelectionStep selectionStep;
 
 	// animation mode context variables
-	//float rotationSpeed;
+	float rotationSpeed;
+	bool rotateButtonHover;
+	bool allFramesButtonHover;
+	bool isRotating;
+	bool isCyclingAllFrames;
 };

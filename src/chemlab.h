@@ -1,12 +1,7 @@
 #pragma once
-// Library Dependencies
-#include <glm/vec2.hpp>
-#include <glm/vec3.hpp>
-#include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
-#include <glm/ext/matrix_transform.hpp>
 
 // std dependencies
+#include <cassert>
 #include <map>
 #include <fstream>
 #include <sstream>
@@ -34,7 +29,6 @@
 //data
 #include "render/globals.h"
 #include "utils/atomic_data.h"
-#include "utils/raymath_glm_conversions.h"
 
 // utilities, camera, rendering, IO, ... the actual code
 #include "utils/math_utils.h"

@@ -17,25 +17,6 @@ void debug(const Vector4& v) {
 	std::cout << "[ " << v.x << ", " << v.y <<  ", " << v.z << ", " << v.w << " ]" << std::endl;
 }
 
-void debug(const glm::vec2& v) {
-	std::cout << "[ " << v.x << ", " << v.y << " ]" << std::endl;
-}
-
-void debug(const glm::vec3& v) {
-	std::cout << "[ " << v.x << ", " << v.y <<  ", " << v.z << " ]" << std::endl;
-}
-
-void debug(const glm::vec4& v) {
-	std::cout << "[ " << v.x << ", " << v.y <<  ", " << v.z << ", " << v.w << " ]" << std::endl;
-}
-
-void debug(const glm::mat4& m) {
-	std::cout << "[ " << m[0].x << ", " << m[0].y <<  ", " << m[0].z << ", " << m[0].w << " ]" << std::endl;
-	std::cout << "[ " << m[1].x << ", " << m[1].y <<  ", " << m[1].z << ", " << m[1].w << " ]" << std::endl;
-	std::cout << "[ " << m[2].x << ", " << m[2].y <<  ", " << m[2].z << ", " << m[2].w << " ]" << std::endl;
-	std::cout << "[ " << m[3].x << ", " << m[3].y <<  ", " << m[3].z << ", " << m[3].w << " ]" << std::endl;
-}
-
 void debug(const Matrix& m) {
 	std::cout << "[ " << m.m0 << ", " << m.m4 <<  ", " << m.m8  << ", " << m.m12 << " ]" << std::endl;
 	std::cout << "[ " << m.m1 << ", " << m.m5 <<  ", " << m.m9  << ", " << m.m13 << " ]" << std::endl;

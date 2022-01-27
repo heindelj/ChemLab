@@ -5,35 +5,29 @@ void rotateAroundTargetView(Camera3D& camera, Vector3 target) {
 
     if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
 
-	    glm::mat4 V = glm::lookAt(fromVector3(camera.position), fromVector3(camera.target), fromVector3(camera.up));
+	    Matrix V = MatrixLookAt(camera.position, camera.target, camera.up);
+	    Vector3 pivot = ToVector3(V * (Vector4){target.x, target.y, target.z, 1.0f});
+	    Vector3 axis  = (Vector3){mouseDelta.y, mouseDelta.x, 0.0f};
+	    float angle = norm(mouseDelta);
+	    Matrix R  = MatrixRotate(normalize(axis), angle * DEG2RAD);
+	    Matrix RP = MatrixTranslate(-1 * pivot) * R * MatrixTranslate(pivot);
+	    Matrix NV = V * RP;
+	    Matrix C = MatrixInvert(NV);
 
-	    glm::vec3 pivot = glm::vec3(V * glm::vec4(target.x, target.y, target.z, 1.0f));
-	    glm::vec3 axis  = glm::vec3(mouseDelta.y, mouseDelta.x, 0);
-	    float angle = glm::length(fromVector2(mouseDelta));
-
-	    glm::mat4 R  = glm::rotate( glm::mat4(1.0f), glm::radians(angle), axis );
-	    glm::mat4 RP = glm::translate(glm::mat4(1.0f), pivot) * R * glm::translate(glm::mat4(1), -pivot);
-	    glm::mat4 NV = RP * V;
-
-	    glm::mat4 C = glm::inverse(NV);
-	    float targetDist  = glm::length(fromVector3(camera.target) - fromVector3(camera.position));
-	    camera.position = (Vector3){C[3].x, C[3].y, C[3].z};
-	    camera.target   = fromVector3(fromVector3(camera.position) - glm::vec3(C[2]) * targetDist);
-	    camera.up       = (Vector3){C[1].x, C[1].y, C[1].z};
+	    float targetDist = norm(camera.target - camera.position);
+	    camera.position  = (Vector3){C.m12, C.m13, C.m14};
+	    camera.target    = camera.position - (targetDist * (Vector3){C.m8, C.m9, C.m10});
+	    camera.up        = normalize((Vector3){C.m4, C.m5, C.m6});
 	}
-}
-
-void rotateAroundOrigin(Camera3D& camera){
-	rotateAroundTargetView(camera, (Vector3){0.0f, 0.0f, 0.0f});
 }
 
 void zoomOnScroll(Camera3D& camera) {
 	float scrollDistance = GetMouseWheelMove();
-
-	// As a note: forwardVector = target - position
-	glm::vec3 deltaPosition = scrollDistance * glm::normalize((fromVector3(camera.target) - fromVector3(camera.position)));
-	camera.position = fromVector3(fromVector3(camera.position) + deltaPosition);
-	// check if a move changes sign of x, y, and z. If so, don't let the move happen.
+	if (scrollDistance) {
+		camera.fovy -= 2 * scrollDistance;
+		camera.fovy <= 10 ? camera.fovy = 10 : camera.fovy = camera.fovy;
+		camera.fovy >= 178 ? camera.fovy = 178 : camera.fovy = camera.fovy;
+	}
 }
 
 void updateCamera3D(Camera3D& camera) {
@@ -44,7 +38,7 @@ void updateCamera3D(Camera3D& camera) {
 	if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
 		// Test for hitting mesh here to rotate around a specific target
 		// and change to rotateAroundTargetView
-		rotateAroundOrigin(camera);
+		rotateAroundTargetView(camera, camera.target);
 	}
 	zoomOnScroll(camera);
 }

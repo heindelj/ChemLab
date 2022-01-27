@@ -10,7 +10,7 @@ BallAndStickModel* BallAndStickModelFromAtoms(const Atoms& atoms) {
 	model->sphereMesh = (GenMeshSphere(1.0f, 20, 20));
 	model->stickMesh  = (GenMeshCylinder(g_stickRadius, 1.0f, 16));
 	model->numSpheres = atoms.natoms;
-	model->numSticks  = atoms.covalentBondList.pairs.size();
+	model->numSticks  = 2 * atoms.covalentBondList.pairs.size();
 
 	model->transforms.reserve(model->numSpheres + model->numSticks);
 	// Get the sphere transforms and materials
@@ -27,10 +27,18 @@ BallAndStickModel* BallAndStickModelFromAtoms(const Atoms& atoms) {
 		Vector3 bondVector = atoms.xyz[atoms.covalentBondList.pairs[i].second] - atoms.xyz[atoms.covalentBondList.pairs[i].first];
 
 		Vector3 bondOrigin = atoms.xyz[atoms.covalentBondList.pairs[i].first];
-		model->transforms.push_back( MatrixScale((Vector3){1.0f, norm(bondVector), 1.0f}) * MatrixAlignToAxis((Vector3){0.0f, 1.0f, 0.0f}, bondVector) * MatrixTranslate(bondOrigin));
+		Vector3 bondMiddle = atoms.xyz[atoms.covalentBondList.pairs[i].first] + 0.5 * bondVector;
+		model->transforms.push_back( MatrixScale((Vector3){1.0f, 0.5f * norm(bondVector), 1.0f}) * MatrixAlignToAxis((Vector3){0.0f, 1.0f, 0.0f}, bondVector) * MatrixTranslate(bondOrigin));
+		model->transforms.push_back( MatrixScale((Vector3){1.0f, 0.5f * norm(bondVector), 1.0f}) * MatrixAlignToAxis((Vector3){0.0f, 1.0f, 0.0f}, bondVector) * MatrixTranslate(bondMiddle));
 
+		// first stick
 		Material material = LoadMaterialDefault();
-    	material.maps[MATERIAL_MAP_DIFFUSE].color = WHITE;
+    	material.maps[MATERIAL_MAP_DIFFUSE].color = atoms.renderData[atoms.covalentBondList.pairs[i].first].color;
+    	model->materials.push_back(material);
+
+    	// second stick
+    	material = LoadMaterialDefault();
+    	material.maps[MATERIAL_MAP_DIFFUSE].color = atoms.renderData[atoms.covalentBondList.pairs[i].second].color;
     	model->materials.push_back(material);
 	}
 	return model;

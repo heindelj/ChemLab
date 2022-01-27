@@ -50,13 +50,38 @@ inline Vector3 operator-(const Vector3& v1, const Vector3& v2) {
 	return Vector3Subtract(v1, v2);
 }
 
+inline void operator+=(Vector3& v1, const Vector3& v2) {
+	v1.x = v1.x + v2.x;
+	v1.y = v1.y + v2.y;
+	v1.z = v1.z + v2.z;
+}
+
+inline void operator-=(Vector3& v1, const Vector3& v2) {
+	v1.x = v1.x - v2.x;
+	v1.y = v1.y - v2.y;
+	v1.z = v1.z - v2.z;
+}
+
 inline Vector3 operator*(const Vector3& v1, const Vector3& v2) {
 	return Vector3Multiply(v1, v2);
+}
+
+inline void operator*=(Vector3& v1, const Vector3& v2) {
+	v1.x = v1.x * v2.x;
+	v1.y = v1.y * v2.y;
+	v1.z = v1.z * v2.z;
 }
 
 template<typename T>
 inline Vector3 operator*(const Vector3& v1, const T a) {
 	return Vector3Scale(v1, (float)a);
+}
+
+template<typename T>
+inline void operator*=(Vector3& v1, const T a) {
+	v1.x = v1.x * a;
+	v1.y = v1.y * a;
+	v1.z = v1.z * a;
 }
 
 template<typename T>
@@ -67,6 +92,13 @@ inline Vector3 operator*(const T a, const Vector3& v1) {
 template<typename T>
 inline Vector3 operator/(const Vector3& v1, const T a) {
 	return Vector3Scale(v1, 1.0f/(float)a);
+}
+
+template<typename T>
+inline void operator/=(Vector3& v1, const T a) {
+	v1.x = v1.x / a;
+	v1.y = v1.y / a;
+	v1.z = v1.z / a;
 }
 
 inline float norm(const Vector3& v) {
@@ -91,6 +123,10 @@ inline Vector3 homogenize(const Vector4& v) {
 
 inline Vector3 midpoint(const Vector3& v1, const Vector3& v2) {
 	return (v1 + v2) * 0.5f;
+}
+
+inline Vector3 ToVector3(const Vector4& v) {
+	return (Vector3){v.x, v.y, v.z};
 }
 
 ////////////////////////////////
@@ -125,7 +161,6 @@ inline Matrix operator*(const Matrix& m1, const Matrix& m2) {
 }
 
 inline Vector4 operator*(const Matrix& m, const Vector4& v) {
-	// Caution!!! This code might have rows and columns switched!! test further. Jan. 23rd.
 	Vector4 vOut = Vector4Zero();
 
 	float a00 = m.m0,  a01 = m.m1,  a02 = m.m2,  a03 = m.m3;
@@ -204,4 +239,12 @@ Matrix RotationTransformFromTransform(const Matrix& m) {
 	mOut.m14 = 0.0f;
 	mOut.m15 = 1.0f;
 	return mOut;
+}
+
+Vector3 centroid(std::vector<Vector3> points) {
+	Vector3 centroid = Vector3Zero();
+	for (auto& point : points)
+		centroid += point;
+	centroid /= (float)points.size();
+	return centroid;
 }
