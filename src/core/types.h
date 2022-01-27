@@ -6,7 +6,8 @@ enum RenderStyle {
 
 enum InteractionMode {
 	VIEW,
-	EDIT
+	EDIT,
+	ANIMATION
 };
 
 enum SelectionStep {
@@ -100,6 +101,9 @@ struct Frames {
 };
 
 struct ActiveContext {
+	int screenWidth;
+    int screenHeight;
+
 	uint32_t numFrames;
 	uint32_t activeFrame;
 	Frames* frames;
@@ -109,9 +113,13 @@ struct ActiveContext {
 	RenderStyle style;
 	Camera3D camera;
 
+	// view mode context variables
 	double timeOfLastClick;
 	float lineWidth;
 	std::array<int, 4> viewSelection;
 	std::vector<std::array<int, 4>> permanentSelection;
 	SelectionStep selectionStep;
+
+	// animation mode context variables
+	//float rotationSpeed;
 };

@@ -36,17 +36,20 @@
 #include "utils/atomic_data.h"
 #include "utils/raymath_glm_conversions.h"
 
-// actual code
+// utilities, camera, rendering, IO, ... the actual code
 #include "utils/math_utils.h"
 #include "utils/geometry.h"
 #include "utils/load_and_create.h"
 #include "render/camera.h"
 #include "render/render_frame.h"
 #include "utils/interact.h"
+#include "utils/export.h"
 
 // modes
 #include "render/view_mode.h"
 #include "render/edit_mode.h"
+#include "render/animation_mode.h"
 
 // handling things independent of mode
 #include "core/frame.h"
+#include "core/init.h"

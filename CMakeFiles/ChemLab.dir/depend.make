@@ -3,9 +3,11 @@
 
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/chemlab.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/core/frame.h
+CMakeFiles/ChemLab.dir/src/main.cpp.o: src/core/init.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/core/input.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/core/types.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/main.cpp
+CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/animation_mode.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/camera.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/edit_mode.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/globals.h
@@ -13,6 +15,7 @@ CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/render_frame.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/view_mode.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/atomic_data.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/debug.h
+CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/export.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/geometry.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/interact.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/load_and_create.h

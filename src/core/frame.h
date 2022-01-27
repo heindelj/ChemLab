@@ -9,6 +9,11 @@ void OnFrameChange(ActiveContext& context) {
 }
 
 void DoFrame(ActiveContext& context) {
+	context.screenWidth = GetScreenWidth();
+	context.screenWidth = GetScreenWidth();
+
+	ClearBackground(Color(30, 30, 30, 255));
+
 	bool frameChanged = CheckForFrameChange(context);
 	if (frameChanged)
 		OnFrameChange(context);
@@ -19,6 +24,9 @@ void DoFrame(ActiveContext& context) {
 			break;
 		case EDIT:
 			EditModeFrame(*context.model, context);
+			break;
+		case ANIMATION:
+			AnimationModeFrame(*context.model, context);
 			break;
 	}
 
