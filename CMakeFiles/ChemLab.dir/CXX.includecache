@@ -37,6 +37,8 @@ rlgl.h
 /home/heindelj/dev/c++_projects/ChemLab/src/rlgl.h
 raymath.h
 /home/heindelj/dev/c++_projects/ChemLab/src/raymath.h
+rlights.h
+/home/heindelj/dev/c++_projects/ChemLab/src/rlights.h
 core/types.h
 /home/heindelj/dev/c++_projects/ChemLab/src/core/types.h
 core/input.h
@@ -53,10 +55,10 @@ utils/geometry.h
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/geometry.h
 utils/load_and_create.h
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/load_and_create.h
-render/camera.h
-/home/heindelj/dev/c++_projects/ChemLab/src/render/camera.h
 render/render_frame.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/render_frame.h
+render/camera.h
+/home/heindelj/dev/c++_projects/ChemLab/src/render/camera.h
 utils/interact.h
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/interact.h
 utils/export.h

@@ -5,7 +5,7 @@ void OnFrameChange(ActiveContext& context) {
 	context.model->free();	
 
 	// Update the active model
-	context.model = MolecularModelFromAtoms((*context.frames).atoms[context.activeFrame], context.style);
+	context.model = MolecularModelFromAtoms((*context.frames).atoms[context.activeFrame], &context.lightingShader, context.style);
 }
 
 void DoFrame(ActiveContext& context) {

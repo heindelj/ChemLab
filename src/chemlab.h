@@ -18,6 +18,8 @@
 #include "raylib.h"
 #include "rlgl.h"
 #include "raymath.h"
+#define RLIGHTS_IMPLEMENTATION
+#include "rlights.h"
 
 // core
 #include "core/types.h"
@@ -34,8 +36,8 @@
 #include "utils/math_utils.h"
 #include "utils/geometry.h"
 #include "utils/load_and_create.h"
-#include "render/camera.h"
 #include "render/render_frame.h"
+#include "render/camera.h"
 #include "utils/interact.h"
 #include "utils/export.h"
 

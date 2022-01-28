@@ -1,14 +1,14 @@
 #pragma once
 
 
-BallAndStickModel* BallAndStickModelFromAtoms(const Atoms& atoms) {
+BallAndStickModel* BallAndStickModelFromAtoms(const Atoms& atoms, Shader* shader) {
 	BallAndStickModel* model = new BallAndStickModel;
 
 	// There are only two meshes needed for the ball and stick model,
     // so we generate those and store the appropriate transforms and materials
     // for each atom.
-	model->sphereMesh = (GenMeshSphere(1.0f, 20, 20));
-	model->stickMesh  = (GenMeshCylinder(g_stickRadius, 1.0f, 16));
+	model->sphereMesh = (GenMeshSphere(1.0f, 24, 24));
+	model->stickMesh  = (GenMeshCylinder(g_stickRadius, 1.0f, 64));
 	model->numSpheres = atoms.natoms;
 	model->numSticks  = 2 * atoms.covalentBondList.pairs.size();
 
@@ -18,6 +18,7 @@ BallAndStickModel* BallAndStickModelFromAtoms(const Atoms& atoms) {
 		model->transforms.push_back(MatrixScale(atoms.renderData[i].vdwRadius * g_ballScale) * MatrixTranslate(atoms.xyz[i]));
 
 		Material material = LoadMaterialDefault();
+		material.shader = *shader;
     	material.maps[MATERIAL_MAP_DIFFUSE].color = atoms.renderData[i].color;
     	model->materials.push_back(material);
 	}
@@ -33,24 +34,26 @@ BallAndStickModel* BallAndStickModelFromAtoms(const Atoms& atoms) {
 
 		// first stick
 		Material material = LoadMaterialDefault();
+		material.shader = *shader;
     	material.maps[MATERIAL_MAP_DIFFUSE].color = atoms.renderData[atoms.covalentBondList.pairs[i].first].color;
     	model->materials.push_back(material);
 
     	// second stick
     	material = LoadMaterialDefault();
+    	material.shader = *shader;
     	material.maps[MATERIAL_MAP_DIFFUSE].color = atoms.renderData[atoms.covalentBondList.pairs[i].second].color;
     	model->materials.push_back(material);
 	}
 	return model;
 }
 
-SticksModel* SticksModelFromAtoms(const Atoms& atoms) {
+SticksModel* SticksModelFromAtoms(const Atoms& atoms, Shader* shader) {
 	SticksModel* model = new SticksModel;
 
 	// There are only two meshes needed for the ball and stick model,
     // so we generate those and store the appropriate transforms and materials
     // for each atom.
-	model->stickMesh  = (GenMeshCylinder(g_stickRadius, 1.0f, 16));
+	model->stickMesh  = (GenMeshCylinder(g_stickRadius, 1.0f, 64));
 	model->numSticks  = atoms.covalentBondList.pairs.size();
 
 	model->transforms.reserve(model->numSticks);
@@ -63,16 +66,17 @@ SticksModel* SticksModelFromAtoms(const Atoms& atoms) {
 		model->transforms.push_back( MatrixScale((Vector3){1.0f, norm(bondVector), 1.0f}) * MatrixAlignToAxis((Vector3){0.0f, 1.0f, 0.0f}, bondVector) * MatrixTranslate(bondOrigin));
 
 		Material material = LoadMaterialDefault();
-    	material.maps[MATERIAL_MAP_DIFFUSE].color = WHITE;
+		material.shader = *shader;
+    	material.maps[MATERIAL_MAP_DIFFUSE].color = atoms.renderData[i].color;
     	model->materials.push_back(material);
 	}
 	return model;
 }
 
-SpheresModel* SpheresModelFromAtoms(const Atoms& atoms) {
+SpheresModel* SpheresModelFromAtoms(const Atoms& atoms, Shader* shader) {
 	SpheresModel* model = new SpheresModel;
 
-	model->sphereMesh = (GenMeshSphere(1.0f, 20, 20));
+	model->sphereMesh = (GenMeshSphere(1.0f, 32, 32));
 	model->numSpheres = atoms.natoms;
 
 	model->transforms.reserve(model->numSpheres);
@@ -81,6 +85,7 @@ SpheresModel* SpheresModelFromAtoms(const Atoms& atoms) {
 		model->transforms.push_back(MatrixScale(atoms.renderData[i].vdwRadius) * MatrixTranslate(atoms.xyz[i]));
 
 		Material material = LoadMaterialDefault();
+		material.shader = *shader;
     	material.maps[MATERIAL_MAP_DIFFUSE].color = atoms.renderData[i].color;
     	model->materials.push_back(material);
 	}
@@ -88,19 +93,19 @@ SpheresModel* SpheresModelFromAtoms(const Atoms& atoms) {
 	return model;
 }
 
-MolecularModel* MolecularModelFromAtoms(const Atoms& atoms, const RenderStyle style) {
+MolecularModel* MolecularModelFromAtoms(const Atoms& atoms, Shader* shader, const RenderStyle style) {
 	switch(style) {
 		case BALL_AND_STICK:
-			return BallAndStickModelFromAtoms(atoms);
+			return BallAndStickModelFromAtoms(atoms, shader);
 			break;
 		case SPHERES:
-			return SpheresModelFromAtoms(atoms);
+			return SpheresModelFromAtoms(atoms, shader);
 			break;
 		case STICKS:
-			return SticksModelFromAtoms(atoms);
+			return SticksModelFromAtoms(atoms, shader);
 			break;
-		default:
-			return BallAndStickModelFromAtoms(atoms);
+		default :
+			return BallAndStickModelFromAtoms(atoms, shader);
 	}
 }
 

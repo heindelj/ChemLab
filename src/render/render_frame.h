@@ -8,6 +8,11 @@
 // Different modes then call these functions as needed. 					 //
 ///////////////////////////////////////////////////////////////////////////////
 
+void UpdateLighting(ActiveContext& context) {
+	context.light.position = context.camera.position;	
+	context.light.target   = context.camera.target;
+	UpdateLightValues(context.lightingShader, context.light);
+}
 
 ////// MODEL DRAWING METHODS //////
 

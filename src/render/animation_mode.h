@@ -33,6 +33,7 @@ void RotateAroundWorldUp(ActiveContext& context) {
 	Vector3 cameraRight = cross(cameraForward, context.camera.up);
 
 	context.camera.position = context.camera.position + context.rotationSpeed * cameraRight;
+	UpdateLighting(context);
 }
 
 void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {

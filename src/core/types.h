@@ -22,6 +22,7 @@ enum SelectionStep {
 struct MolecularModel
 {
 	std::vector<Matrix> transforms;
+	std::vector<Material> materials;
 
 	virtual void Draw() = 0;
 	virtual int TestRayAgainst(Ray ray) = 0;
@@ -34,15 +35,12 @@ struct BallAndStickModel : MolecularModel {
 
 	Mesh sphereMesh;
 	Mesh stickMesh;
-	std::vector<Material> materials;
 
 	void Draw() override;
 	int  TestRayAgainst(Ray ray) override;	
 	void free() {
 		UnloadMesh(this->sphereMesh);
 		UnloadMesh(this->stickMesh);
-		for (auto& material : materials)
-			UnloadMaterial(material);
 	}
 };
 
@@ -50,14 +48,11 @@ struct SpheresModel : MolecularModel {
 	uint32_t numSpheres;
 
 	Mesh sphereMesh;
-	std::vector<Material> materials;
 
 	void Draw() override;
 	int  TestRayAgainst(Ray ray) override;
 	void free() {
 		UnloadMesh(this->sphereMesh);
-		for (auto& material : materials)
-			UnloadMaterial(material);
 	}
 };
 
@@ -65,14 +60,11 @@ struct SticksModel : MolecularModel {
 	uint32_t numSticks;
 
 	Mesh stickMesh;
-	std::vector<Material> materials;
 
 	void Draw() override;
 	int  TestRayAgainst(Ray ray) override;
 	void free() {
 		UnloadMesh(this->stickMesh);
-		for (auto& material : materials)
-			UnloadMaterial(material);
 	}
 };
 
@@ -107,7 +99,10 @@ struct ActiveContext {
 	uint32_t numFrames;
 	uint32_t activeFrame;
 	Frames* frames;
+
+	Shader lightingShader;
 	MolecularModel* model;
+	Light light;
 
 	InteractionMode mode;
 	RenderStyle style;
