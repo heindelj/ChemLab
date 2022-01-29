@@ -47,11 +47,12 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 	context.selectionStep = NONE;
 
 	float xPosScale = ((float)(context.screenWidth - 40) - 55.0f) / context.screenWidth;
-	context.rotateButtonRec = (Rectangle){xPosScale * (float)context.screenWidth, 10, 55.0f, 30.0f};
-	context.allFramesButtonRec = (Rectangle){xPosScale * (float)context.screenWidth, 50, 79.0f, 30.0f};
 	context.isRotating = false;
 	context.isCyclingAllFrames = false;
 	context.rotationSpeed = 0.2f;
+
+	context.exportRotation = false;
+	context.exportAllFrames = false;
 
 	return context;
 }

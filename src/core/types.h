@@ -119,10 +119,9 @@ struct ActiveContext {
 
 	Vector3 forwardOnStartingToRotate;
 	float rotationSpeed;
-	Rectangle rotateButtonRec;
-	Rectangle allFramesButtonRec;
-	bool rotateButtonHover;
-	bool allFramesButtonHover;
 	bool isRotating;
 	bool isCyclingAllFrames;
+
+	bool exportRotation;
+	bool exportAllFrames;
 };

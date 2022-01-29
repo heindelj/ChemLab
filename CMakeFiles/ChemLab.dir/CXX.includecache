@@ -37,6 +37,8 @@ rlgl.h
 /home/heindelj/dev/c++_projects/ChemLab/src/rlgl.h
 raymath.h
 /home/heindelj/dev/c++_projects/ChemLab/src/raymath.h
+raygui.h
+/home/heindelj/dev/c++_projects/ChemLab/src/raygui.h
 rlights.h
 /home/heindelj/dev/c++_projects/ChemLab/src/rlights.h
 core/types.h

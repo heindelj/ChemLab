@@ -1,5 +1,23 @@
 #pragma once
 
+void DrawAnimationUI(ActiveContext& context) {
+	
+	GuiSetStyle(BUTTON, TEXT_ALIGNMENT, GUI_TEXT_ALIGN_CENTER);
+
+	// Get width-independent x position (since rectangle is in top-right)
+	int distanceFromScreenEdge = 40; // pixels
+	float xPosScale = ((float)(context.screenWidth - distanceFromScreenEdge) - 55.0f) / context.screenWidth;
+
+	if (GuiButton((Rectangle){xPosScale * (float)context.screenWidth, 10, 55.0f, 30.0f}, "ROTATE")) {
+		context.exportRotation = true;
+	}
+
+	if (GuiButton((Rectangle){xPosScale * (float)context.screenWidth, 50, 79.0f, 30.0f}, "ALL FRAMES")) {
+		context.exportAllFrames = true;
+	}
+
+}
+
 std::vector<Vector3> GetRotationAnimationPositions(Camera3D camera, int numFrames) {
 	std::vector<Vector3> cameraPositions;
 
@@ -70,7 +88,7 @@ void ExportRotationAnimation(ActiveContext& context, std::string fileName, int w
 }
 
 void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
-	DrawViewUI(context); // change UI function
+	DrawAnimationUI(context); // change UI function
 
 	BeginMode3D(context.camera);
 	    model.Draw();
@@ -80,9 +98,13 @@ void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
 
 	HandleSelections(model, context);
 
-	if (context.rotateButtonHover && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+	if (context.exportRotation) {
 		ExportRotationAnimation(context, "/home/heindelj/my_render_frames", 1600, 1600, 30);
-	if (context.allFramesButtonHover && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-		context.isCyclingAllFrames = !context.isCyclingAllFrames;
+		context.exportRotation = false;
+	}
+	if (context.exportAllFrames) {
+		std::cout << "Implement this bruh!" << std::endl;
+		context.exportAllFrames = false;
+	}
 
 }

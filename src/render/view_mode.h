@@ -1,27 +1,22 @@
 #pragma once
 
 void DrawViewUI(ActiveContext& context) {
-	// In the future these will become proper RayGUI buttons but this works for now
-
-	context.rotateButtonHover = false;
-	context.allFramesButtonHover = false;
-
+	
+	GuiSetStyle(BUTTON, TEXT_ALIGNMENT, GUI_TEXT_ALIGN_CENTER);
 
 	// Get width-independent x position (since rectangle is in top-right)
 	int distanceFromScreenEdge = 40; // pixels
 	float xPosScale = ((float)(context.screenWidth - distanceFromScreenEdge) - 55.0f) / context.screenWidth;
 
-	context.rotateButtonRec.x = xPosScale * (float)context.screenWidth;
-	if (CheckCollisionPointRec(GetMousePosition(), context.rotateButtonRec)) context.rotateButtonHover = true;
-    DrawRectangleLinesEx(context.rotateButtonRec, 2, context.rotateButtonHover ? GREEN : WHITE);
-    DrawText("ROTATE", (int)(xPosScale * (float)(context.screenWidth + 7)), 20, 10, context.rotateButtonHover ? GREEN : WHITE);
-    // ^^^^ The + 7 above is to move the text inside of the rectangle a litte bit.
+	if (GuiButton((Rectangle){xPosScale * (float)context.screenWidth, 10, 55.0f, 30.0f}, "ROTATE")) {
+		context.isRotating = !context.isRotating;
+		context.forwardOnStartingToRotate = normalize(context.camera.target - context.camera.position);
+	}
 
-    context.allFramesButtonRec.x = xPosScale * (float)context.screenWidth;
-    if (CheckCollisionPointRec(GetMousePosition(), context.allFramesButtonRec)) context.allFramesButtonHover = true;
-    DrawRectangleLinesEx(context.allFramesButtonRec, 2, context.allFramesButtonHover ? GREEN : WHITE);
-    DrawText("ALL FRAMES", (int)(xPosScale * (float)(context.screenWidth + 7)), 60, 10, context.allFramesButtonHover ? GREEN : WHITE);
-    // ^^^^ The + 7 above is to move the text inside of the rectangle a litte bit.
+	if (GuiButton((Rectangle){xPosScale * (float)context.screenWidth, 50, 79.0f, 30.0f}, "ALL FRAMES")) {
+		context.isCyclingAllFrames = !context.isCyclingAllFrames;
+	}
+
 }
 
 int NumberOfValidIndices(std::array<int, 4> arr) {
@@ -194,14 +189,6 @@ void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
 	EndMode3D();
 
 	HandleSelections(model, context);
-
-	// Draw the buttons for rotating and cycling frames
-	if (context.rotateButtonHover && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-		context.isRotating = !context.isRotating;
-		context.forwardOnStartingToRotate = normalize(context.camera.target - context.camera.position);
-	}
-	if (context.allFramesButtonHover && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-		context.isCyclingAllFrames = !context.isCyclingAllFrames;
 	
 	if (context.isRotating)
 		RotateAroundWorldUp(context);
