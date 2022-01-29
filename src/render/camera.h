@@ -1,5 +1,13 @@
 #pragma once
 
+void RotateAroundWorldUp(ActiveContext& context) {
+	Vector3 cameraForward = normalize(context.camera.target - context.camera.position);
+	Vector3 cameraRight = cross(cameraForward, context.camera.up);
+
+	context.camera.position = context.camera.position + context.rotationSpeed * cameraRight;
+	UpdateLighting(context);
+}
+
 bool rotateAroundTargetView(Camera3D& camera, Vector3 target) {
     Vector2 mouseDelta = GetMouseDelta();
 

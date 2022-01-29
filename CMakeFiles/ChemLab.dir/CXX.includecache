@@ -61,8 +61,6 @@ render/camera.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/camera.h
 utils/interact.h
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/interact.h
-utils/export.h
-/home/heindelj/dev/c++_projects/ChemLab/src/utils/export.h
 render/view_mode.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/view_mode.h
 render/edit_mode.h
@@ -101,8 +99,6 @@ chemlab.h
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/atomic_data.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/debug.h
-
-/home/heindelj/dev/c++_projects/ChemLab/src/utils/export.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/geometry.h
 

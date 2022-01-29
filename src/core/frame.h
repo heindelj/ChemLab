@@ -30,6 +30,10 @@ void DoFrame(ActiveContext& context) {
 			break;
 	}
 
+	if (IsKeyPressed(KEY_G))
+		context.drawGrid = !context.drawGrid;
+
 	// Draw which frame number
 	DrawText((std::to_string(context.activeFrame + 1) + "/" + std::to_string(context.numFrames)).c_str(), 10, 40, 20, RAYWHITE);
+	DrawActiveMode(context.mode);
 }

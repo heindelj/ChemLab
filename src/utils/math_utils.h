@@ -248,3 +248,21 @@ Vector3 centroid(std::vector<Vector3> points) {
 	centroid /= (float)points.size();
 	return centroid;
 }
+
+// See: https://math.stackexchange.com/questions/878785/how-to-find-an-angle-in-range0-360-between-2-vectors
+inline float AngleOnCircle(const Vector3& v1, const Vector3& v2, const Vector3& n) {
+	return atan2(dot(n, cross(v1, v2)), -dot(v1, v2)) + PI;
+}
+
+inline int numDigits(int number) {
+	if (number == 0) {
+		return 1;
+	} else {
+	   	int count = 0;
+	   	while(number != 0) {
+	      	number = number / 10;
+	      	count++;
+	   	}
+	   	return count;
+	}
+}

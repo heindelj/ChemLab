@@ -108,6 +108,8 @@ struct ActiveContext {
 	RenderStyle style;
 	Camera3D camera;
 
+	bool drawGrid;
+
 	// view mode context variables
 	double timeOfLastClick;
 	float lineWidth;
@@ -115,8 +117,10 @@ struct ActiveContext {
 	std::vector<std::array<int, 4>> permanentSelection;
 	SelectionStep selectionStep;
 
-	// animation mode context variables
+	Vector3 forwardOnStartingToRotate;
 	float rotationSpeed;
+	Rectangle rotateButtonRec;
+	Rectangle allFramesButtonRec;
 	bool rotateButtonHover;
 	bool allFramesButtonHover;
 	bool isRotating;

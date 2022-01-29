@@ -23,6 +23,8 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 	context.mode = VIEW;
 	context.style = BALL_AND_STICK;
 	context.camera = GetCameraWithGoodDefaultPosition(frames.atoms[0].xyz);
+
+	context.drawGrid = true;
 	
 	// Create material that is shared by all models
 	Shader lightingShader = LoadShader("assets/shaders/lighting.vs", "assets/shaders/lighting.fs");
@@ -44,6 +46,9 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 	context.viewSelection.fill(-1);
 	context.selectionStep = NONE;
 
+	float xPosScale = ((float)(context.screenWidth - 40) - 55.0f) / context.screenWidth;
+	context.rotateButtonRec = (Rectangle){xPosScale * (float)context.screenWidth, 10, 55.0f, 30.0f};
+	context.allFramesButtonRec = (Rectangle){xPosScale * (float)context.screenWidth, 50, 79.0f, 30.0f};
 	context.isRotating = false;
 	context.isCyclingAllFrames = false;
 	context.rotationSpeed = 0.2f;

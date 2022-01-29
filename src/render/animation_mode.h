@@ -1,56 +1,88 @@
 #pragma once
 
-void DrawUI(ActiveContext& context) {
-	// Draw save image button
-	context.rotateButtonHover = false;
-	context.allFramesButtonHover = false;
+std::vector<Vector3> GetRotationAnimationPositions(Camera3D camera, int numFrames) {
+	std::vector<Vector3> cameraPositions;
 
-	float width = 55.0f;
-	float height = 30.0f;
+	Vector3 startingForward = normalize(camera.target - camera.position);
 
-	// Get width-independent x position (since rectangle is in top-right)
-	int distanceFromScreenEdge = 40; // pixels
-	float xPosScale = ((float)(context.screenWidth - distanceFromScreenEdge) - width) / context.screenWidth;
+	for (int i = 0; i < numFrames; i++) {
+		float desiredAngle = ((float)i / (float)numFrames) * (2 * PI);
+		float currentAngle = 0.0f;
+		Vector3 lastPosition = camera.position;
+		Vector3 cameraForward = normalize(camera.target - camera.position);
+		Vector3 cameraRight = cross(cameraForward, camera.up);
 
-	Rectangle rotateButtonRec = { (xPosScale * (float)context.screenWidth), 10, width, height };
-	if (CheckCollisionPointRec(GetMousePosition(), rotateButtonRec)) context.rotateButtonHover = true;
-    DrawRectangleLinesEx(rotateButtonRec, 2, context.rotateButtonHover ? GREEN : WHITE);
-    DrawText("ROTATE", (int)(xPosScale * (float)(context.screenWidth + 7)), 20, 10, context.rotateButtonHover ? GREEN : WHITE);
-    // ^^^^ The + 7 above is to move the text inside of the rectangle a litte bit.
+		// iterate until close to desired point on circle
+		int numIter = 0;
+		while (abs(currentAngle - desiredAngle) > 0.005f) { // converge to within 0.005 radians = ~0.25 degrees
+			cameraForward = normalize(camera.target - camera.position);
+			cameraRight = normalize(cross(cameraForward, camera.up));
 
-    width = 79.0f;
-    height = 30.0f;
-    Rectangle allFramesButtonRec = { (xPosScale * (float)context.screenWidth), 50, width, height };
-    if (CheckCollisionPointRec(GetMousePosition(), allFramesButtonRec)) context.allFramesButtonHover = true;
-    DrawRectangleLinesEx(allFramesButtonRec, 2, context.allFramesButtonHover ? GREEN : WHITE);
-    DrawText("ALL FRAMES", (int)(xPosScale * (float)(context.screenWidth + 7)), 60, 10, context.allFramesButtonHover ? GREEN : WHITE);
-    // ^^^^ The + 7 above is to move the text inside of the rectangle a litte bit.
+			if (currentAngle < desiredAngle) {
+				camera.position = camera.position + 0.01f * cameraRight;
+			} else {
+				camera.position = camera.position - 0.01f * cameraRight;
+			}
+			currentAngle = AngleOnCircle(normalize(camera.target - camera.position), startingForward, camera.up);
+			
+			numIter += 1;
+			if (numIter > 1000) {
+				std::cout << "Warning: Failed on iteration " << i << std::endl;
+				break;
+			}
+		}
+		cameraPositions.push_back(camera.position);
+	}
+	return cameraPositions;
 }
 
-void RotateAroundWorldUp(ActiveContext& context) {
-	Vector3 cameraForward = context.camera.target - context.camera.position;
-	cameraForward = normalize(cameraForward);
-	Vector3 cameraRight = cross(cameraForward, context.camera.up);
+void ExportFrameAsPNG(const Camera3D& camera, MolecularModel* model, int width, int height, const char* fileName) {
+	// Create a RenderTexture2D to export as PNG
+	RenderTexture2D renderTarget = LoadRenderTexture(width, height);
+	BeginTextureMode(renderTarget);
+	    ClearBackground(Color(1.0f,1.0f,1.0f,1.0f));  // Clear white texture background
+	    BeginMode3D(camera);
+	    	model->Draw();
+	    EndMode3D();
+	EndTextureMode();
+	Image image = LoadImageFromTexture(renderTarget.texture);
+	ImageFlipVertical(&image);
+	ExportImage(image, fileName);
+	UnloadImage(image);
+	UnloadRenderTexture(renderTarget);
+}
 
-	context.camera.position = context.camera.position + context.rotationSpeed * cameraRight;
-	UpdateLighting(context);
+void ExportRotationAnimation(ActiveContext& context, std::string fileName, int width, int height, int numFrames) {
+	// Can convert the resulting image sequence to a gif with command: convert -delay 0 -loop 0 -alpha set -dispose 2 my_render_frames_*.png
+	// add system() call to convert the gif all at once. Check that convert command is available.
+
+	// Do this in a new thread
+	std::vector<Vector3> animationPositions = GetRotationAnimationPositions(context.camera, numFrames);
+	Camera3D tempCamera = context.camera;
+	for (int i = 0; i < animationPositions.size(); i++) {
+		std::string fileNumber = "";
+		for (int j = numDigits(i); j < numDigits(animationPositions.size()); j++)
+			fileNumber += "0";
+		tempCamera.position = animationPositions[i];
+		UpdateLighting(context, tempCamera.position, tempCamera.target);
+		ExportFrameAsPNG(tempCamera, context.model, width, height, (fileName + "_" + fileNumber + std::to_string(i) + ".png").c_str());
+	}
 }
 
 void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
-	DrawUI(context);
+	DrawViewUI(context); // change UI function
 
 	BeginMode3D(context.camera);
 	    model.Draw();
-	    //DrawGrid(10, 1.0f);
+	    if (context.drawGrid)
+	    	DrawGrid(10, 1.0f);
 	EndMode3D();
 
+	HandleSelections(model, context);
 
 	if (context.rotateButtonHover && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-		context.isRotating = !context.isRotating;
+		ExportRotationAnimation(context, "/home/heindelj/my_render_frames", 1600, 1600, 30);
 	if (context.allFramesButtonHover && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
 		context.isCyclingAllFrames = !context.isCyclingAllFrames;
-	
-	if (context.isRotating)
-		RotateAroundWorldUp(context);
 
 }

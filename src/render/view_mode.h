@@ -1,5 +1,29 @@
 #pragma once
 
+void DrawViewUI(ActiveContext& context) {
+	// In the future these will become proper RayGUI buttons but this works for now
+
+	context.rotateButtonHover = false;
+	context.allFramesButtonHover = false;
+
+
+	// Get width-independent x position (since rectangle is in top-right)
+	int distanceFromScreenEdge = 40; // pixels
+	float xPosScale = ((float)(context.screenWidth - distanceFromScreenEdge) - 55.0f) / context.screenWidth;
+
+	context.rotateButtonRec.x = xPosScale * (float)context.screenWidth;
+	if (CheckCollisionPointRec(GetMousePosition(), context.rotateButtonRec)) context.rotateButtonHover = true;
+    DrawRectangleLinesEx(context.rotateButtonRec, 2, context.rotateButtonHover ? GREEN : WHITE);
+    DrawText("ROTATE", (int)(xPosScale * (float)(context.screenWidth + 7)), 20, 10, context.rotateButtonHover ? GREEN : WHITE);
+    // ^^^^ The + 7 above is to move the text inside of the rectangle a litte bit.
+
+    context.allFramesButtonRec.x = xPosScale * (float)context.screenWidth;
+    if (CheckCollisionPointRec(GetMousePosition(), context.allFramesButtonRec)) context.allFramesButtonHover = true;
+    DrawRectangleLinesEx(context.allFramesButtonRec, 2, context.allFramesButtonHover ? GREEN : WHITE);
+    DrawText("ALL FRAMES", (int)(xPosScale * (float)(context.screenWidth + 7)), 60, 10, context.allFramesButtonHover ? GREEN : WHITE);
+    // ^^^^ The + 7 above is to move the text inside of the rectangle a litte bit.
+}
+
 int NumberOfValidIndices(std::array<int, 4> arr) {
 	int count = 0;
 	for (int i = 0; i < arr.size(); i++) {
@@ -77,14 +101,8 @@ void OnClickReleaseViewDihedral(MolecularModel& model, ActiveContext& context) {
 	}
 }
 
-void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
-
-	BeginMode3D(context.camera);
-	    model.Draw();
-	    DrawGrid(10, 1.0f);
-	EndMode3D();
-
-	// handle mouse input based on selection step
+void HandleSelections(MolecularModel& model, ActiveContext& context) {
+		// handle mouse input based on selection step
 	if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
 		switch(context.selectionStep) {
 			case NONE :
@@ -101,9 +119,6 @@ void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
 				break;
 		}
 	}
-
-	// TODO: I somehow need to change the draw order to make the lines
-	// be drawn on top of the spheres.
 
 	// draw lines and geometry labels based on selections step.
 	switch(context.selectionStep) {
@@ -167,4 +182,27 @@ void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
 		DrawLineBetweenPoints(model, context.permanentSelection[i][1], context.permanentSelection[i][2], context.camera, context.lineWidth, GREEN);
 		DrawLineBetweenPoints(model, context.permanentSelection[i][2], context.permanentSelection[i][3], context.camera, context.lineWidth, GREEN);
 	}
+}
+
+void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
+	DrawViewUI(context);
+
+	BeginMode3D(context.camera);
+	    model.Draw();
+	    if (context.drawGrid)
+	    	DrawGrid(10, 1.0f);
+	EndMode3D();
+
+	HandleSelections(model, context);
+
+	// Draw the buttons for rotating and cycling frames
+	if (context.rotateButtonHover && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+		context.isRotating = !context.isRotating;
+		context.forwardOnStartingToRotate = normalize(context.camera.target - context.camera.position);
+	}
+	if (context.allFramesButtonHover && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+		context.isCyclingAllFrames = !context.isCyclingAllFrames;
+	
+	if (context.isRotating)
+		RotateAroundWorldUp(context);
 }

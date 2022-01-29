@@ -8,9 +8,29 @@
 // Different modes then call these functions as needed. 					 //
 ///////////////////////////////////////////////////////////////////////////////
 
+void DrawActiveMode(InteractionMode mode) {
+	switch(mode) {
+		case VIEW:
+			DrawText("MODE: VIEW", 10, 10, 20, RAYWHITE);
+			break;
+		case EDIT:
+			DrawText("MODE: EDIT", 10, 10, 20, RAYWHITE);
+			break;
+		case ANIMATION:
+			DrawText("MODE: ANIMATION", 10, 10, 20, RAYWHITE);
+			break;
+	}
+}
+
 void UpdateLighting(ActiveContext& context) {
 	context.light.position = context.camera.position;	
 	context.light.target   = context.camera.target;
+	UpdateLightValues(context.lightingShader, context.light);
+}
+
+void UpdateLighting(ActiveContext& context, const Vector3& cameraPosition, const Vector3& cameraTarget) {
+	context.light.position = cameraPosition;	
+	context.light.target   = cameraTarget;
 	UpdateLightValues(context.lightingShader, context.light);
 }
 

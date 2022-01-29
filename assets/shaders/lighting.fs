@@ -70,7 +70,7 @@ void main()
 
             float specCo = 0.0;
             if (NdotL > 0.0) specCo = pow(max(0.0, dot(viewD, reflect(-(light), normal))), 16.0); // 16 refers to shine
-            specular += specCo;
+            specular += specCo / 10; // I am scaling down by 10 because the specular is too intense. Just turning it off looks fine honestly
         }
     }
 

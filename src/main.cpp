@@ -23,7 +23,7 @@ int main(void)
 
             DoFrame(context);
 
-            DrawFPS(10, 10);
+            //DrawFPS(10, 10);
 
         EndDrawing();
     }
