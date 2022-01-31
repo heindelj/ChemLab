@@ -18,6 +18,23 @@ void DrawAnimationUI(ActiveContext& context) {
 
 }
 
+void ExportRenderTexturesToImages(const std::vector<Image>& renderedAnimationFrames){
+ 	for (int i = 0; i < renderedAnimationFrames.size(); i++) {
+    	//Image image = LoadImageFromTexture(renderedAnimationFrames[i].texture);
+    	//ImageFlipVertical(&image);
+    	std::string fileName = std::string("/home/heindelj/my_render_frames");
+    	std::string fileNumber = "";
+		for(int j = numDigits(i); j < numDigits(renderedAnimationFrames.size()); j++)
+			fileNumber += "0";
+		ExportImage(renderedAnimationFrames[i], (fileName + "_" + fileNumber + std::to_string(i) + ".png").c_str());
+    	UnloadImage(renderedAnimationFrames[i]);
+
+	    // Use mutex with lock_guard to update status in a thread safe way.
+	    //std::lock_guard<std::mutex> guard(mu);
+	    //status = i;
+  	}
+}
+
 std::vector<Vector3> GetRotationAnimationPositions(Camera3D camera, int numFrames) {
 	std::vector<Vector3> cameraPositions;
 
@@ -45,7 +62,7 @@ std::vector<Vector3> GetRotationAnimationPositions(Camera3D camera, int numFrame
 			
 			numIter += 1;
 			if (numIter > 1000) {
-				std::cout << "Warning: Failed on iteration " << i << std::endl;
+				std::cout << "Warning: Failed to find animation position on iteration " << i << std::endl;
 				break;
 			}
 		}
@@ -54,43 +71,40 @@ std::vector<Vector3> GetRotationAnimationPositions(Camera3D camera, int numFrame
 	return cameraPositions;
 }
 
-void ExportFrameAsPNG(const Camera3D& camera, MolecularModel* model, int width, int height, const char* fileName) {
-	// Create a RenderTexture2D to export as PNG
+Image DrawToRenderTexture(const RenderContext& renderContext, int width, int height) {
 	RenderTexture2D renderTarget = LoadRenderTexture(width, height);
 	BeginTextureMode(renderTarget);
 	    ClearBackground(Color(1.0f,1.0f,1.0f,1.0f));  // Clear white texture background
-	    BeginMode3D(camera);
-	    	model->Draw();
+	    BeginMode3D(renderContext.camera);
+	    	renderContext.model->Draw();
 	    EndMode3D();
 	EndTextureMode();
 	Image image = LoadImageFromTexture(renderTarget.texture);
 	ImageFlipVertical(&image);
-	ExportImage(image, fileName);
-	UnloadImage(image);
 	UnloadRenderTexture(renderTarget);
+	return image;
 }
 
-void ExportRotationAnimation(ActiveContext& context, std::string fileName, int width, int height, int numFrames) {
+std::vector<Image> DrawRotationAnimationToRenderTextures(RenderContext& renderContext, int width, int height, int numFrames) {
 	// Can convert the resulting image sequence to a gif with command: convert -delay 0 -loop 0 -alpha set -dispose 2 my_render_frames_*.png
 	// add system() call to convert the gif all at once. Check that convert command is available.
 
-	// Do this in a new thread
-	std::vector<Vector3> animationPositions = GetRotationAnimationPositions(context.camera, numFrames);
-	Camera3D tempCamera = context.camera;
+	std::vector<Image> renderedAnimationFrames;
+	renderedAnimationFrames.reserve(numFrames);
+
+	std::vector<Vector3> animationPositions = GetRotationAnimationPositions(renderContext.camera, numFrames);
 	for (int i = 0; i < animationPositions.size(); i++) {
-		std::string fileNumber = "";
-		for (int j = numDigits(i); j < numDigits(animationPositions.size()); j++)
-			fileNumber += "0";
-		tempCamera.position = animationPositions[i];
-		UpdateLighting(context, tempCamera.position, tempCamera.target);
-		ExportFrameAsPNG(tempCamera, context.model, width, height, (fileName + "_" + fileNumber + std::to_string(i) + ".png").c_str());
+		renderContext.camera.position = animationPositions[i];
+		UpdateLighting(renderContext);
+		renderedAnimationFrames.push_back(DrawToRenderTexture(renderContext, width, height));
 	}
+	return renderedAnimationFrames;
 }
 
 void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
 	DrawAnimationUI(context); // change UI function
 
-	BeginMode3D(context.camera);
+	BeginMode3D(context.renderContext.camera);
 	    model.Draw();
 	    if (context.drawGrid)
 	    	DrawGrid(10, 1.0f);
@@ -99,7 +113,13 @@ void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
 	HandleSelections(model, context);
 
 	if (context.exportRotation) {
-		ExportRotationAnimation(context, "/home/heindelj/my_render_frames", 1600, 1600, 30);
+		
+		std::vector<Image> renderedAnimationFrames = DrawRotationAnimationToRenderTextures(context.renderContext, 1600, 1600, 30);
+		context.otherThread = std::thread(ExportRenderTexturesToImages, renderedAnimationFrames);
+		//ExportRenderTexturesToImages(renderedAnimationFrames);
+		//std::mutex mu;
+		//std::atomic<bool> is_images_loaded = false;
+
 		context.exportRotation = false;
 	}
 	if (context.exportAllFrames) {

@@ -5,9 +5,12 @@ enum RenderStyle {
 };
 
 enum InteractionMode {
-	VIEW,
-	EDIT,
-	ANIMATION
+	VIEW = 0,
+	EDIT = 1,
+	ANIMATION = 2,
+	NUMBER_OF_MODES = 3 
+	// NOTE THAT THIS ^^^ IS THE NUMBER OF VALID MODES 
+	// AND IS USED TO WRAP AROUND TO THE END. IT MUST BE THE LAST ELEMENT IN THE ENUM
 };
 
 enum SelectionStep {
@@ -92,21 +95,30 @@ struct Frames {
 	std::vector<std::string> headers;
 };
 
+struct RenderContext {
+	Camera3D camera;
+	Shader lightingShader;
+	MolecularModel* model;
+	Light light;
+};
+
 struct ActiveContext {
 	int screenWidth;
     int screenHeight;
 
+    std::thread otherThread;
+
 	uint32_t numFrames;
 	uint32_t activeFrame;
 	Frames* frames;
-
-	Shader lightingShader;
-	MolecularModel* model;
-	Light light;
+	
+	RenderContext renderContext;
 
 	InteractionMode mode;
 	RenderStyle style;
-	Camera3D camera;
+
+	// UI Settings
+	bool modeDropdownEdit;
 
 	bool drawGrid;
 

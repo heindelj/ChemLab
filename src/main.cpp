@@ -6,12 +6,11 @@ int main()
 
     // initialize context
     ActiveContext context = InitContext(frames, 800, 450);
-    context.mode = VIEW;
 
     SetTargetFPS(60);
     while (!WindowShouldClose())
     {
-        updateCamera3D(context);
+        UpdateCamera3D(context.renderContext);
 
         BeginDrawing();
             DoFrame(context);

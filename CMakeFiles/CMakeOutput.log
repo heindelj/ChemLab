@@ -441,3 +441,17 @@ Parsed CXX implicit link information from above output:
   implicit fwks: []
 
 
+Determining if the include file pthread.h exists passed with the following output:
+Change Dir: /home/heindelj/dev/c++_projects/ChemLab/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake cmTC_d57b8/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_d57b8.dir/build.make CMakeFiles/cmTC_d57b8.dir/build
+gmake[1]: Entering directory '/home/heindelj/OneDrive/Documents/Coding_Projects/c++_projects/ChemLab/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_d57b8.dir/CheckIncludeFile.cxx.o
+/usr/bin/c++    -o CMakeFiles/cmTC_d57b8.dir/CheckIncludeFile.cxx.o -c /home/heindelj/dev/c++_projects/ChemLab/CMakeFiles/CMakeTmp/CheckIncludeFile.cxx
+Linking CXX executable cmTC_d57b8
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d57b8.dir/link.txt --verbose=1
+/usr/bin/c++ -rdynamic CMakeFiles/cmTC_d57b8.dir/CheckIncludeFile.cxx.o -o cmTC_d57b8 
+gmake[1]: Leaving directory '/home/heindelj/OneDrive/Documents/Coding_Projects/c++_projects/ChemLab/CMakeFiles/CMakeTmp'
+
+
+

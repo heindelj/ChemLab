@@ -21,6 +21,8 @@ vector
 -
 array
 -
+thread
+-
 utility
 -
 string
@@ -37,26 +39,26 @@ rlgl.h
 /home/heindelj/dev/c++_projects/ChemLab/src/rlgl.h
 raymath.h
 /home/heindelj/dev/c++_projects/ChemLab/src/raymath.h
+utils/math_utils.h
+/home/heindelj/dev/c++_projects/ChemLab/src/utils/math_utils.h
 raygui.h
 /home/heindelj/dev/c++_projects/ChemLab/src/raygui.h
 rlights.h
 /home/heindelj/dev/c++_projects/ChemLab/src/rlights.h
 core/types.h
 /home/heindelj/dev/c++_projects/ChemLab/src/core/types.h
-core/input.h
-/home/heindelj/dev/c++_projects/ChemLab/src/core/input.h
-utils/debug.h
-/home/heindelj/dev/c++_projects/ChemLab/src/utils/debug.h
 render/globals.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/globals.h
 utils/atomic_data.h
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/atomic_data.h
-utils/math_utils.h
-/home/heindelj/dev/c++_projects/ChemLab/src/utils/math_utils.h
 utils/geometry.h
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/geometry.h
 utils/load_and_create.h
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/load_and_create.h
+core/init.h
+/home/heindelj/dev/c++_projects/ChemLab/src/core/init.h
+utils/debug.h
+/home/heindelj/dev/c++_projects/ChemLab/src/utils/debug.h
 render/render_frame.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/render_frame.h
 render/camera.h
@@ -71,14 +73,10 @@ render/animation_mode.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/animation_mode.h
 core/frame.h
 /home/heindelj/dev/c++_projects/ChemLab/src/core/frame.h
-core/init.h
-/home/heindelj/dev/c++_projects/ChemLab/src/core/init.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/core/frame.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/core/init.h
-
-/home/heindelj/dev/c++_projects/ChemLab/src/core/input.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/core/types.h
 

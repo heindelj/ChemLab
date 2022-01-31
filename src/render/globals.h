@@ -10,3 +10,5 @@ static Color g_hbondColor = YELLOW; // Color of hydrogen bonds
 static float g_hbondWidth = 3.0f;   // Width of lines for hydrogen bonds
 static float g_dashEvery  = 0.15f;  // Length of line before we dash the hydrogen bond
 static bool  g_dashedLine = true;   // should h-bonds be dashed lines? 
+
+static std::vector<Image> g_renderedAnimationFrames;

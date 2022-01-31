@@ -8,6 +8,7 @@
 #include <iostream>
 #include <vector>
 #include <array>
+#include <thread>
 #include <utility>
 #include <string>
 #include <algorithm>
@@ -18,6 +19,7 @@
 #include "raylib.h"
 #include "rlgl.h"
 #include "raymath.h"
+#include "utils/math_utils.h"
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
 #define RLIGHTS_IMPLEMENTATION
@@ -25,19 +27,20 @@
 
 // core
 #include "core/types.h"
-#include "core/input.h"
-
-// debug
-#include "utils/debug.h"
 
 //data
 #include "render/globals.h"
 #include "utils/atomic_data.h"
+#include "utils/geometry.h"
+
+#include "utils/load_and_create.h"
+#include "core/init.h"
+
+// debug
+#include "utils/debug.h"
+
 
 // utilities, camera, rendering, IO, ... the actual code
-#include "utils/math_utils.h"
-#include "utils/geometry.h"
-#include "utils/load_and_create.h"
 #include "render/render_frame.h"
 #include "render/camera.h"
 #include "utils/interact.h"
@@ -49,4 +52,3 @@
 
 // handling things independent of mode
 #include "core/frame.h"
-#include "core/init.h"

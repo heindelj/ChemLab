@@ -4,7 +4,6 @@
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/chemlab.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/core/frame.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/core/init.h
-CMakeFiles/ChemLab.dir/src/main.cpp.o: src/core/input.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/core/types.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/main.cpp
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/animation_mode.h

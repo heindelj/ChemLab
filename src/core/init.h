@@ -11,10 +11,28 @@ Camera3D GetCameraWithGoodDefaultPosition(const std::vector<Vector3>& xyz) {
 	return camera;
 }
 
+RenderContext InitRenderContext(const Atoms& atoms) {
+	RenderContext context;
+
+	Shader lightingShader = LoadShader("assets/shaders/lighting.vs", "assets/shaders/lighting.fs");
+	lightingShader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(lightingShader, "viewPos");
+	int ambientLoc = GetShaderLocation(lightingShader, "ambient");
+	Vector4 ambient = (Vector4){ 0.2f, 0.2f, 0.2f, 1.0f };
+	SetShaderValue(lightingShader, ambientLoc, &ambient.x, SHADER_UNIFORM_VEC4);
+	
+	context.camera = GetCameraWithGoodDefaultPosition(atoms.xyz);
+	context.lightingShader = lightingShader;
+	context.model = MolecularModelFromAtoms(atoms, &context.lightingShader, BALL_AND_STICK);
+	context.light = CreateLight(LIGHT_DIRECTIONAL, context.camera.position, context.camera.target, WHITE, context.lightingShader);
+
+	return context;
+}
+
 ActiveContext InitContext(Frames& frames, const int screenWidth, const int screenHeight) {
 	ActiveContext context;
-	context.screenWidth = 800;
-	context.screenHeight = 450;
+	context.frames = &frames;
+	context.screenWidth  = screenWidth;
+	context.screenHeight = screenHeight;
 
 	SetConfigFlags(FLAG_MSAA_4X_HINT);
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
@@ -22,22 +40,13 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 
 	context.mode = VIEW;
 	context.style = BALL_AND_STICK;
-	context.camera = GetCameraWithGoodDefaultPosition(frames.atoms[0].xyz);
+
+	context.renderContext = InitRenderContext(frames.atoms[0]);
+
+	// UI Settings
+	bool modeDropdownEdit = false;
 
 	context.drawGrid = true;
-	
-	// Create material that is shared by all models
-	Shader lightingShader = LoadShader("assets/shaders/lighting.vs", "assets/shaders/lighting.fs");
-	lightingShader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(lightingShader, "viewPos");
-	// Ambient light level (some basic lighting)
-	int ambientLoc = GetShaderLocation(lightingShader, "ambient");
-	Vector4 ambient = (Vector4){ 0.2f, 0.2f, 0.2f, 1.0f };
-	SetShaderValue(lightingShader, ambientLoc, &ambient.x, SHADER_UNIFORM_VEC4);
-	context.lightingShader = lightingShader;
-
-	context.frames = &frames;
-	context.model = MolecularModelFromAtoms(frames.atoms[0], &context.lightingShader, BALL_AND_STICK);
-	context.light = CreateLight(LIGHT_DIRECTIONAL, context.camera.position, context.camera.target, WHITE, context.lightingShader);
 	context.activeFrame = 0;
 	context.numFrames = frames.nframes;
 

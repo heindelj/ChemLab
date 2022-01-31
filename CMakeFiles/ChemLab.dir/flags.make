@@ -6,5 +6,5 @@ CXX_DEFINES = -DASSETS_PATH=\"/home/heindelj/dev/c++_projects/ChemLab/assets/\"
 
 CXX_INCLUDES = -I/usr/include/eigen3
 
-CXX_FLAGS = -g -std=gnu++2a
+CXX_FLAGS = -g -pthread -std=gnu++2a
 

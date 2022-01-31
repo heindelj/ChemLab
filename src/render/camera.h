@@ -1,11 +1,11 @@
 #pragma once
 
 void RotateAroundWorldUp(ActiveContext& context) {
-	Vector3 cameraForward = normalize(context.camera.target - context.camera.position);
-	Vector3 cameraRight = cross(cameraForward, context.camera.up);
+	Vector3 cameraForward = normalize(context.renderContext.camera.target - context.renderContext.camera.position);
+	Vector3 cameraRight = cross(cameraForward, context.renderContext.camera.up);
 
-	context.camera.position = context.camera.position + context.rotationSpeed * cameraRight;
-	UpdateLighting(context);
+	context.renderContext.camera.position = context.renderContext.camera.position + context.rotationSpeed * cameraRight;
+	UpdateLighting(context.renderContext);
 }
 
 bool rotateAroundTargetView(Camera3D& camera, Vector3 target) {
@@ -44,7 +44,7 @@ bool zoomOnScroll(Camera3D& camera) {
 	return false;
 }
 
-void updateCamera3D(ActiveContext& context) {
+void UpdateCamera3D(RenderContext& context) {
 	/*
 	Updates a Camera3d object in a "model viewer" style. That is, left click and drag rotates the model,
 	scrolling zooms in and out, and right click drag pans the camera.
