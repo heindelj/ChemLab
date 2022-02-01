@@ -106,7 +106,7 @@ struct ActiveContext {
 	int screenWidth;
     int screenHeight;
 
-    std::thread otherThread;
+    std::thread computeThread;
 
 	uint32_t numFrames;
 	uint32_t activeFrame;

@@ -18,11 +18,8 @@ void DrawAnimationUI(ActiveContext& context) {
 
 }
 
-void ExportRenderTexturesToImages(const std::vector<Image>& renderedAnimationFrames){
+void ExportRenderTexturesToImages(const std::vector<Image>& renderedAnimationFrames, const std::string& fileName){
  	for (int i = 0; i < renderedAnimationFrames.size(); i++) {
-    	//Image image = LoadImageFromTexture(renderedAnimationFrames[i].texture);
-    	//ImageFlipVertical(&image);
-    	std::string fileName = std::string("/home/heindelj/my_render_frames");
     	std::string fileNumber = "";
 		for(int j = numDigits(i); j < numDigits(renderedAnimationFrames.size()); j++)
 			fileNumber += "0";
@@ -33,6 +30,8 @@ void ExportRenderTexturesToImages(const std::vector<Image>& renderedAnimationFra
 	    //std::lock_guard<std::mutex> guard(mu);
 	    //status = i;
   	}
+  	int exitCode = system((std::string("convert -delay 0 -loop 0 -alpha set -dispose 2 ") + fileName + "_*.png " + fileName + std::string(".gif")).c_str());
+  	exitCode != -1 ? system((std::string("rm ") + fileName + std::string("*.png")).c_str()) : std::cout << "INFO: Failed to directly convert png images to a gif using ImageMagick's convert function. You will need to do it manually or install ImageMgick and try again." << std::endl;
 }
 
 std::vector<Vector3> GetRotationAnimationPositions(Camera3D camera, int numFrames) {
@@ -86,8 +85,7 @@ Image DrawToRenderTexture(const RenderContext& renderContext, int width, int hei
 }
 
 std::vector<Image> DrawRotationAnimationToRenderTextures(RenderContext& renderContext, int width, int height, int numFrames) {
-	// Can convert the resulting image sequence to a gif with command: convert -delay 0 -loop 0 -alpha set -dispose 2 my_render_frames_*.png
-	// add system() call to convert the gif all at once. Check that convert command is available.
+	Vector3 originalPosition = renderContext.camera.position;
 
 	std::vector<Image> renderedAnimationFrames;
 	renderedAnimationFrames.reserve(numFrames);
@@ -98,11 +96,15 @@ std::vector<Image> DrawRotationAnimationToRenderTextures(RenderContext& renderCo
 		UpdateLighting(renderContext);
 		renderedAnimationFrames.push_back(DrawToRenderTexture(renderContext, width, height));
 	}
+
+	renderContext.camera.position = originalPosition;
+	UpdateLighting(renderContext);
+
 	return renderedAnimationFrames;
 }
 
 void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
-	DrawAnimationUI(context); // change UI function
+	DrawAnimationUI(context);
 
 	BeginMode3D(context.renderContext.camera);
 	    model.Draw();
@@ -112,11 +114,11 @@ void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
 
 	HandleSelections(model, context);
 
+	// Change this to isExporting and check which image we're on to draw the progress bar
 	if (context.exportRotation) {
-		
 		std::vector<Image> renderedAnimationFrames = DrawRotationAnimationToRenderTextures(context.renderContext, 1600, 1600, 30);
-		context.otherThread = std::thread(ExportRenderTexturesToImages, renderedAnimationFrames);
-		//ExportRenderTexturesToImages(renderedAnimationFrames);
+		context.computeThread = std::thread(ExportRenderTexturesToImages, renderedAnimationFrames, "/home/heindelj/my_render_frames");
+
 		//std::mutex mu;
 		//std::atomic<bool> is_images_loaded = false;
 

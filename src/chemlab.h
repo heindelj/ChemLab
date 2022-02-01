@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <stdexcept>
+#include <stdlib.h>
 
 // external
 #include "raylib.h"

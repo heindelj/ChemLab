@@ -33,6 +33,8 @@ filesystem
 -
 stdexcept
 -
+stdlib.h
+-
 raylib.h
 /home/heindelj/dev/c++_projects/ChemLab/src/raylib.h
 rlgl.h
