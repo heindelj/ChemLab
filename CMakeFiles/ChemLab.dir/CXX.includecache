@@ -67,6 +67,8 @@ render/camera.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/camera.h
 utils/interact.h
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/interact.h
+core/change_state.h
+/home/heindelj/dev/c++_projects/ChemLab/src/core/change_state.h
 render/view_mode.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/view_mode.h
 render/edit_mode.h
@@ -75,6 +77,8 @@ render/animation_mode.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/animation_mode.h
 core/frame.h
 /home/heindelj/dev/c++_projects/ChemLab/src/core/frame.h
+
+/home/heindelj/dev/c++_projects/ChemLab/src/core/change_state.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/core/frame.h
 

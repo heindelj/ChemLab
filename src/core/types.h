@@ -128,12 +128,14 @@ struct ActiveContext {
 	std::array<int, 4> viewSelection;
 	std::vector<std::array<int, 4>> permanentSelection;
 	SelectionStep selectionStep;
-
 	Vector3 forwardOnStartingToRotate;
 	float rotationSpeed;
 	bool isRotating;
 	bool isCyclingAllFrames;
+	float timeBetweenFrameChanges;
+	double timeOfLastFrameChange;
 
+	// Animation mode variables
 	bool exportRotation;
 	bool exportAllFrames;
 };

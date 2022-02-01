@@ -3,8 +3,6 @@
 int main()
 {
     Frames frames = readXYZ("assets/test_xyz_file.xyz");
-
-    // initialize context
     ActiveContext context = InitContext(frames, 800, 450);
 
     SetTargetFPS(60);
@@ -17,7 +15,7 @@ int main()
         EndDrawing();
     }
 
-    CloseWindow();        // Close window and OpenGL context
+    CloseWindow();
 
     return 0;
 }

@@ -47,6 +47,7 @@
 #include "utils/interact.h"
 
 // modes
+#include "core/change_state.h"
 #include "render/view_mode.h"
 #include "render/edit_mode.h"
 #include "render/animation_mode.h"

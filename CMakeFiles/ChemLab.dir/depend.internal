@@ -3,6 +3,7 @@
 
 CMakeFiles/ChemLab.dir/src/main.cpp.o
  /home/heindelj/dev/c++_projects/ChemLab/src/chemlab.h
+ /home/heindelj/dev/c++_projects/ChemLab/src/core/change_state.h
  /home/heindelj/dev/c++_projects/ChemLab/src/core/frame.h
  /home/heindelj/dev/c++_projects/ChemLab/src/core/init.h
  /home/heindelj/dev/c++_projects/ChemLab/src/core/types.h

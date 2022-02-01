@@ -59,6 +59,8 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 	context.isRotating = false;
 	context.isCyclingAllFrames = false;
 	context.rotationSpeed = 0.2f;
+	context.timeBetweenFrameChanges = 0.5f;
+	context.timeOfLastFrameChange = 0.0;
 
 	context.exportRotation = false;
 	context.exportAllFrames = false;

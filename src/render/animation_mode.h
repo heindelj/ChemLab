@@ -30,8 +30,13 @@ void ExportRenderTexturesToImages(const std::vector<Image>& renderedAnimationFra
 	    //std::lock_guard<std::mutex> guard(mu);
 	    //status = i;
   	}
+  	// try to convert the pngs to a gif. If successful just delete the pngs.
   	int exitCode = system((std::string("convert -delay 0 -loop 0 -alpha set -dispose 2 ") + fileName + "_*.png " + fileName + std::string(".gif")).c_str());
-  	exitCode != -1 ? system((std::string("rm ") + fileName + std::string("*.png")).c_str()) : std::cout << "INFO: Failed to directly convert png images to a gif using ImageMagick's convert function. You will need to do it manually or install ImageMgick and try again." << std::endl;
+  	if (exitCode != -1) {
+  		system((std::string("rm ") + fileName + std::string("*.png")).c_str());
+	} else {
+		std::cout << "INFO: Failed to directly convert png images to a gif using ImageMagick's convert function. You will need to do it manually or install ImageMgick and try again." << std::endl;
+	}
 }
 
 std::vector<Vector3> GetRotationAnimationPositions(Camera3D camera, int numFrames) {
@@ -103,6 +108,24 @@ std::vector<Image> DrawRotationAnimationToRenderTextures(RenderContext& renderCo
 	return renderedAnimationFrames;
 }
 
+std::vector<Image> DrawAllFramesToRenderTextures(ActiveContext& context, int width, int height) {
+	int originalFrame = context.activeFrame;
+
+	std::vector<Image> renderedAnimationFrames;
+	renderedAnimationFrames.reserve(context.numFrames);
+
+	for (int i = 0; i < context.numFrames; i++) {
+		context.activeFrame = i;
+		OnFrameChange(context);
+		renderedAnimationFrames.push_back(DrawToRenderTexture(context.renderContext, width, height));
+	}
+
+	context.activeFrame = originalFrame;
+	OnFrameChange(context);
+
+	return renderedAnimationFrames;
+}
+
 void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
 	DrawAnimationUI(context);
 
@@ -116,7 +139,7 @@ void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
 
 	// Change this to isExporting and check which image we're on to draw the progress bar
 	if (context.exportRotation) {
-		std::vector<Image> renderedAnimationFrames = DrawRotationAnimationToRenderTextures(context.renderContext, 1600, 1600, 30);
+		std::vector<Image> renderedAnimationFrames = DrawRotationAnimationToRenderTextures(context.renderContext, 1600, 1600, 45);
 		context.computeThread = std::thread(ExportRenderTexturesToImages, renderedAnimationFrames, "/home/heindelj/my_render_frames");
 
 		//std::mutex mu;
@@ -125,7 +148,8 @@ void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
 		context.exportRotation = false;
 	}
 	if (context.exportAllFrames) {
-		std::cout << "Implement this bruh!" << std::endl;
+		std::vector<Image> renderedAnimationFrames = DrawAllFramesToRenderTextures(context, 1600, 1600);
+		context.computeThread = std::thread(ExportRenderTexturesToImages, renderedAnimationFrames, "/home/heindelj/my_render_frames");
 		context.exportAllFrames = false;
 	}
 

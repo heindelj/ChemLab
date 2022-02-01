@@ -28,11 +28,6 @@ int NumberOfValidIndices(std::array<int, 4> arr) {
 	return count;
 }
 
-void ResetViewSelection(ActiveContext& context) {
-	context.selectionStep = NONE;
-	context.viewSelection.fill(-1);
-}
-
 double GetTimeSinceClick(ActiveContext& context) {
 	double timeSinceClick = GetTime() - context.timeOfLastClick;
 	context.timeOfLastClick = context.timeOfLastClick + timeSinceClick;
@@ -96,8 +91,48 @@ void OnClickReleaseViewDihedral(MolecularModel& model, ActiveContext& context) {
 	}
 }
 
+void DrawDistanceLineAndText(const Vector3& r1, const Vector3& r2, const Color& color, const ActiveContext& context) {
+		float atomDistance = distance(r1, r2);
+
+		// Get the text for distance and draw it
+		char str[16];
+	    sprintf(str, "%.3f", atomDistance);
+		Vector2 textPos = GetWorldToScreen(midpoint(r1, r2), context.renderContext.camera);
+		DrawText(str, textPos.x, textPos.y, 20, SKYBLUE);
+
+		// Draw lines for picking next atom
+		DrawLineBetweenPoints(r1, r2, context.renderContext.camera, context.lineWidth, color);
+}
+
+void DrawAngleLineAndText(const Vector3& r1, const Vector3& r2, const Vector3& r3, const Color& color, const ActiveContext& context) {
+		float atomAngle = angleDeg(r1 - r2, r3 - r2);
+
+		// Get the text for angle and draw it
+		char str[16];
+		sprintf(str, "%.2f", atomAngle);
+		Vector2 textPos = GetWorldToScreen(midpoint(r1, r3), context.renderContext.camera);
+		DrawText(str, textPos.x, textPos.y, 20, SKYBLUE);
+
+		DrawLineBetweenPoints(r1, r2, context.renderContext.camera, context.lineWidth, color);
+		DrawLineBetweenPoints(r2, r3, context.renderContext.camera, context.lineWidth, color);
+}
+
+void DrawDihedralLineAndText(const Vector3& r1, const Vector3& r2, const Vector3& r3, const Vector3& r4, const Color& color, const ActiveContext& context) {
+	float dihedralAngle = dihedralDeg(r2 - r1, r3 - r2, r4 - r3);
+
+	// Get the text for distance and draw it
+	char str[16];
+	sprintf(str, "%.2f", dihedralAngle);
+	Vector2 textPos = GetWorldToScreen(r3 + midpoint(r2 - r1, r3 - r2), context.renderContext.camera);
+	DrawText(str, textPos.x, textPos.y, 20, SKYBLUE);
+
+	DrawLineBetweenPoints(r1, r2, context.renderContext.camera, context.lineWidth, color);
+	DrawLineBetweenPoints(r2, r3, context.renderContext.camera, context.lineWidth, color);
+	DrawLineBetweenPoints(r3, r4, context.renderContext.camera, context.lineWidth, color);
+}
+
 void HandleSelections(MolecularModel& model, ActiveContext& context) {
-		// handle mouse input based on selection step
+	// handle mouse input based on selection step
 	if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
 		switch(context.selectionStep) {
 			case NONE :
@@ -115,6 +150,12 @@ void HandleSelections(MolecularModel& model, ActiveContext& context) {
 		}
 	}
 
+	// Check if enter was pressed to store a partially complete selection
+	if (IsKeyPressed(KEY_ENTER) && (context.selectionStep == ANGLE || context.selectionStep == DIHEDRAL)) {
+		context.permanentSelection.push_back(context.viewSelection);
+		ResetViewSelection(context);
+	}
+
 	// draw lines and geometry labels based on selections step.
 	switch(context.selectionStep) {
 		case NONE :
@@ -125,57 +166,55 @@ void HandleSelections(MolecularModel& model, ActiveContext& context) {
 		}
 		case ANGLE : {
 			// Get distance for drawing
-			Vector3 r1 = PositionVectorFromTransform(model.transforms[context.viewSelection[0]]);
-			Vector3 r2 = PositionVectorFromTransform(model.transforms[context.viewSelection[1]]);
-			float atomDistance = distance(r1, r2);
-
-			// Get the text for distance and draw it
-			char str[16];
-		    sprintf(str, "%.3f", atomDistance);
-			Vector2 textPos = GetWorldToScreen(midpoint(r1, r2), context.renderContext.camera);
-			DrawText(str, textPos.x, textPos.y, 20, SKYBLUE);
-
-			// Draw lines for picking next atom
+			DrawDistanceLineAndText(
+				PositionVectorFromTransform(model.transforms[context.viewSelection[0]]), 
+				PositionVectorFromTransform(model.transforms[context.viewSelection[1]]),
+				YELLOW,
+				context);
+			
 			DrawDashedLineFromPointToCursor(GetWorldToScreen(PositionVectorFromTransform(model.transforms[context.viewSelection[1]]), context.renderContext.camera), context.lineWidth, YELLOW);
-			DrawLineBetweenPoints(model, context.viewSelection[0], context.viewSelection[1], context.renderContext.camera, context.lineWidth, YELLOW);
 			break;
 		}
 		case DIHEDRAL : {
 			// Get vectors for calculating angle
-			Vector3 r1 = PositionVectorFromTransform(model.transforms[context.viewSelection[0]]) - PositionVectorFromTransform(model.transforms[context.viewSelection[1]]);
-			Vector3 r2 = PositionVectorFromTransform(model.transforms[context.viewSelection[2]]) - PositionVectorFromTransform(model.transforms[context.viewSelection[1]]);
-			float atomAngle = angleDeg(r1, r2);
-
-			// Get the text for distance and draw it
-			char str[16];
-		    sprintf(str, "%.2f", atomAngle);
-			Vector2 textPos = GetWorldToScreen(PositionVectorFromTransform(model.transforms[context.viewSelection[1]]) + midpoint(r1, r2), context.renderContext.camera);
-			DrawText(str, textPos.x, textPos.y, 20, SKYBLUE);
+			DrawAngleLineAndText(
+				PositionVectorFromTransform(model.transforms[context.viewSelection[0]]), 
+				PositionVectorFromTransform(model.transforms[context.viewSelection[1]]), 
+				PositionVectorFromTransform(model.transforms[context.viewSelection[2]]), 
+				YELLOW,
+				context);
 
 			DrawDashedLineFromPointToCursor(GetWorldToScreen(PositionVectorFromTransform(model.transforms[context.viewSelection[2]]), context.renderContext.camera), context.lineWidth, YELLOW);
-			DrawLineBetweenPoints(model, context.viewSelection[0], context.viewSelection[1], context.renderContext.camera, context.lineWidth, YELLOW);
-			DrawLineBetweenPoints(model, context.viewSelection[1], context.viewSelection[2], context.renderContext.camera, context.lineWidth, YELLOW);
 			break;
 		}
 	}
 
 	// Draw any completed selections we've stored
 	for (int i = 0; i < context.permanentSelection.size(); i++) {
-		// Get vectors for calculating dihedral
-			Vector3 r1 = PositionVectorFromTransform(model.transforms[context.permanentSelection[i][1]]) - PositionVectorFromTransform(model.transforms[context.permanentSelection[i][0]]);
-			Vector3 r2 = PositionVectorFromTransform(model.transforms[context.permanentSelection[i][2]]) - PositionVectorFromTransform(model.transforms[context.permanentSelection[i][1]]);
-			Vector3 r3 = PositionVectorFromTransform(model.transforms[context.permanentSelection[i][3]]) - PositionVectorFromTransform(model.transforms[context.permanentSelection[i][2]]);
-			float dihedralAngle = dihedralDeg(r1, r2, r3);
-
-			// Get the text for distance and draw it
-			char str[16];
-		    sprintf(str, "%.2f", dihedralAngle);
-			Vector2 textPos = GetWorldToScreen(PositionVectorFromTransform(model.transforms[context.viewSelection[2]]) + midpoint(r1, r2), context.renderContext.camera);
-			DrawText(str, textPos.x, textPos.y, 20, SKYBLUE);
-
-		DrawLineBetweenPoints(model, context.permanentSelection[i][0], context.permanentSelection[i][1], context.renderContext.camera, context.lineWidth, GREEN);
-		DrawLineBetweenPoints(model, context.permanentSelection[i][1], context.permanentSelection[i][2], context.renderContext.camera, context.lineWidth, GREEN);
-		DrawLineBetweenPoints(model, context.permanentSelection[i][2], context.permanentSelection[i][3], context.renderContext.camera, context.lineWidth, GREEN);
+		if (NumberOfValidIndices(context.permanentSelection[i]) == 2) {
+			DrawDistanceLineAndText(
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][0]]),
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][1]]),
+				GREEN,
+				context);
+		}
+		if (NumberOfValidIndices(context.permanentSelection[i]) == 3) {
+			DrawAngleLineAndText(
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][0]]),
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][1]]),
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][2]]),
+				GREEN,
+				context);
+		}
+		if (NumberOfValidIndices(context.permanentSelection[i]) == 4) {
+			DrawDihedralLineAndText(
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][0]]),
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][1]]),
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][2]]),
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][3]]),
+				GREEN,
+				context);
+		}
 	}
 }
 
@@ -192,4 +231,11 @@ void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
 	
 	if (context.isRotating)
 		RotateAroundWorldUp(context);
+	if (context.isCyclingAllFrames && (GetTime() - context.timeOfLastFrameChange) > context.timeBetweenFrameChanges) {
+		context.timeOfLastFrameChange = context.timeOfLastFrameChange + (GetTime() - context.timeOfLastFrameChange);
+		(context.activeFrame < context.numFrames - 1) ? context.activeFrame += 1 : context.activeFrame = 0;
+		OnFrameChange(context);
+	}
+
+
 }
