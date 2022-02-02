@@ -2,9 +2,12 @@
 
 void DrawViewUI(ActiveContext& context) {
 	
-	GuiSetStyle(BUTTON, TEXT_ALIGNMENT, GUI_TEXT_ALIGN_CENTER);
+	// Draw text label for settings
+	const char* title = "SETTINGS";
+	const int fontSize = 30;
+	DrawText(title, context.uiSettings.menuWidth / 2 - MeasureText(title, fontSize) / 2, (context.screenHeight - context.uiSettings.borderWidth) / 2, fontSize, RED);
 
-	// Get width-independent x position (since rectangle is in top-right)
+	GuiSetStyle(BUTTON, TEXT_ALIGNMENT, GUI_TEXT_ALIGN_CENTER);
 	int distanceFromScreenEdge = 40; // pixels
 	float xPosScale = ((float)(context.screenWidth - distanceFromScreenEdge) - 55.0f) / context.screenWidth;
 
@@ -219,7 +222,7 @@ void HandleSelections(MolecularModel& model, ActiveContext& context) {
 }
 
 void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
-	DrawViewUI(context);
+	//DrawViewUI(context);
 
 	BeginMode3D(context.renderContext.camera);
 	    model.Draw();

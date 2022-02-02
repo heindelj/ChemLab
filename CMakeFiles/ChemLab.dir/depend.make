@@ -12,6 +12,7 @@ CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/camera.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/edit_mode.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/globals.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/render_frame.h
+CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/ui.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/view_mode.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/atomic_data.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/debug.h

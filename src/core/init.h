@@ -37,11 +37,13 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 	SetConfigFlags(FLAG_MSAA_4X_HINT);
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 	InitWindow(context.screenWidth, context.screenHeight, "ChemLab");
+	SetTargetFPS(60);
 
 	context.mode = VIEW;
 	context.style = BALL_AND_STICK;
 
 	context.renderContext = InitRenderContext(frames.atoms[0]);
+	context.uiSettings = (UISettings){5.0f, screenWidth / 5.0f - 10.0f};
 
 	// UI Settings
 	bool modeDropdownEdit = false;

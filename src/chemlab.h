@@ -9,6 +9,10 @@
 #include <vector>
 #include <array>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
+#include <functional>
 #include <utility>
 #include <string>
 #include <algorithm>
@@ -53,4 +57,5 @@
 #include "render/animation_mode.h"
 
 // handling things independent of mode
+#include "render/ui.h"
 #include "core/frame.h"

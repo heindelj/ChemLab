@@ -36,10 +36,10 @@ void CheckForAndHandleFrameChange(ActiveContext& context) {
 }
 
 void CheckForAndHandleModeChange(ActiveContext& context) {
-	// We allow mode change either by pressing "M" or via the dropdown box
+	
 	int mode = static_cast<int>(context.mode);
 	GuiSetStyle(DROPDOWNBOX, TEXT_ALIGNMENT, GUI_TEXT_ALIGN_CENTER);
-    if (GuiDropdownBox((Rectangle){ 10, 10, 125, 30 }, "VIEW;EDIT;ANIMATION", &mode, context.modeDropdownEdit)) {
+    if (GuiDropdownBox((Rectangle){ context.screenWidth / 10.0f - 125.0f / 2.0f, 10, 125, 30 }, "VIEW;EDIT;ANIMATION", &mode, context.modeDropdownEdit)) {
     	if (context.modeDropdownEdit)
     		context.mode = static_cast<InteractionMode>(mode);
     	context.modeDropdownEdit = !context.modeDropdownEdit;

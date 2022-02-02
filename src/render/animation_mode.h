@@ -31,7 +31,7 @@ void ExportRenderTexturesToImages(const std::vector<Image>& renderedAnimationFra
 	    //status = i;
   	}
   	// try to convert the pngs to a gif. If successful just delete the pngs.
-  	int exitCode = system((std::string("convert -delay 0 -loop 0 -alpha set -dispose 2 ") + fileName + "_*.png " + fileName + std::string(".gif")).c_str());
+  	int exitCode = system((std::string("convert -delay 0 -loop 0 -alpha set -dispose 2 -resize=50% ") + fileName + "*.png " + fileName + std::string(".gif")).c_str());
   	if (exitCode != -1) {
   		system((std::string("rm ") + fileName + std::string("*.png")).c_str());
 	} else {
@@ -127,7 +127,6 @@ std::vector<Image> DrawAllFramesToRenderTextures(ActiveContext& context, int wid
 }
 
 void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
-	DrawAnimationUI(context);
 
 	BeginMode3D(context.renderContext.camera);
 	    model.Draw();
@@ -140,7 +139,7 @@ void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
 	// Change this to isExporting and check which image we're on to draw the progress bar
 	if (context.exportRotation) {
 		std::vector<Image> renderedAnimationFrames = DrawRotationAnimationToRenderTextures(context.renderContext, 1600, 1600, 45);
-		context.computeThread = std::thread(ExportRenderTexturesToImages, renderedAnimationFrames, "/home/heindelj/my_render_frames");
+		context.computeThreads.push_back(std::thread(ExportRenderTexturesToImages, renderedAnimationFrames, "/home/heindelj/my_render_frames"));
 
 		//std::mutex mu;
 		//std::atomic<bool> is_images_loaded = false;
@@ -149,7 +148,7 @@ void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
 	}
 	if (context.exportAllFrames) {
 		std::vector<Image> renderedAnimationFrames = DrawAllFramesToRenderTextures(context, 1600, 1600);
-		context.computeThread = std::thread(ExportRenderTexturesToImages, renderedAnimationFrames, "/home/heindelj/my_render_frames");
+		context.computeThreads.push_back(std::thread(ExportRenderTexturesToImages, renderedAnimationFrames, "/home/heindelj/my_render_frames"));
 		context.exportAllFrames = false;
 	}
 

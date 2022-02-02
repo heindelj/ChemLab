@@ -23,6 +23,14 @@ array
 -
 thread
 -
+mutex
+-
+condition_variable
+-
+queue
+-
+functional
+-
 utility
 -
 string
@@ -75,6 +83,8 @@ render/edit_mode.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/edit_mode.h
 render/animation_mode.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/animation_mode.h
+render/ui.h
+/home/heindelj/dev/c++_projects/ChemLab/src/render/ui.h
 core/frame.h
 /home/heindelj/dev/c++_projects/ChemLab/src/core/frame.h
 
@@ -99,6 +109,8 @@ chemlab.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/globals.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/render/render_frame.h
+
+/home/heindelj/dev/c++_projects/ChemLab/src/render/ui.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/render/view_mode.h
 

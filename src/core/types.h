@@ -1,3 +1,4 @@
+
 enum RenderStyle {
 	BALL_AND_STICK,
 	STICKS,
@@ -95,6 +96,11 @@ struct Frames {
 	std::vector<std::string> headers;
 };
 
+struct UISettings {
+	float borderWidth;
+	float menuWidth;
+};
+
 struct RenderContext {
 	Camera3D camera;
 	Shader lightingShader;
@@ -106,13 +112,14 @@ struct ActiveContext {
 	int screenWidth;
     int screenHeight;
 
-    std::thread computeThread;
+    std::vector<std::thread> computeThreads;
 
 	uint32_t numFrames;
 	uint32_t activeFrame;
 	Frames* frames;
 	
 	RenderContext renderContext;
+	UISettings uiSettings;
 
 	InteractionMode mode;
 	RenderStyle style;

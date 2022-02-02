@@ -3,9 +3,8 @@
 int main()
 {
     Frames frames = readXYZ("assets/test_xyz_file.xyz");
-    ActiveContext context = InitContext(frames, 800, 450);
-
-    SetTargetFPS(60);
+    //Frames frames = readXYZ("assets/W20_stable_clathrate_cages_TTM21F_first_200.xyz");
+    ActiveContext context = InitContext(frames, 1440, 810);
     while (!WindowShouldClose())
     {
         UpdateCamera3D(context.renderContext);
