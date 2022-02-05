@@ -11,6 +11,7 @@ BallAndStickModel* BallAndStickModelFromAtoms(const Atoms& atoms, Shader* shader
 	model->stickMesh  = (GenMeshCylinder(g_stickRadius, 1.0f, 64));
 	model->numSpheres = atoms.natoms;
 	model->numSticks  = 2 * atoms.covalentBondList.pairs.size();
+	model->stickIndices.resize(atoms.natoms); // ensure we have an index for every atom
 
 	model->transforms.reserve(model->numSpheres + model->numSticks);
 	// Get the sphere transforms and materials
@@ -32,9 +33,10 @@ BallAndStickModel* BallAndStickModelFromAtoms(const Atoms& atoms, Shader* shader
 		model->transforms.push_back( MatrixScale((Vector3){1.0f, 0.5f * norm(bondVector), 1.0f}) * MatrixAlignToAxis((Vector3){0.0f, 1.0f, 0.0f}, bondVector) * MatrixTranslate(bondOrigin));
 		model->transforms.push_back( MatrixScale((Vector3){1.0f, 0.5f * norm(bondVector), 1.0f}) * MatrixAlignToAxis((Vector3){0.0f, 1.0f, 0.0f}, bondVector) * MatrixTranslate(bondMiddle));
 
-		// TODO: When constructing a ball and stick model, store the stick material indices into the 
-		// vector which was just added to the ball and stick type (have to do something similar for sticks type)
-		// Then, update the stick material when it is changed on color picking, etc.
+		// store the indices of each half-bond associated with each atom, for updating materials and transforms as needed
+		model->stickIndices[atoms.covalentBondList.pairs[i].first ].push_back(model->transforms.size() - 2);
+		model->stickIndices[atoms.covalentBondList.pairs[i].second].push_back(model->transforms.size() - 1);
+
 
 		// first stick
 		Material material = LoadMaterialDefault();

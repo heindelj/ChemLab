@@ -1,8 +1,12 @@
 #pragma once
 
 void SetHighlightedAtomColors(ActiveContext& context, const float alpha) {
-	for(auto it = context.atomsToHighlight.begin(); it != context.atomsToHighlight.end(); ++it) {
-		context.renderContext.model->materials[*it].maps[MATERIAL_MAP_DIFFUSE].color = ColorAlpha(context.uiSettings.colorPickerValue, alpha);
+	for(auto itAtom = context.atomsToHighlight.begin(); itAtom != context.atomsToHighlight.end(); ++itAtom) {
+		context.renderContext.model->materials[*itAtom].maps[MATERIAL_MAP_DIFFUSE].color = ColorAlpha(context.uiSettings.colorPickerValue, alpha);
+		if (context.style == BALL_AND_STICK) {
+			for(auto itStick = context.renderContext.model->stickIndices[*itAtom].begin(); itStick != context.renderContext.model->stickIndices[*itAtom].end(); ++itStick)
+				context.renderContext.model->materials[*itStick].maps[MATERIAL_MAP_DIFFUSE].color = ColorAlpha(context.uiSettings.colorPickerValue, alpha);
+		}
 	}
 }
 
@@ -22,10 +26,13 @@ void DrawViewUI(ActiveContext& context) {
 		context.forwardOnStartingToRotate = normalize(context.renderContext.camera.target - context.renderContext.camera.position);
 	}
 
-	// Draw color picker
+	// Draw color picker and alpha picker
 	context.uiSettings.colorPickerValue = GuiColorPicker((Rectangle){ 5 * context.uiSettings.borderWidth, 50, context.uiSettings.menuWidth * 0.8f, context.uiSettings.menuWidth * 0.8f}, NULL, context.uiSettings.colorPickerValue);
-	if (context.atomsToHighlight.size() > 0)
-		SetHighlightedAtomColors(context, 1.0f);
+	context.uiSettings.colorPickerAlpha = GuiColorBarAlpha((Rectangle){ 5 * context.uiSettings.borderWidth, 280, context.uiSettings.menuWidth * 0.8f, 20}, NULL, context.uiSettings.colorPickerAlpha);
+	if (context.atomsToHighlight.size() > 0) {
+		if (context.style == BALL_AND_STICK)
+			SetHighlightedAtomColors(context, context.uiSettings.colorPickerAlpha);
+	}
 }
 
 int NumberOfValidIndices(std::array<int, 4> arr) {
@@ -140,10 +147,13 @@ void HandleSelections(MolecularModel& model, ActiveContext& context) {
 		// check if shift-clicking to highlight atom
 		if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) {
 			if (collisionIndex != -1) {
-				if (context.atomsToHighlight.count(collisionIndex))
+				if (context.atomsToHighlight.count(collisionIndex)) {
 					context.atomsToHighlight.erase(collisionIndex);
-				else
+				} else {
 					context.atomsToHighlight.insert(collisionIndex);
+					// set colorp picker value to highlighted atom
+					context.uiSettings.colorPickerValue = context.renderContext.model->materials[collisionIndex].maps[MATERIAL_MAP_DIFFUSE].color;
+				}
 			} 
 		}
 

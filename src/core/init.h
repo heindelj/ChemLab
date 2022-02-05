@@ -73,7 +73,7 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 	context.style = BALL_AND_STICK;
 
 	context.renderContext = InitRenderContext(frames.atoms[0], context.screenWidth, context.screenHeight);
-	context.uiSettings = (UISettings){5.0f, screenWidth / 5.0f - 10.0f, MAGENTA};
+	context.uiSettings = (UISettings){5.0f, screenWidth / 5.0f - 10.0f, BLUE, 1.0f};
 
 	// UI Settings
 	context.drawUI = true;

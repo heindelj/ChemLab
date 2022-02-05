@@ -27,6 +27,7 @@ struct MolecularModel
 {
 	std::vector<Matrix> transforms;
 	std::vector<Material> materials;
+	std::vector<std::vector<int>> stickIndices; // indices of material for each stick for a given sphere index. Can have empty lists. Only used for ball and stick currently.
 
 	virtual void Draw() = 0;
 	virtual void DrawHighlighted(const std::set<int>& indices) = 0;
@@ -37,7 +38,6 @@ struct MolecularModel
 struct BallAndStickModel : MolecularModel {
 	uint32_t numSpheres;
 	uint32_t numSticks;
-	std::vector<int> stickIndices; // indices of material for each stick for a given sphere index. Can have empty lists.
 
 	Mesh sphereMesh;
 	Mesh stickMesh;
@@ -108,6 +108,7 @@ struct UISettings {
 	float borderWidth;
 	float menuWidth;
 	Color colorPickerValue;
+	float colorPickerAlpha;
 };
 
 struct RenderContext {
