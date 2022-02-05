@@ -24,6 +24,10 @@ void debug(const Vector4& v) {
 	std::cout << "[ " << v.x << ", " << v.y <<  ", " << v.z << ", " << v.w << " ]" << std::endl;
 }
 
+void debug(const Color& color){
+	debug(ColorNormalize(color));
+}
+
 void debug(const Matrix& m) {
 	std::cout << "[ " << m.m0 << ", " << m.m4 <<  ", " << m.m8  << ", " << m.m12 << " ]" << std::endl;
 	std::cout << "[ " << m.m1 << ", " << m.m5 <<  ", " << m.m9  << ", " << m.m13 << " ]" << std::endl;

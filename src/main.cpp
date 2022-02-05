@@ -7,7 +7,7 @@ int main()
     ActiveContext context = InitContext(frames, 1440, 810);
     while (!WindowShouldClose())
     {
-        UpdateCamera3D(context.renderContext);
+        UpdateCamera3D(context);
 
         BeginDrawing();
             DoFrame(context);

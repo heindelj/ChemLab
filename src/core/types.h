@@ -37,6 +37,7 @@ struct MolecularModel
 struct BallAndStickModel : MolecularModel {
 	uint32_t numSpheres;
 	uint32_t numSticks;
+	std::vector<int> stickIndices; // indices of material for each stick for a given sphere index. Can have empty lists.
 
 	Mesh sphereMesh;
 	Mesh stickMesh;
@@ -106,6 +107,7 @@ struct Frames {
 struct UISettings {
 	float borderWidth;
 	float menuWidth;
+	Color colorPickerValue;
 };
 
 struct RenderContext {

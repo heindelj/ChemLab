@@ -44,7 +44,7 @@ bool zoomOnScroll(Camera3D& camera) {
 	return false;
 }
 
-void UpdateCamera3D(RenderContext& context) {
+void UpdateCamera3D(ActiveContext& context) {
 	/*
 	Updates a Camera3d object in a "model viewer" style. That is, left click and drag rotates the model,
 	scrolling zooms in and out, and right click drag pans the camera.
@@ -55,10 +55,13 @@ void UpdateCamera3D(RenderContext& context) {
 	if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
 		// Test for hitting mesh here to rotate around a specific target
 		// and change to rotateAroundTargetView
-		updatedCamera = rotateAroundTargetView(context.camera, context.camera.target);
+
+		// Check that we arent clicking on the UI
+		if ((context.drawUI == false) || GetMouseX() > (context.uiSettings.menuWidth + context.uiSettings.borderWidth))
+			updatedCamera = rotateAroundTargetView(context.renderContext.camera, context.renderContext.camera.target);
 
 	}
-	updatedCamera |= zoomOnScroll(context.camera);
+	updatedCamera |= zoomOnScroll(context.renderContext.camera);
 	if (updatedCamera)
-		UpdateLighting(context);
+		UpdateLighting(context.renderContext);
 }

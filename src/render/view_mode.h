@@ -1,5 +1,11 @@
 #pragma once
 
+void SetHighlightedAtomColors(ActiveContext& context, const float alpha) {
+	for(auto it = context.atomsToHighlight.begin(); it != context.atomsToHighlight.end(); ++it) {
+		context.renderContext.model->materials[*it].maps[MATERIAL_MAP_DIFFUSE].color = ColorAlpha(context.uiSettings.colorPickerValue, alpha);
+	}
+}
+
 void DrawViewUI(ActiveContext& context) {
 
 	// Draw text label for settings
@@ -15,6 +21,11 @@ void DrawViewUI(ActiveContext& context) {
 	if (context.isRotating) {
 		context.forwardOnStartingToRotate = normalize(context.renderContext.camera.target - context.renderContext.camera.position);
 	}
+
+	// Draw color picker
+	context.uiSettings.colorPickerValue = GuiColorPicker((Rectangle){ 5 * context.uiSettings.borderWidth, 50, context.uiSettings.menuWidth * 0.8f, context.uiSettings.menuWidth * 0.8f}, NULL, context.uiSettings.colorPickerValue);
+	if (context.atomsToHighlight.size() > 0)
+		SetHighlightedAtomColors(context, 1.0f);
 }
 
 int NumberOfValidIndices(std::array<int, 4> arr) {
@@ -32,9 +43,8 @@ double GetTimeSinceClick(ActiveContext& context) {
 	return timeSinceClick;
 }
 
-void OnClickReleaseViewNone(MolecularModel& model, ActiveContext& context, int collisionIndex) {
+void OnClickReleaseViewNone(MolecularModel& model, ActiveContext& context, int collisionIndex, double timeSinceClick) {
 	assert(NumberOfValidIndices(context.viewSelection) == 0);
-	double timeSinceClick = GetTimeSinceClick(context);
 
 	if (timeSinceClick <= 0.5) {
 		if (collisionIndex != -1) {
@@ -48,9 +58,9 @@ void OnClickReleaseViewNone(MolecularModel& model, ActiveContext& context, int c
 
 }
 
-void OnClickReleaseViewDistance(MolecularModel& model, ActiveContext& context, int collisionIndex) {
+void OnClickReleaseViewDistance(MolecularModel& model, ActiveContext& context, int collisionIndex, double timeSinceClick) {
 	assert(NumberOfValidIndices(context.viewSelection) == 1);
-	double timeSinceClick = GetTimeSinceClick(context);
+	
 	if (collisionIndex != -1 && collisionIndex != context.viewSelection[0]) {
 		context.viewSelection[1] = collisionIndex;
 		context.selectionStep = ANGLE;
@@ -59,9 +69,9 @@ void OnClickReleaseViewDistance(MolecularModel& model, ActiveContext& context, i
 	}
 }
 
-void OnClickReleaseViewAngle(MolecularModel& model, ActiveContext& context, int collisionIndex) {
+void OnClickReleaseViewAngle(MolecularModel& model, ActiveContext& context, int collisionIndex, double timeSinceClick) {
 	assert(NumberOfValidIndices(context.viewSelection) == 2);
-	double timeSinceClick = GetTimeSinceClick(context);
+
 	if (collisionIndex != -1 && collisionIndex != context.viewSelection[0] && collisionIndex != context.viewSelection[1]) {
 		context.viewSelection [2] = collisionIndex;
 		context.selectionStep = DIHEDRAL;
@@ -70,9 +80,9 @@ void OnClickReleaseViewAngle(MolecularModel& model, ActiveContext& context, int 
 	}
 }
 
-void OnClickReleaseViewDihedral(MolecularModel& model, ActiveContext& context, int collisionIndex) {
+void OnClickReleaseViewDihedral(MolecularModel& model, ActiveContext& context, int collisionIndex, double timeSinceClick) {
 	assert(NumberOfValidIndices(context.viewSelection) == 3);
-	double timeSinceClick = GetTimeSinceClick(context);
+
 	if (collisionIndex != -1 && collisionIndex != context.viewSelection[0] && collisionIndex != context.viewSelection[1] && collisionIndex != context.viewSelection[2]) {
 		context.viewSelection[3] = collisionIndex;
 		context.permanentSelection.push_back(context.viewSelection);
@@ -125,6 +135,7 @@ void DrawDihedralLineAndText(const Vector3& r1, const Vector3& r2, const Vector3
 void HandleSelections(MolecularModel& model, ActiveContext& context) {
 	// handle mouse input based on selection step
 	if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+		double timeSinceClick = GetTimeSinceClick(context);
 		int collisionIndex = model.TestRayAgainst(GetMouseRay(GetMousePosition(), context.renderContext.camera));
 		// check if shift-clicking to highlight atom
 		if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) {
@@ -138,21 +149,21 @@ void HandleSelections(MolecularModel& model, ActiveContext& context) {
 
 		switch(context.selectionStep) {
 			case NONE :
-				OnClickReleaseViewNone(model, context, collisionIndex);
+				OnClickReleaseViewNone(model, context, collisionIndex, timeSinceClick);
 				break;
 			case DISTANCE :
-				OnClickReleaseViewDistance(model, context, collisionIndex);
+				OnClickReleaseViewDistance(model, context, collisionIndex, timeSinceClick);
 				break;
 			case ANGLE :
-				OnClickReleaseViewAngle(model, context, collisionIndex);
+				OnClickReleaseViewAngle(model, context, collisionIndex, timeSinceClick);
 				break;
 			case DIHEDRAL :
-				OnClickReleaseViewDihedral(model, context, collisionIndex);
+				OnClickReleaseViewDihedral(model, context, collisionIndex, timeSinceClick);
 				break;
 		}
 
 		// check for collision with nothing, int collisionIndex
-		if (collisionIndex == -1 && !(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)))
+		if (collisionIndex == -1 && timeSinceClick <= 0.5)
 			context.atomsToHighlight.clear();
 	}
 	
@@ -243,6 +254,4 @@ void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
 		(context.activeFrame < context.numFrames - 1) ? context.activeFrame += 1 : context.activeFrame = 0;
 		OnFrameChange(context);
 	}
-
-
 }
