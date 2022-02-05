@@ -39,10 +39,6 @@ void ExportRenderTexturesToImages(const std::vector<Image>& renderedAnimationFra
 	}
 }
 
-void ExportRenderTextureToImage(Image& image, std::string fileName) {
-	ExportImage(image, fileName.c_str());
-	UnloadImage(image);
-}
 
 std::vector<Vector3> GetRotationAnimationPositions(Camera3D camera, int numFrames) {
 	std::vector<Vector3> cameraPositions;
@@ -80,20 +76,6 @@ std::vector<Vector3> GetRotationAnimationPositions(Camera3D camera, int numFrame
 	return cameraPositions;
 }
 
-Image DrawToRenderTexture(const RenderContext& renderContext, int width, int height) {
-	RenderTexture2D renderTarget = LoadRenderTexture(width, height);
-	BeginTextureMode(renderTarget);
-	    ClearBackground(Color(1.0f,1.0f,1.0f,1.0f));  // Clear white texture background
-	    BeginMode3D(renderContext.camera);
-	    	renderContext.model->Draw();
-	    EndMode3D();
-	EndTextureMode();
-	Image image = LoadImageFromTexture(renderTarget.texture);
-	ImageFlipVertical(&image);
-	UnloadRenderTexture(renderTarget);
-	return image;
-}
-
 std::vector<Image> DrawRotationAnimationToRenderTextures(RenderContext& renderContext, int width, int height, int numFrames) {
 	Vector3 originalPosition = renderContext.camera.position;
 
@@ -129,13 +111,6 @@ std::vector<Image> DrawAllFramesToRenderTextures(ActiveContext& context, int wid
 	OnFrameChange(context);
 
 	return renderedAnimationFrames;
-}
-
-void TakeScreenshot(ActiveContext& context, std::string& fileName, int width, int height) {
-	// Make sure the filename is stripped of an extension before you egt here and that a dialog
-	// is used to ask for the width and height
-	Image image = DrawToRenderTexture(context.renderContext, width, height);
-	ExportRenderTextureToImage(image, (fileName + ".png"));
 }
 
 void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {

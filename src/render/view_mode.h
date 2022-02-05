@@ -1,5 +1,33 @@
 #pragma once
 
+void ExportRenderTextureToImage(Image image, std::string fileName) {
+	ExportImage(image, (fileName + ".png").c_str());
+	UnloadImage(image);
+}
+
+Image DrawToRenderTexture(const RenderContext& renderContext, int width, int height) {
+	RenderTexture2D renderTarget = LoadRenderTexture(width, height);
+	BeginTextureMode(renderTarget);
+	    ClearBackground(Color(1.0f,1.0f,1.0f,1.0f));  // Clear white texture background
+	    BeginMode3D(renderContext.camera);
+	    	renderContext.model->Draw();
+	    EndMode3D();
+	EndTextureMode();
+	Image image = LoadImageFromTexture(renderTarget.texture);
+	ImageFlipVertical(&image);
+	UnloadRenderTexture(renderTarget);
+	return image;
+}
+
+void TakeScreenshot(ActiveContext& context, int width, int height) {
+	char* selectedSaveName = tinyfd_saveFileDialog("Select File Name", "screenshot.png", 0, NULL, NULL);
+	if (selectedSaveName) {
+		std::filesystem::path p = selectedSaveName;
+		Image image = DrawToRenderTexture(context.renderContext, width, height);
+		context.computeThreads.push_back(std::thread(ExportRenderTextureToImage, image, p.replace_extension()));
+	}
+}
+
 void SetHighlightedAtomColors(ActiveContext& context, const float alpha) {
 	for(auto itAtom = context.atomsToHighlight.begin(); itAtom != context.atomsToHighlight.end(); ++itAtom) {
 		context.renderContext.model->materials[*itAtom].maps[MATERIAL_MAP_DIFFUSE].color = ColorAlpha(context.uiSettings.colorPickerValue, alpha);
@@ -32,6 +60,12 @@ void DrawViewUI(ActiveContext& context) {
 	if (context.atomsToHighlight.size() > 0) {
 		if (context.style == BALL_AND_STICK)
 			SetHighlightedAtomColors(context, context.uiSettings.colorPickerAlpha);
+	}
+
+	// Screenshot button
+	GuiSetStyle(BUTTON, TEXT_ALIGNMENT, GUI_TEXT_ALIGN_CENTER);
+	if(GuiButton((Rectangle){context.uiSettings.menuWidth / 2, (context.screenHeight - context.uiSettings.borderWidth) / 2 + 100, (float)MeasureText("SCREENSHOT", 12), 30.0f}, "SCREENSHOT")) {
+		context.takeScreenshot = true;
 	}
 }
 
@@ -263,5 +297,9 @@ void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
 		context.timeOfLastFrameChange = context.timeOfLastFrameChange + (GetTime() - context.timeOfLastFrameChange);
 		(context.activeFrame < context.numFrames - 1) ? context.activeFrame += 1 : context.activeFrame = 0;
 		OnFrameChange(context);
+	}
+	if (context.takeScreenshot) {
+		TakeScreenshot(context, 1600, 1600);
+		context.takeScreenshot = false;
 	}
 }

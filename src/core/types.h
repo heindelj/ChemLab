@@ -160,4 +160,5 @@ struct ActiveContext {
 	// Animation mode variables
 	bool exportRotation;
 	bool exportAllFrames;
+	bool takeScreenshot;
 };

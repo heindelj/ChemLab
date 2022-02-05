@@ -95,6 +95,7 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 
 	context.exportRotation = false;
 	context.exportAllFrames = false;
+	context.takeScreenshot = false;
 
 	return context;
 }
