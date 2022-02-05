@@ -3,6 +3,7 @@
 // std dependencies
 #include <cassert>
 #include <map>
+#include <set>
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -44,6 +45,9 @@
 // debug
 #include "utils/debug.h"
 
+// external
+#include "external/tinyfiledialogs.h"
+#include "external/tinyfiledialogs.c"
 
 // utilities, camera, rendering, IO, ... the actual code
 #include "render/render_frame.h"

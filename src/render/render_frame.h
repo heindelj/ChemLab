@@ -1,12 +1,27 @@
 #pragma once
 
 ///////////////////////////////////////////////////////////////////////////////
-// This file contains all rendering operations we might need to do.			 //
+// This file contains most rendering operations we might need to do.	     //
 // So, it handles drawing different styles of molecule. Displaying text 	 //
 // for geometry information. Drawing hydrogen bonds and lines to the cursor, //
 // highlighting atoms, etc. Everything graphics goes in here. 				 //
 // Different modes then call these functions as needed. 					 //
 ///////////////////////////////////////////////////////////////////////////////
+
+void OnWindowResize(ActiveContext& context) {
+	if(IsWindowResized()) {
+		context.screenWidth = GetScreenWidth();
+		context.screenHeight = GetScreenHeight();
+
+		// reset texture width and height for outline shader
+		float textureSize[2] = { (float)context.screenWidth, (float)context.screenHeight };
+		int textureSizeLoc = GetShaderLocation(context.renderContext.outlineShader, "textureSize");
+		SetShaderValue(context.renderContext.outlineShader, textureSizeLoc, textureSize, SHADER_UNIFORM_VEC2);
+
+		// get a new render texture
+		context.renderContext.renderTarget  = LoadRenderTexture(context.screenWidth, context.screenHeight);
+	}
+}
 
 void UpdateLighting(RenderContext& renderContext) {
 	renderContext.light.position = renderContext.camera.position;
@@ -14,27 +29,87 @@ void UpdateLighting(RenderContext& renderContext) {
 	UpdateLightValues(renderContext.lightingShader, renderContext.light);
 }
 
+///////////////////////////////////
 ////// MODEL DRAWING METHODS //////
+///////////////////////////////////
 
+// BALL AND STICK //
 void BallAndStickModel::Draw() {
-	for(int i = 0; i < this->numSpheres; i++)
+	// If you color the alpha of the material, the output will respect the alpha value
+	// ColorAlpha(this->materials[i].maps[MATERIAL_MAP_DIFFUSE].color, 0.3f);
+	
+	for(int i = 0; i < this->numSpheres; i++) {
 		DrawMesh(this->sphereMesh, this->materials[i], this->transforms[i]);
-	for(int i = this->numSpheres; i < (this->numSpheres + this->numSticks); i++)
+	}
+	for(int i = this->numSpheres; i < (this->numSpheres + this->numSticks); i++) {
 		DrawMesh(this->stickMesh, this->materials[i], this->transforms[i]);
+	}
 }
 
+void BallAndStickModel::DrawHighlighted(const std::set<int>& indices) {
+	rlDisableDepthMask();
+	Material outlineMaterial = LoadMaterialDefault();
+    outlineMaterial.maps[MATERIAL_MAP_DIFFUSE].color = YELLOW;
+    Matrix scaleTransform = MatrixIdentity();
+    Matrix rotationTransform = MatrixIdentity();
+    Matrix positionTransform = MatrixIdentity();
+	for(auto it = indices.begin(); it != indices.end(); it++) {
+		scaleTransform = MatrixScale((Vector3){1.10f, 1.10f, 1.10f}) * MatrixScale(ScaleVectorFromTransform(this->transforms[*it]));
+		rotationTransform = RotationTransformFromTransform(this->transforms[*it]);
+		positionTransform = MatrixTranslate(PositionVectorFromTransform(this->transforms[*it]));
+		DrawMesh(this->sphereMesh, outlineMaterial, scaleTransform * rotationTransform * positionTransform);
+	}
+	rlEnableDepthMask();
+}
 
+// SPHERES //
 void SpheresModel::Draw() {
 	for(int i = 0; i < this->numSpheres; i++)
 		DrawMesh(this->sphereMesh, this->materials[i], this->transforms[i]);
 }
 
+void SpheresModel::DrawHighlighted(const std::set<int>& indices) {
+	rlDisableDepthMask();
+	Material outlineMaterial = LoadMaterialDefault();
+    outlineMaterial.maps[MATERIAL_MAP_DIFFUSE].color = YELLOW;
+    Matrix scaleTransform = MatrixIdentity();
+    Matrix rotationTransform = MatrixIdentity();
+    Matrix positionTransform = MatrixIdentity();
+	for(auto it = indices.begin(); it != indices.end(); it++) {
+		scaleTransform = MatrixScale((Vector3){1.10f, 1.10f, 1.10f}) * MatrixScale(ScaleVectorFromTransform(this->transforms[*it]));
+		rotationTransform = RotationTransformFromTransform(this->transforms[*it]);
+		positionTransform = MatrixTranslate(PositionVectorFromTransform(this->transforms[*it]));
+		DrawMesh(this->sphereMesh, outlineMaterial, scaleTransform * rotationTransform * positionTransform);
+	}
+	rlEnableDepthMask();
+}
+
+
+// STICKS //
 void SticksModel::Draw() {
 	for(int i = 0; i < this->numSticks; i++)
 		DrawMesh(this->stickMesh, this->materials[i], this->transforms[i]);
 }
 
+void SticksModel::DrawHighlighted(const std::set<int>& indices) {
+	rlDisableDepthMask();
+	Material outlineMaterial = LoadMaterialDefault();
+    outlineMaterial.maps[MATERIAL_MAP_DIFFUSE].color = YELLOW;
+    Matrix scaleTransform = MatrixIdentity();
+    Matrix rotationTransform = MatrixIdentity();
+    Matrix positionTransform = MatrixIdentity();
+	for(auto it = indices.begin(); it != indices.end(); it++) {
+		scaleTransform = MatrixScale((Vector3){1.10f, 1.10f, 1.10f}) * MatrixScale(ScaleVectorFromTransform(this->transforms[*it]));
+		rotationTransform = RotationTransformFromTransform(this->transforms[*it]);
+		positionTransform = MatrixTranslate(PositionVectorFromTransform(this->transforms[*it]));
+		DrawMesh(this->stickMesh, outlineMaterial, scaleTransform * rotationTransform * positionTransform);
+	}
+	rlEnableDepthMask();
+}
+
+//////////////////////////////////
 ////// LINE DRAWING METHODS //////
+//////////////////////////////////
 
 void DrawDashedLineFromPointToPoint(const Vector2& pointA, const Vector2& pointB, const float width, const Color& color) {
 	// Make evenly spaced points in screen space
@@ -104,5 +179,19 @@ void OverlayNumbers(const Atoms& atoms, const Camera3D& camera) {
 	for (int i = 0; i < atoms.natoms; i++) {
 		Vector2 pos = GetWorldToScreen(atoms.xyz[i], camera);
 		DrawText(std::to_string(i+1).c_str(), (int)pos.x, (int)pos.y, 12, BLACK);
+	}
+}
+
+void DrawActiveMode(InteractionMode mode) {
+	switch(mode) {
+		case VIEW:
+			DrawText("MODE: VIEW", 10, 10, 30, RAYWHITE);
+			break;
+		case EDIT:
+			DrawText("MODE: EDIT", 10, 10, 30, RAYWHITE);
+			break;
+		case ANIMATION:
+			DrawText("MODE: ANIMATION", 10, 10, 30, RAYWHITE);
+			break;
 	}
 }

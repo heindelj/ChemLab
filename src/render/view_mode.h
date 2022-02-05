@@ -1,25 +1,20 @@
 #pragma once
 
 void DrawViewUI(ActiveContext& context) {
-	
+
 	// Draw text label for settings
 	const char* title = "SETTINGS";
 	const int fontSize = 30;
-	DrawText(title, context.uiSettings.menuWidth / 2 - MeasureText(title, fontSize) / 2, (context.screenHeight - context.uiSettings.borderWidth) / 2, fontSize, RED);
+	DrawText(title, context.uiSettings.menuWidth / 2 - MeasureText(title, fontSize) / 2, (context.screenHeight - context.uiSettings.borderWidth) / 2, fontSize, BLACK);
+	DrawRectangle(context.uiSettings.menuWidth / 2 - MeasureText(title, fontSize) / 2 - 5, (context.screenHeight - context.uiSettings.borderWidth) / 2 + fontSize, MeasureText(title, fontSize) + 10, 5, BLACK); // underline text
 
-	GuiSetStyle(BUTTON, TEXT_ALIGNMENT, GUI_TEXT_ALIGN_CENTER);
-	int distanceFromScreenEdge = 40; // pixels
-	float xPosScale = ((float)(context.screenWidth - distanceFromScreenEdge) - 55.0f) / context.screenWidth;
-
-	if (GuiButton((Rectangle){xPosScale * (float)context.screenWidth, 10, 55.0f, 30.0f}, "ROTATE")) {
-		context.isRotating = !context.isRotating;
+	// draw settings boxes
+	float checkboxSize = 20;
+	context.isCyclingAllFrames = GuiCheckBox((Rectangle){ 3 * context.uiSettings.borderWidth, (context.screenHeight - context.uiSettings.borderWidth) / 2 + 3 * fontSize, checkboxSize, checkboxSize }, "CYCLE FRAMES", context.isCyclingAllFrames);
+	context.isRotating         = GuiCheckBox((Rectangle){ 3 * context.uiSettings.borderWidth, (context.screenHeight - context.uiSettings.borderWidth) / 2 + 2 * fontSize, checkboxSize, checkboxSize }, "ROTATE", context.isRotating);
+	if (context.isRotating) {
 		context.forwardOnStartingToRotate = normalize(context.renderContext.camera.target - context.renderContext.camera.position);
 	}
-
-	if (GuiButton((Rectangle){xPosScale * (float)context.screenWidth, 50, 79.0f, 30.0f}, "ALL FRAMES")) {
-		context.isCyclingAllFrames = !context.isCyclingAllFrames;
-	}
-
 }
 
 int NumberOfValidIndices(std::array<int, 4> arr) {
@@ -37,12 +32,11 @@ double GetTimeSinceClick(ActiveContext& context) {
 	return timeSinceClick;
 }
 
-void OnClickReleaseViewNone(MolecularModel& model, ActiveContext& context) {
+void OnClickReleaseViewNone(MolecularModel& model, ActiveContext& context, int collisionIndex) {
 	assert(NumberOfValidIndices(context.viewSelection) == 0);
 	double timeSinceClick = GetTimeSinceClick(context);
 
 	if (timeSinceClick <= 0.5) {
-		int collisionIndex = model.TestRayAgainst(GetMouseRay(GetMousePosition(), context.renderContext.camera));
 		if (collisionIndex != -1) {
 			// Store collision index for future use in displaying geometric info.
 			context.selectionStep = DISTANCE;
@@ -54,11 +48,9 @@ void OnClickReleaseViewNone(MolecularModel& model, ActiveContext& context) {
 
 }
 
-void OnClickReleaseViewDistance(MolecularModel& model, ActiveContext& context) {
+void OnClickReleaseViewDistance(MolecularModel& model, ActiveContext& context, int collisionIndex) {
 	assert(NumberOfValidIndices(context.viewSelection) == 1);
 	double timeSinceClick = GetTimeSinceClick(context);
-
-	int collisionIndex = model.TestRayAgainst(GetMouseRay(GetMousePosition(), context.renderContext.camera));
 	if (collisionIndex != -1 && collisionIndex != context.viewSelection[0]) {
 		context.viewSelection[1] = collisionIndex;
 		context.selectionStep = ANGLE;
@@ -67,11 +59,9 @@ void OnClickReleaseViewDistance(MolecularModel& model, ActiveContext& context) {
 	}
 }
 
-void OnClickReleaseViewAngle(MolecularModel& model, ActiveContext& context) {
+void OnClickReleaseViewAngle(MolecularModel& model, ActiveContext& context, int collisionIndex) {
 	assert(NumberOfValidIndices(context.viewSelection) == 2);
 	double timeSinceClick = GetTimeSinceClick(context);
-
-	int collisionIndex = model.TestRayAgainst(GetMouseRay(GetMousePosition(), context.renderContext.camera));
 	if (collisionIndex != -1 && collisionIndex != context.viewSelection[0] && collisionIndex != context.viewSelection[1]) {
 		context.viewSelection [2] = collisionIndex;
 		context.selectionStep = DIHEDRAL;
@@ -80,11 +70,9 @@ void OnClickReleaseViewAngle(MolecularModel& model, ActiveContext& context) {
 	}
 }
 
-void OnClickReleaseViewDihedral(MolecularModel& model, ActiveContext& context) {
+void OnClickReleaseViewDihedral(MolecularModel& model, ActiveContext& context, int collisionIndex) {
 	assert(NumberOfValidIndices(context.viewSelection) == 3);
 	double timeSinceClick = GetTimeSinceClick(context);
-
-	int collisionIndex = model.TestRayAgainst(GetMouseRay(GetMousePosition(), context.renderContext.camera));
 	if (collisionIndex != -1 && collisionIndex != context.viewSelection[0] && collisionIndex != context.viewSelection[1] && collisionIndex != context.viewSelection[2]) {
 		context.viewSelection[3] = collisionIndex;
 		context.permanentSelection.push_back(context.viewSelection);
@@ -137,21 +125,37 @@ void DrawDihedralLineAndText(const Vector3& r1, const Vector3& r2, const Vector3
 void HandleSelections(MolecularModel& model, ActiveContext& context) {
 	// handle mouse input based on selection step
 	if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+		int collisionIndex = model.TestRayAgainst(GetMouseRay(GetMousePosition(), context.renderContext.camera));
+		// check if shift-clicking to highlight atom
+		if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) {
+			if (collisionIndex != -1) {
+				if (context.atomsToHighlight.count(collisionIndex))
+					context.atomsToHighlight.erase(collisionIndex);
+				else
+					context.atomsToHighlight.insert(collisionIndex);
+			} 
+		}
+
 		switch(context.selectionStep) {
 			case NONE :
-				OnClickReleaseViewNone(model, context);
+				OnClickReleaseViewNone(model, context, collisionIndex);
 				break;
 			case DISTANCE :
-				OnClickReleaseViewDistance(model, context);
+				OnClickReleaseViewDistance(model, context, collisionIndex);
 				break;
 			case ANGLE :
-				OnClickReleaseViewAngle(model, context);
+				OnClickReleaseViewAngle(model, context, collisionIndex);
 				break;
 			case DIHEDRAL :
-				OnClickReleaseViewDihedral(model, context);
+				OnClickReleaseViewDihedral(model, context, collisionIndex);
 				break;
 		}
+
+		// check for collision with nothing, int collisionIndex
+		if (collisionIndex == -1 && !(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)))
+			context.atomsToHighlight.clear();
 	}
+	
 
 	// Check if enter was pressed to store a partially complete selection
 	if (IsKeyPressed(KEY_ENTER) && (context.selectionStep == ANGLE || context.selectionStep == DIHEDRAL)) {
@@ -222,9 +226,9 @@ void HandleSelections(MolecularModel& model, ActiveContext& context) {
 }
 
 void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
-	//DrawViewUI(context);
 
 	BeginMode3D(context.renderContext.camera);
+		model.DrawHighlighted(context.atomsToHighlight);
 	    model.Draw();
 	    if (context.drawGrid)
 	    	DrawGrid(10, 1.0f);

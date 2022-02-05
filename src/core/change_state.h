@@ -34,16 +34,3 @@ void CheckForAndHandleFrameChange(ActiveContext& context) {
 		}
 	}
 }
-
-void CheckForAndHandleModeChange(ActiveContext& context) {
-	
-	int mode = static_cast<int>(context.mode);
-	GuiSetStyle(DROPDOWNBOX, TEXT_ALIGNMENT, GUI_TEXT_ALIGN_CENTER);
-    if (GuiDropdownBox((Rectangle){ context.screenWidth / 10.0f - 125.0f / 2.0f, 10, 125, 30 }, "VIEW;EDIT;ANIMATION", &mode, context.modeDropdownEdit)) {
-    	if (context.modeDropdownEdit)
-    		context.mode = static_cast<InteractionMode>(mode);
-    	context.modeDropdownEdit = !context.modeDropdownEdit;
-	} else if (IsKeyPressed(KEY_M)) {
-		context.mode == static_cast<InteractionMode>(static_cast<int>(NUMBER_OF_MODES) - 1) ? context.mode = static_cast<InteractionMode>(0) : context.mode = static_cast<InteractionMode>(static_cast<int>(context.mode) + 1);
-	}
-}

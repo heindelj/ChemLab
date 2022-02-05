@@ -5,6 +5,13 @@ void debug(T data) {
 	std::cout << data << std::endl;
 }
 
+template<typename T>
+void debug(const std::set<T> data) {
+	for (auto it = data.begin(); it != data.end(); ++it) 
+		std::cout << *it << ", ";
+	std::cout << std::endl;
+}
+
 void debug(const Vector2& v) {
 	std::cout << "[ " << v.x << ", " << v.y << " ]" << std::endl;
 }

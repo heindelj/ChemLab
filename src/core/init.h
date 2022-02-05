@@ -11,21 +11,51 @@ Camera3D GetCameraWithGoodDefaultPosition(const std::vector<Vector3>& xyz) {
 	return camera;
 }
 
-RenderContext InitRenderContext(const Atoms& atoms) {
-	RenderContext context;
+Shader InitOutlineShader(int screenWidth, int screenHeight) {
+	///////// Outline Shader variables, etc. ///////////
+    Shader shdrOutline = LoadShader(0, "assets/shaders/outline.fs");
 
+    float outlineSize = 2.0f;
+    float outlineColor[4] = { 1.0f, 1.0f, 0.0f, 1.0f };     // Normalized YELLOW color 
+    float textureSize[2] = { (float)screenWidth, (float)screenHeight };
+	    
+    // Get shader locations
+    int outlineSizeLoc = GetShaderLocation(shdrOutline, "outlineSize");
+    int outlineColorLoc = GetShaderLocation(shdrOutline, "outlineColor");
+    int textureSizeLoc = GetShaderLocation(shdrOutline, "textureSize");
+	    
+    // Set shader values (they can be changed later)
+    SetShaderValue(shdrOutline, outlineSizeLoc, &outlineSize, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(shdrOutline, outlineColorLoc, outlineColor, SHADER_UNIFORM_VEC4);
+    SetShaderValue(shdrOutline, textureSizeLoc, textureSize, SHADER_UNIFORM_VEC2);
+    return shdrOutline;
+}
+
+Shader InitLightingShader() {
 	Shader lightingShader = LoadShader("assets/shaders/lighting.vs", "assets/shaders/lighting.fs");
 	lightingShader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(lightingShader, "viewPos");
 	int ambientLoc = GetShaderLocation(lightingShader, "ambient");
-	Vector4 ambient = (Vector4){ 0.2f, 0.2f, 0.2f, 1.0f };
-	SetShaderValue(lightingShader, ambientLoc, &ambient.x, SHADER_UNIFORM_VEC4);
 	
-	context.camera = GetCameraWithGoodDefaultPosition(atoms.xyz);
-	context.lightingShader = lightingShader;
-	context.model = MolecularModelFromAtoms(atoms, &context.lightingShader, BALL_AND_STICK);
-	context.light = CreateLight(LIGHT_DIRECTIONAL, context.camera.position, context.camera.target, WHITE, context.lightingShader);
+	Vector4 ambient = (Vector4){ 0.2f, 0.2f, 0.2f, 1.0f };
 
-	return context;
+	SetShaderValue(lightingShader, ambientLoc, &ambient.x, SHADER_UNIFORM_VEC4);
+	return lightingShader;
+}
+
+RenderContext InitRenderContext(const Atoms& atoms, int screenWidth, int screenHeight) {
+	RenderContext renderContext;
+
+	renderContext.camera = GetCameraWithGoodDefaultPosition(atoms.xyz);
+	renderContext.backgroundColor = Color(30, 30, 30, 255);
+
+	renderContext.outlineShader = InitOutlineShader(screenWidth, screenHeight);
+	renderContext.renderTarget  = LoadRenderTexture(screenWidth, screenHeight);
+
+	renderContext.lightingShader = InitLightingShader();
+	renderContext.model = MolecularModelFromAtoms(atoms, &renderContext.lightingShader, BALL_AND_STICK);
+	renderContext.light = CreateLight(LIGHT_DIRECTIONAL, renderContext.camera.position, renderContext.camera.target, WHITE, renderContext.lightingShader);
+
+	return renderContext;
 }
 
 ActiveContext InitContext(Frames& frames, const int screenWidth, const int screenHeight) {
@@ -42,12 +72,11 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 	context.mode = VIEW;
 	context.style = BALL_AND_STICK;
 
-	context.renderContext = InitRenderContext(frames.atoms[0]);
+	context.renderContext = InitRenderContext(frames.atoms[0], context.screenWidth, context.screenHeight);
 	context.uiSettings = (UISettings){5.0f, screenWidth / 5.0f - 10.0f};
 
 	// UI Settings
-	bool modeDropdownEdit = false;
-
+	context.drawUI = true;
 	context.drawGrid = true;
 	context.activeFrame = 0;
 	context.numFrames = frames.nframes;

@@ -29,6 +29,7 @@ struct MolecularModel
 	std::vector<Material> materials;
 
 	virtual void Draw() = 0;
+	virtual void DrawHighlighted(const std::set<int>& indices) = 0;
 	virtual int TestRayAgainst(Ray ray) = 0;
 	virtual void free() = 0;
 };
@@ -41,10 +42,12 @@ struct BallAndStickModel : MolecularModel {
 	Mesh stickMesh;
 
 	void Draw() override;
-	int  TestRayAgainst(Ray ray) override;	
+	void DrawHighlighted(const std::set<int>& indices) override;
+	int  TestRayAgainst(Ray ray) override;
 	void free() {
 		UnloadMesh(this->sphereMesh);
 		UnloadMesh(this->stickMesh);
+		delete this;
 	}
 };
 
@@ -54,9 +57,11 @@ struct SpheresModel : MolecularModel {
 	Mesh sphereMesh;
 
 	void Draw() override;
+	void DrawHighlighted(const std::set<int>& indices) override;
 	int  TestRayAgainst(Ray ray) override;
 	void free() {
 		UnloadMesh(this->sphereMesh);
+		delete this;
 	}
 };
 
@@ -66,9 +71,11 @@ struct SticksModel : MolecularModel {
 	Mesh stickMesh;
 
 	void Draw() override;
+	void DrawHighlighted(const std::set<int>& indices) override;
 	int  TestRayAgainst(Ray ray) override;
 	void free() {
 		UnloadMesh(this->stickMesh);
+		delete this;
 	}
 };
 
@@ -103,6 +110,11 @@ struct UISettings {
 
 struct RenderContext {
 	Camera3D camera;
+	Color backgroundColor;
+
+	Shader outlineShader;
+	RenderTexture2D renderTarget;
+
 	Shader lightingShader;
 	MolecularModel* model;
 	Light light;
@@ -125,13 +137,13 @@ struct ActiveContext {
 	RenderStyle style;
 
 	// UI Settings
-	bool modeDropdownEdit;
-
+	bool drawUI;
 	bool drawGrid;
 
 	// view mode context variables
 	double timeOfLastClick;
 	float lineWidth;
+	std::set<int> atomsToHighlight;
 	std::array<int, 4> viewSelection;
 	std::vector<std::array<int, 4>> permanentSelection;
 	SelectionStep selectionStep;

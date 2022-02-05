@@ -6,14 +6,9 @@ in vec2 fragTexCoord;
 in vec4 fragColor;
 in vec3 fragNormal;
 
-// Input uniform values
-uniform sampler2D texture0;
-uniform vec4 colDiffuse;
 
 // Output fragment color
 out vec4 finalColor;
-
-// NOTE: Add here your custom variables
 
 #define     MAX_LIGHTS              4
 #define     LIGHT_DIRECTIONAL       0
@@ -32,6 +27,10 @@ struct Light {
     vec3 target;
     vec4 color;
 };
+
+// Input uniform values
+uniform sampler2D texture0;
+uniform vec4 colDiffuse;
 
 // Input lighting values
 uniform Light lights[MAX_LIGHTS];
@@ -79,4 +78,5 @@ void main()
 
     // Gamma correction
     finalColor = pow(finalColor, vec4(1.0/2.2));
+    finalColor.a = colDiffuse.a;
 }

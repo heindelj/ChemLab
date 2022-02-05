@@ -2,17 +2,17 @@
 
 void DrawAnimationUI(ActiveContext& context) {
 	
+	// Draw text label for settings
+	const char* title = "SETTINGS";
+	const int fontSize = 30;
+	DrawText(title, context.uiSettings.menuWidth / 2 - MeasureText(title, fontSize) / 2,   (context.screenHeight - context.uiSettings.borderWidth) / 2, fontSize, BLACK);
+	DrawRectangle(context.uiSettings.menuWidth / 2 - MeasureText(title, fontSize) / 2 - 5, (context.screenHeight - context.uiSettings.borderWidth) / 2 + fontSize, MeasureText(title, fontSize) + 10, 5, BLACK); // underline text
+	
 	GuiSetStyle(BUTTON, TEXT_ALIGNMENT, GUI_TEXT_ALIGN_CENTER);
-
-	// Get width-independent x position (since rectangle is in top-right)
-	int distanceFromScreenEdge = 40; // pixels
-	float xPosScale = ((float)(context.screenWidth - distanceFromScreenEdge) - 55.0f) / context.screenWidth;
-
-	if (GuiButton((Rectangle){xPosScale * (float)context.screenWidth, 10, 55.0f, 30.0f}, "ROTATE")) {
+	if (GuiButton((Rectangle){context.uiSettings.menuWidth / 2, (context.screenHeight - context.uiSettings.borderWidth) / 2 + 2 * fontSize, 55.0f, 30.0f}, "ROTATE")) {
 		context.exportRotation = true;
 	}
-
-	if (GuiButton((Rectangle){xPosScale * (float)context.screenWidth, 50, 79.0f, 30.0f}, "ALL FRAMES")) {
+	if (GuiButton((Rectangle){context.uiSettings.menuWidth / 2, (context.screenHeight - context.uiSettings.borderWidth) / 2 + 4 * fontSize,75.0f, 30.0f}, "ALL FRAMES")) {
 		context.exportAllFrames = true;
 	}
 
@@ -31,12 +31,17 @@ void ExportRenderTexturesToImages(const std::vector<Image>& renderedAnimationFra
 	    //status = i;
   	}
   	// try to convert the pngs to a gif. If successful just delete the pngs.
-  	int exitCode = system((std::string("convert -delay 0 -loop 0 -alpha set -dispose 2 -resize=50% ") + fileName + "*.png " + fileName + std::string(".gif")).c_str());
+  	int exitCode = system((std::string("convert -delay 0 -loop 0 -alpha set -dispose 2 -resize 50% ") + fileName + "*.png " + fileName + std::string(".gif")).c_str());
   	if (exitCode != -1) {
   		system((std::string("rm ") + fileName + std::string("*.png")).c_str());
 	} else {
 		std::cout << "INFO: Failed to directly convert png images to a gif using ImageMagick's convert function. You will need to do it manually or install ImageMgick and try again." << std::endl;
 	}
+}
+
+void ExportRenderTextureToImage(Image& image, std::string fileName) {
+	ExportImage(image, fileName.c_str());
+	UnloadImage(image);
 }
 
 std::vector<Vector3> GetRotationAnimationPositions(Camera3D camera, int numFrames) {
@@ -126,6 +131,13 @@ std::vector<Image> DrawAllFramesToRenderTextures(ActiveContext& context, int wid
 	return renderedAnimationFrames;
 }
 
+void TakeScreenshot(ActiveContext& context, std::string& fileName, int width, int height) {
+	// Make sure the filename is stripped of an extension before you egt here and that a dialog
+	// is used to ask for the width and height
+	Image image = DrawToRenderTexture(context.renderContext, width, height);
+	ExportRenderTextureToImage(image, (fileName + ".png"));
+}
+
 void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
 
 	BeginMode3D(context.renderContext.camera);
@@ -138,17 +150,22 @@ void AnimationModeFrame(MolecularModel& model, ActiveContext& context) {
 
 	// Change this to isExporting and check which image we're on to draw the progress bar
 	if (context.exportRotation) {
-		std::vector<Image> renderedAnimationFrames = DrawRotationAnimationToRenderTextures(context.renderContext, 1600, 1600, 45);
-		context.computeThreads.push_back(std::thread(ExportRenderTexturesToImages, renderedAnimationFrames, "/home/heindelj/my_render_frames"));
-
-		//std::mutex mu;
-		//std::atomic<bool> is_images_loaded = false;
+		char* selectedSaveName = tinyfd_saveFileDialog("Select File Name", "rotation_animation.png", 0, NULL, NULL);		
+		if (selectedSaveName) {
+			std::filesystem::path p = selectedSaveName;
+			std::vector<Image> renderedAnimationFrames = DrawRotationAnimationToRenderTextures(context.renderContext, 1600, 1600, 50);
+			context.computeThreads.push_back(std::thread(ExportRenderTexturesToImages, renderedAnimationFrames, p.replace_extension()));
+		}
 
 		context.exportRotation = false;
 	}
 	if (context.exportAllFrames) {
-		std::vector<Image> renderedAnimationFrames = DrawAllFramesToRenderTextures(context, 1600, 1600);
-		context.computeThreads.push_back(std::thread(ExportRenderTexturesToImages, renderedAnimationFrames, "/home/heindelj/my_render_frames"));
+		char* selectedSaveName = tinyfd_saveFileDialog("Select File Name", "all_frames_animation.png", 0, NULL, NULL);
+		if (selectedSaveName) {
+			std::filesystem::path p = selectedSaveName;
+			std::vector<Image> renderedAnimationFrames = DrawAllFramesToRenderTextures(context, 1600, 1600);
+			context.computeThreads.push_back(std::thread(ExportRenderTexturesToImages, renderedAnimationFrames, p.replace_extension()));
+		}
 		context.exportAllFrames = false;
 	}
 
