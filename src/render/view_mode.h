@@ -8,13 +8,16 @@ void ExportRenderTextureToImage(Image image, std::string fileName) {
 Image DrawToRenderTexture(const RenderContext& renderContext, int width, int height) {
 	RenderTexture2D renderTarget = LoadRenderTexture(width, height);
 	BeginTextureMode(renderTarget);
-	    ClearBackground(Color(1.0f,1.0f,1.0f,1.0f));  // Clear white texture background
+	ClearBackground(Color(1.0f,1.0f,1.0f,1.0f));
 	    BeginMode3D(renderContext.camera);
 	    	renderContext.model->Draw();
 	    EndMode3D();
 	EndTextureMode();
 	Image image = LoadImageFromTexture(renderTarget.texture);
 	ImageFlipVertical(&image);
+
+	// Can use this to apply a background color to exported image
+	//ImageAlphaClear(&image, WHITE, 0.05f);
 	UnloadRenderTexture(renderTarget);
 	return image;
 }
@@ -28,12 +31,32 @@ void TakeScreenshot(ActiveContext& context, int width, int height) {
 	}
 }
 
-void SetHighlightedAtomColors(ActiveContext& context, const float alpha) {
+void InvertSelection(ActiveContext& context) {
+	std::set<int> highlightedAtoms;
+	for (int i = 0; i < context.frames->atoms[context.activeFrame].natoms; ++i) {
+		if (!context.atomsToHighlight.count(i))
+			highlightedAtoms.insert(i);
+	}
+	context.atomsToHighlight = highlightedAtoms;
+}
+
+void SetHighlightedAtomColor(ActiveContext& context) {
 	for(auto itAtom = context.atomsToHighlight.begin(); itAtom != context.atomsToHighlight.end(); ++itAtom) {
-		context.renderContext.model->materials[*itAtom].maps[MATERIAL_MAP_DIFFUSE].color = ColorAlpha(context.uiSettings.colorPickerValue, alpha);
+		context.renderContext.model->materials[*itAtom].maps[MATERIAL_MAP_DIFFUSE].color = context.uiSettings.colorPickerValue;
 		if (context.style == BALL_AND_STICK) {
 			for(auto itStick = context.renderContext.model->stickIndices[*itAtom].begin(); itStick != context.renderContext.model->stickIndices[*itAtom].end(); ++itStick)
-				context.renderContext.model->materials[*itStick].maps[MATERIAL_MAP_DIFFUSE].color = ColorAlpha(context.uiSettings.colorPickerValue, alpha);
+				context.renderContext.model->materials[*itStick].maps[MATERIAL_MAP_DIFFUSE].color = context.uiSettings.colorPickerValue;
+		}
+	}
+}
+
+void SetHighlightedAtomAlpha(ActiveContext& context) {
+	for(auto itAtom = context.atomsToHighlight.begin(); itAtom != context.atomsToHighlight.end(); ++itAtom) {
+		context.renderContext.model->materials[*itAtom].maps[MATERIAL_MAP_DIFFUSE].color = ColorAlpha(context.renderContext.model->materials[*itAtom].maps[MATERIAL_MAP_DIFFUSE].color, context.uiSettings.colorPickerAlpha);
+		if (context.style == BALL_AND_STICK) {
+			for(auto itStick = context.renderContext.model->stickIndices[*itAtom].begin(); itStick != context.renderContext.model->stickIndices[*itAtom].end(); ++itStick) {
+				context.renderContext.model->materials[*itStick].maps[MATERIAL_MAP_DIFFUSE].color = ColorAlpha(context.renderContext.model->materials[*itAtom].maps[MATERIAL_MAP_DIFFUSE].color, context.uiSettings.colorPickerAlpha);
+			}
 		}
 	}
 }
@@ -50,6 +73,7 @@ void DrawViewUI(ActiveContext& context) {
 	float checkboxSize = 20;
 	context.isCyclingAllFrames = GuiCheckBox((Rectangle){ 3 * context.uiSettings.borderWidth, (context.screenHeight - context.uiSettings.borderWidth) / 2 + 3 * fontSize, checkboxSize, checkboxSize }, "CYCLE FRAMES", context.isCyclingAllFrames);
 	context.isRotating         = GuiCheckBox((Rectangle){ 3 * context.uiSettings.borderWidth, (context.screenHeight - context.uiSettings.borderWidth) / 2 + 2 * fontSize, checkboxSize, checkboxSize }, "ROTATE", context.isRotating);
+	context.lockCamera         = GuiCheckBox((Rectangle){ 3 * context.uiSettings.borderWidth, (context.screenHeight - context.uiSettings.borderWidth) / 2 + 4 * fontSize, checkboxSize, checkboxSize }, "LOCK CAMERA", context.lockCamera);
 	if (context.isRotating) {
 		context.forwardOnStartingToRotate = normalize(context.renderContext.camera.target - context.renderContext.camera.position);
 	}
@@ -57,14 +81,21 @@ void DrawViewUI(ActiveContext& context) {
 	// Draw color picker and alpha picker
 	context.uiSettings.colorPickerValue = GuiColorPicker((Rectangle){ 5 * context.uiSettings.borderWidth, 50, context.uiSettings.menuWidth * 0.8f, context.uiSettings.menuWidth * 0.8f}, NULL, context.uiSettings.colorPickerValue);
 	context.uiSettings.colorPickerAlpha = GuiColorBarAlpha((Rectangle){ 5 * context.uiSettings.borderWidth, 280, context.uiSettings.menuWidth * 0.8f, 20}, NULL, context.uiSettings.colorPickerAlpha);
-	if (context.atomsToHighlight.size() > 0) {
-		if (context.style == BALL_AND_STICK)
-			SetHighlightedAtomColors(context, context.uiSettings.colorPickerAlpha);
-	}
-
-	// Screenshot button
+	
 	GuiSetStyle(BUTTON, TEXT_ALIGNMENT, GUI_TEXT_ALIGN_CENTER);
-	if(GuiButton((Rectangle){context.uiSettings.menuWidth / 2, (context.screenHeight - context.uiSettings.borderWidth) / 2 + 100, (float)MeasureText("SCREENSHOT", 12), 30.0f}, "SCREENSHOT")) {
+	if (GuiButton((Rectangle){ 50, 310, (float)MeasureText("APPLY COLOR", 12), 20}, "APPLY COLOR") && context.atomsToHighlight.size() > 0) {
+		if (context.style == BALL_AND_STICK)
+			SetHighlightedAtomColor(context);
+	}
+	if (GuiButton((Rectangle){ 150, 310, (float)MeasureText("APPLY ALPHA", 12), 20}, "APPLY ALPHA") && context.atomsToHighlight.size() > 0) {
+		if (context.style == BALL_AND_STICK)
+			SetHighlightedAtomAlpha(context);
+	}
+	if (GuiButton((Rectangle){ 50, 340, (float)MeasureText("INVERT SELECTION", 12), 20}, "INVERT SELECTION") && context.atomsToHighlight.size() > 0) {
+		InvertSelection(context);
+	}
+	// Screenshot button
+	if(GuiButton((Rectangle){ context.uiSettings.menuWidth / 2 - (float)MeasureText("TAKE SCREENSHOT", 12) / 2, 570, (float)MeasureText("TAKE SCREENSHOT", 12), 30.0f}, "TAKE SCREENSHOT")) {
 		context.takeScreenshot = true;
 	}
 }
@@ -173,6 +204,36 @@ void DrawDihedralLineAndText(const Vector3& r1, const Vector3& r2, const Vector3
 	DrawLineBetweenPoints(r3, r4, context.renderContext.camera, context.lineWidth, color);
 }
 
+void DrawPermanentSelections(MolecularModel& model, ActiveContext& context) {
+	// Draw any completed selections we've stored
+	for (int i = 0; i < context.permanentSelection.size(); i++) {
+		if (NumberOfValidIndices(context.permanentSelection[i]) == 2) {
+			DrawDistanceLineAndText(
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][0]]),
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][1]]),
+				GREEN,
+				context);
+		}
+		if (NumberOfValidIndices(context.permanentSelection[i]) == 3) {
+			DrawAngleLineAndText(
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][0]]),
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][1]]),
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][2]]),
+				GREEN,
+				context);
+		}
+		if (NumberOfValidIndices(context.permanentSelection[i]) == 4) {
+			DrawDihedralLineAndText(
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][0]]),
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][1]]),
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][2]]),
+				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][3]]),
+				GREEN,
+				context);
+		}
+	}
+}
+
 void HandleSelections(MolecularModel& model, ActiveContext& context) {
 	// handle mouse input based on selection step
 	if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
@@ -250,34 +311,6 @@ void HandleSelections(MolecularModel& model, ActiveContext& context) {
 			break;
 		}
 	}
-
-	// Draw any completed selections we've stored
-	for (int i = 0; i < context.permanentSelection.size(); i++) {
-		if (NumberOfValidIndices(context.permanentSelection[i]) == 2) {
-			DrawDistanceLineAndText(
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][0]]),
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][1]]),
-				GREEN,
-				context);
-		}
-		if (NumberOfValidIndices(context.permanentSelection[i]) == 3) {
-			DrawAngleLineAndText(
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][0]]),
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][1]]),
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][2]]),
-				GREEN,
-				context);
-		}
-		if (NumberOfValidIndices(context.permanentSelection[i]) == 4) {
-			DrawDihedralLineAndText(
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][0]]),
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][1]]),
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][2]]),
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][3]]),
-				GREEN,
-				context);
-		}
-	}
 }
 
 void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
@@ -288,8 +321,11 @@ void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
 	    if (context.drawGrid)
 	    	DrawGrid(10, 1.0f);
 	EndMode3D();
+	DrawPermanentSelections(model, context);
 
-	HandleSelections(model, context);
+	// Check that we arent clicking on the UI
+	if ((context.drawUI == false) || GetMouseX() > (context.uiSettings.menuWidth + context.uiSettings.borderWidth))
+		HandleSelections(model, context);
 	
 	if (context.isRotating)
 		RotateAroundWorldUp(context);
@@ -301,5 +337,15 @@ void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
 	if (context.takeScreenshot) {
 		TakeScreenshot(context, 1600, 1600);
 		context.takeScreenshot = false;
+	}
+	
+	// check for changes to loaded file
+	bool didUpdate = CheckForFileChangesAndUpdate(context.frames);
+	if (didUpdate) {
+		// can do other things here too like manage playing back at a fixed frame rate
+		// rather than just jumping to the newest frame.
+		context.numFrames = context.frames->nframes;
+		context.activeFrame = context.numFrames - 1;
+		OnFrameChange(context);
 	}
 }

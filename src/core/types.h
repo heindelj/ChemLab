@@ -102,6 +102,7 @@ struct Frames {
 	uint32_t nframes;
 	std::vector<Atoms> atoms;
 	std::vector<std::string> headers;
+	std::unordered_map<std::string, std::filesystem::file_time_type> loadedFiles; // dictionary to store file paths and last modification time of file
 };
 
 struct UISettings {
@@ -129,6 +130,7 @@ struct ActiveContext {
 
     std::vector<std::thread> computeThreads;
 
+    // Frame variables
 	uint32_t numFrames;
 	uint32_t activeFrame;
 	Frames* frames;
@@ -142,6 +144,7 @@ struct ActiveContext {
 	// UI Settings
 	bool drawUI;
 	bool drawGrid;
+	bool lockCamera;
 
 	// view mode context variables
 	double timeOfLastClick;
@@ -154,6 +157,7 @@ struct ActiveContext {
 	float rotationSpeed;
 	bool isRotating;
 	bool isCyclingAllFrames;
+	bool monitorFileChanges;
 	float timeBetweenFrameChanges;
 	double timeOfLastFrameChange;
 

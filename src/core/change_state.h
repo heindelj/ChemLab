@@ -13,6 +13,7 @@ inline void OnFrameChange(ActiveContext& context) {
 	context.renderContext.model = MolecularModelFromAtoms((*context.frames).atoms[context.activeFrame], &context.renderContext.lightingShader, context.style);
 	ResetViewSelection(context);
 	context.permanentSelection.clear();
+	context.atomsToHighlight.clear();
 }
 
 inline void OnAnimationModeStart(ActiveContext& context) {

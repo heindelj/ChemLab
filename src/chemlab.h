@@ -13,6 +13,8 @@
 #include <mutex>
 #include <condition_variable>
 #include <queue>
+#include <chrono>
+#include <unordered_map>
 #include <functional>
 #include <utility>
 #include <string>
@@ -40,6 +42,7 @@
 #include "utils/geometry.h"
 
 #include "utils/load_and_create.h"
+#include "utils/monitor_file.h"
 #include "core/init.h"
 
 // debug

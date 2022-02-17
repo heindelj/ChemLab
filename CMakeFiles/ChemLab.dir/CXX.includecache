@@ -31,6 +31,10 @@ condition_variable
 -
 queue
 -
+chrono
+-
+unordered_map
+-
 functional
 -
 utility
@@ -67,6 +71,8 @@ utils/geometry.h
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/geometry.h
 utils/load_and_create.h
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/load_and_create.h
+utils/monitor_file.h
+/home/heindelj/dev/c++_projects/ChemLab/src/utils/monitor_file.h
 core/init.h
 /home/heindelj/dev/c++_projects/ChemLab/src/core/init.h
 utils/debug.h
@@ -169,4 +175,6 @@ chemlab.h
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/load_and_create.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/utils/math_utils.h
+
+/home/heindelj/dev/c++_projects/ChemLab/src/utils/monitor_file.h
 

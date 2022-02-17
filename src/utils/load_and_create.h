@@ -133,8 +133,11 @@ Frames readXYZ(const std::string& file)
 	uint32_t nframes = 0;
 	std::vector<std::string> headers;
 	std::vector<Atoms> frames;
+	std::unordered_map<std::string, std::filesystem::file_time_type> loadedFiles;
 
-	//open the file
+	//open the file and store time of last modification
+	const std::filesystem::path filePath = file;
+	loadedFiles[filePath.string()] = std::filesystem::last_write_time(filePath);
 	std::ifstream infile(file);
 
 	std::string line;
@@ -174,5 +177,5 @@ Frames readXYZ(const std::string& file)
 			frames.push_back(atoms);
 		}
 	}
-	return Frames(nframes, frames, headers);
+	return Frames(nframes, frames, headers, loadedFiles);
 }

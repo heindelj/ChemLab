@@ -61,6 +61,7 @@ RenderContext InitRenderContext(const Atoms& atoms, int screenWidth, int screenH
 ActiveContext InitContext(Frames& frames, const int screenWidth, const int screenHeight) {
 	ActiveContext context;
 	context.frames = &frames;
+
 	context.screenWidth  = screenWidth;
 	context.screenHeight = screenHeight;
 
@@ -78,6 +79,8 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 	// UI Settings
 	context.drawUI = true;
 	context.drawGrid = true;
+	context.lockCamera = false;
+	
 	context.activeFrame = 0;
 	context.numFrames = frames.nframes;
 
@@ -89,6 +92,7 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 	float xPosScale = ((float)(context.screenWidth - 40) - 55.0f) / context.screenWidth;
 	context.isRotating = false;
 	context.isCyclingAllFrames = false;
+	context.monitorFileChanges = false;
 	context.rotationSpeed = 0.2f;
 	context.timeBetweenFrameChanges = 0.5f;
 	context.timeOfLastFrameChange = 0.0;
