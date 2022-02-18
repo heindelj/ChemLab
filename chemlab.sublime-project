@@ -5,27 +5,28 @@
 			"file_regex": "(.+[^:]):(\\d+):(\\d+): (?:fatal )?((?:error|warning): .+)$",
 			"name": "Build ChemLab",
 			"shell_cmd": "make",
-			"working_dir": "${project_path}",
-		
-		"variants": [
-
-	        {   
-	            "shell_cmd": "make && ./ChemLab",
-	            "name": "Run"
-	        }
-    	]
-		},
-
+			"variants":
+			[
+				{
+					"name": "Run",
+					"shell_cmd": "make && ./ChemLab"
+				}
+			],
+			"working_dir": "${project_path}"
+		}
 	],
 	"folders":
 	[
 		{
 			"path": "src"
+		},
+		{
+			"path": "assets/shaders"
 		}
 	],
 	"settings":
- 	{
- 		"sublimegdb_commandline": "gdb -nx -readnow -fullname --interpreter=mi -args ./ChemLab",
- 		"sublimegdb_workingdir": "/home/heindelj/dev/c++_projects/ChemLab"
- 	}
+	{
+		"sublimegdb_commandline": "gdb -nx -readnow -fullname --interpreter=mi -args ./ChemLab",
+		"sublimegdb_workingdir": "/home/heindelj/dev/c++_projects/ChemLab"
+	}
 }

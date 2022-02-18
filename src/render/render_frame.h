@@ -24,6 +24,7 @@ void OnWindowResize(ActiveContext& context) {
 }
 
 void UpdateLighting(RenderContext& renderContext) {
+	SetShaderValue(renderContext.lightingShader, renderContext.lightingShader.locs[SHADER_LOC_VECTOR_VIEW], &renderContext.camera.position.x, SHADER_UNIFORM_VEC3);
 	renderContext.light.position = renderContext.camera.position;
 	renderContext.light.target   = renderContext.camera.target;
 	UpdateLightValues(renderContext.lightingShader, renderContext.light);

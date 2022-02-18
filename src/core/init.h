@@ -53,7 +53,7 @@ RenderContext InitRenderContext(const Atoms& atoms, int screenWidth, int screenH
 
 	renderContext.lightingShader = InitLightingShader();
 	renderContext.model = MolecularModelFromAtoms(atoms, &renderContext.lightingShader, BALL_AND_STICK);
-	renderContext.light = CreateLight(LIGHT_DIRECTIONAL, renderContext.camera.position, renderContext.camera.target, WHITE, renderContext.lightingShader);
+	renderContext.light = CreateLight(LIGHT_POINT, renderContext.camera.position, renderContext.camera.target, WHITE, renderContext.lightingShader);
 
 	return renderContext;
 }

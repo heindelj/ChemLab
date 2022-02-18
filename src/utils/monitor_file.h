@@ -96,7 +96,6 @@ bool CheckForFileChangesAndUpdate(Frames* frames) {
 
 			// This also handles the case that one of the file we originally read gets deleted.
 			// We should handle that case separately perhaps.
-			std::cout << "Caught the error!" << std::endl;
 			return false;
 		}
 	}
