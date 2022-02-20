@@ -42,18 +42,19 @@ Shader InitLightingShader() {
 	return lightingShader;
 }
 
-RenderContext InitRenderContext(const Atoms& atoms, int screenWidth, int screenHeight) {
+RenderContext InitRenderContext(const Atoms& atoms, Window* window) {
 	RenderContext renderContext;
 
 	renderContext.camera = GetCameraWithGoodDefaultPosition(atoms.xyz);
+	renderContext.window = window;
 	renderContext.backgroundColor = Color(30, 30, 30, 255);
 
-	renderContext.outlineShader = InitOutlineShader(screenWidth, screenHeight);
-	renderContext.renderTarget  = LoadRenderTexture(screenWidth, screenHeight);
+	renderContext.outlineShader = InitOutlineShader(renderContext.window->rect.width, renderContext.window->rect.height);
+	renderContext.renderTarget  = LoadRenderTexture(renderContext.window->rect.width, renderContext.window->rect.height);
 
 	renderContext.lightingShader = InitLightingShader();
 	renderContext.model = MolecularModelFromAtoms(atoms, &renderContext.lightingShader, BALL_AND_STICK);
-	renderContext.light = CreateLight(LIGHT_POINT, renderContext.camera.position, renderContext.camera.target, WHITE, renderContext.lightingShader);
+	renderContext.light = CreateLight(LIGHT_DIRECTIONAL, renderContext.camera.position, renderContext.camera.target, WHITE, renderContext.lightingShader);
 
 	return renderContext;
 }
@@ -65,6 +66,8 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 	context.screenWidth  = screenWidth;
 	context.screenHeight = screenHeight;
 
+	context.windows.push_back((Window){0, (Rectangle){0, 0, (float)screenWidth, (float)screenHeight}});
+
 	SetConfigFlags(FLAG_MSAA_4X_HINT);
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 	InitWindow(context.screenWidth, context.screenHeight, "ChemLab");
@@ -73,8 +76,8 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 	context.mode = VIEW;
 	context.style = BALL_AND_STICK;
 
-	context.renderContext = InitRenderContext(frames.atoms[0], context.screenWidth, context.screenHeight);
 	context.uiSettings = (UISettings){5.0f, screenWidth / 5.0f - 10.0f, BLUE, 1.0f};
+	context.renderContext = InitRenderContext(frames.atoms[0], &context.windows[0]);
 
 	// UI Settings
 	context.drawUI = true;

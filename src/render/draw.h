@@ -188,11 +188,23 @@ void DrawActiveMode(InteractionMode mode) {
 		case VIEW:
 			DrawText("MODE: VIEW", 10, 10, 30, RAYWHITE);
 			break;
-		case EDIT:
-			DrawText("MODE: EDIT", 10, 10, 30, RAYWHITE);
+		case BUILD:
+			DrawText("MODE: BUILD", 10, 10, 30, RAYWHITE);
 			break;
 		case ANIMATION:
 			DrawText("MODE: ANIMATION", 10, 10, 30, RAYWHITE);
 			break;
 	}
 }
+
+// loop over the rendertargets for each window and draw the textures to the screen.
+//void DrawWindowRenderTextures(const ActiveContext& context) {
+//	DrawTexturePro(context.renderContext.renderTarget.texture, 
+//		context.renderContext.window.rect,
+//		(Rectangle){0, 0, (float)context.screenWidth, (float)context.screenHeight},
+//	(Vector2){0, 0},
+//	//(context.renderContext.window.rect.width * context.renderContext.window.rect.height) / (float)(context.screenWidth * context.screenHeight),
+//	0.0,
+//	WHITE);
+//	//DrawTexture(renderContext.renderTarget.texture, renderContext.window.topLeftX, renderContext.window.topLeftY, WHITE);
+//}

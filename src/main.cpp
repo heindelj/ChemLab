@@ -15,9 +15,8 @@ int main(int argc, char** argv)
     {
         if (!context.lockCamera)
             UpdateCamera3D(context);
-        BeginDrawing();
-            DoFrame(context);
-        EndDrawing();
+        
+        DoFrame(context);
     }
 
     CloseWindow();

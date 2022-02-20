@@ -22,6 +22,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <stdlib.h>
+#include <cmath>
 
 // external
 #include "raylib.h"
@@ -53,14 +54,15 @@
 #include "external/tinyfiledialogs.c"
 
 // utilities, camera, rendering, IO, ... the actual code
-#include "render/render_frame.h"
+#include "render/drawing_window.h"
+#include "render/draw.h"
 #include "render/camera.h"
 #include "utils/interact.h"
 
 // modes
 #include "core/change_state.h"
 #include "render/view_mode.h"
-#include "render/edit_mode.h"
+#include "render/build_mode.h"
 #include "render/animation_mode.h"
 
 // handling things independent of mode

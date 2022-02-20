@@ -12,9 +12,10 @@ CMakeFiles/ChemLab.dir/src/main.cpp.o
  /home/heindelj/dev/c++_projects/ChemLab/src/main.cpp
  /home/heindelj/dev/c++_projects/ChemLab/src/render/animation_mode.h
  /home/heindelj/dev/c++_projects/ChemLab/src/render/camera.h
+ /home/heindelj/dev/c++_projects/ChemLab/src/render/draw.h
+ /home/heindelj/dev/c++_projects/ChemLab/src/render/drawing_window.h
  /home/heindelj/dev/c++_projects/ChemLab/src/render/edit_mode.h
  /home/heindelj/dev/c++_projects/ChemLab/src/render/globals.h
- /home/heindelj/dev/c++_projects/ChemLab/src/render/render_frame.h
  /home/heindelj/dev/c++_projects/ChemLab/src/render/ui.h
  /home/heindelj/dev/c++_projects/ChemLab/src/render/view_mode.h
  /home/heindelj/dev/c++_projects/ChemLab/src/utils/atomic_data.h

@@ -46,7 +46,6 @@ void main()
     vec3 viewD = normalize(viewPos - fragPosition);
     vec3 specular = vec3(0.0);
 
-    // NOTE: Implement here your fragment shader code
 
     for (int i = 0; i < MAX_LIGHTS; i++)
     {

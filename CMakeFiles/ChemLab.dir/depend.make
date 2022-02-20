@@ -11,9 +11,10 @@ CMakeFiles/ChemLab.dir/src/main.cpp.o: src/external/tinyfiledialogs.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/main.cpp
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/animation_mode.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/camera.h
+CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/draw.h
+CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/drawing_window.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/edit_mode.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/globals.h
-CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/render_frame.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/ui.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/render/view_mode.h
 CMakeFiles/ChemLab.dir/src/main.cpp.o: src/utils/atomic_data.h

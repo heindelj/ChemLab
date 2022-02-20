@@ -1,5 +1,9 @@
 #pragma once
 
+// Apparently all of these numbers need to be gamma corrected (raised to 2.2) in
+// order for the colors to match with the ones from other visualization programs.
+// Probably just make it an option cause I actually think the gamma-uncorrected values
+// look better...
 std::map<std::string, Color> atomColors = {
 	{"H",  Color(255,255,255,255)},
 	{"He", Color(217,255,255,255)},

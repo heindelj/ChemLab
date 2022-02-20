@@ -7,7 +7,7 @@ enum RenderStyle {
 
 enum InteractionMode {
 	VIEW = 0,
-	EDIT = 1,
+	BUILD = 1,
 	ANIMATION = 2,
 	NUMBER_OF_MODES = 3 
 	// NOTE THAT THIS ^^^ IS THE NUMBER OF VALID MODES 
@@ -25,6 +25,7 @@ enum SelectionStep {
 // and geometry editing in a manner that is independent of the style with which we draw the molecule.
 struct MolecularModel
 {
+	Matrix modelTransform; // a transform applied to every mesh in the model uniformly. Used for translating and scaling an entire model.
 	std::vector<Matrix> transforms;
 	std::vector<Material> materials;
 	std::vector<std::vector<int>> stickIndices; // indices of material for each stick for a given sphere index. Can have empty lists. Only used for ball and stick currently.
@@ -112,14 +113,21 @@ struct UISettings {
 	float colorPickerAlpha;
 };
 
+struct Window {
+	int modelID; // The frame number that will be drawn into this window.
+	Rectangle rect;
+};
+
 struct RenderContext {
 	Camera3D camera;
+	Window* window;
+	RenderTexture2D renderTarget; // all drawing happens into this render texture
+
 	Color backgroundColor;
-
+	
 	Shader outlineShader;
-	RenderTexture2D renderTarget;
-
 	Shader lightingShader;
+
 	MolecularModel* model;
 	Light light;
 };
@@ -127,6 +135,8 @@ struct RenderContext {
 struct ActiveContext {
 	int screenWidth;
     int screenHeight;
+
+    std::vector<Window> windows;
 
     std::vector<std::thread> computeThreads;
 

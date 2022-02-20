@@ -5,8 +5,8 @@ void DrawModeUI(ActiveContext& context) {
 		case VIEW:
 			DrawViewUI(context);
 			break;
-		case EDIT:
-			//DrawEditUI(context); // TODO
+		case BUILD:
+			//DrawBuildUI(context); // TODO
 			break;
 		case ANIMATION:
 			DrawAnimationUI(context);

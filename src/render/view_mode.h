@@ -314,7 +314,10 @@ void HandleSelections(MolecularModel& model, ActiveContext& context) {
 }
 
 void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
-
+	/////////////////////////////
+	// Begin drawing functions //
+	/////////////////////////////
+	ClearBackground(context.renderContext.backgroundColor);
 	BeginMode3D(context.renderContext.camera);
 		model.DrawHighlighted(context.atomsToHighlight);
 	    model.Draw();
@@ -326,7 +329,13 @@ void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
 	// Check that we arent clicking on the UI
 	if ((context.drawUI == false) || GetMouseX() > (context.uiSettings.menuWidth + context.uiSettings.borderWidth))
 		HandleSelections(model, context);
-	
+	///////////////////////////
+	// End drawing functions //
+	///////////////////////////
+
+	///////////////////////////
+	// Non-drawing functions //
+	///////////////////////////
 	if (context.isRotating)
 		RotateAroundWorldUp(context);
 	if (context.isCyclingAllFrames && (GetTime() - context.timeOfLastFrameChange) > context.timeBetweenFrameChanges) {
