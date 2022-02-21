@@ -7,7 +7,7 @@ Camera3D GetCameraWithGoodDefaultPosition(const std::vector<Vector3>& xyz) {
 	camera.projection = CAMERA_PERSPECTIVE;
 	
 	camera.target = centroid(xyz);
-	camera.position = camera.target - (Vector3){ 10.0f, 0.0f, 10.0f };
+	camera.position = camera.target - (Vector3){ 0.0f, 0.0f, 15.0f };
 	return camera;
 }
 
@@ -106,6 +106,9 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 
 	// build mode
 	context.addingNewAtoms = false;
+
+	// miscellaneous
+	context.gridModel = LoadModelFromMesh(GenMeshPlane(10, 10, 10, 10));
 
 	return context;
 }

@@ -27,6 +27,12 @@ void AddAtom(ActiveContext& context, const std::string& newAtomLabel, const Vect
 		);
 }
 
+void StopAddingAtoms(ActiveContext& context) {
+	context.addingNewAtoms = false;
+	context.lockCamera = false;
+	context.indicesBeingAdded.clear();
+}
+
 void DrawBuildUI(ActiveContext& context) {
 
 	// Draw text label for settings
@@ -41,11 +47,17 @@ void DrawBuildUI(ActiveContext& context) {
 		NewFrame(context);
 	}
 	if(GuiButton((Rectangle){ context.uiSettings.menuWidth / 2 - (float)MeasureText("ADD ATOM", 12) / 2, 120, (float)MeasureText("ADD ATOM", 12), 30.0f}, "ADD ATOM")) {
+		debug(context.addingNewAtoms);
 		if (!context.addingNewAtoms) {
-		context.addingNewAtoms = true;
-		AddAtom(context, "H", (Vector3){0,0,0});
-		} else { // delete the atom that the user decided not to add.
-
+			context.addingNewAtoms = true;
+			AddAtom(context, "H", (Vector3){0,0,0});
+			context.lockCamera = true;
+	
+			// Set the mouse at the center of the screen so you are immediately moving the atom where you want it to go.
+			SetMousePosition(context.screenWidth / 2, context.screenHeight / 2);
+		} else {
+			// TODO: Also delete the atom that was added already
+			StopAddingAtoms(context);
 		}
 	}
 }
@@ -57,21 +69,25 @@ void BuildModeFrame(ActiveContext& context) {
 	    context.renderContext.model->Draw();
 	    if (context.drawGrid)
 	    	DrawGrid(10, 1.0f);
-	EndMode3D();
-	debug(context.addingNewAtoms);
+	
 	if(context.addingNewAtoms) {
 		// Currently this is working except I need to add ray-plane intersection with the plane I want to move
 		// the atom in. I have to implement this myself I think which should be easy. Then, I can move the 
 		// atom on that plane and place it as I please.
 		// Or maybe we just move along the camera right vector???
+		Vector3 cameraRight = cross(normalize(context.renderContext.camera.target - context.renderContext.camera.position), context.renderContext.camera.up);
+		DrawPlane(context.gridModel, context.renderContext.camera.position - context.renderContext.camera.target, context.renderContext.camera.target);
+		RayCollision hitInfo = GetRayCollisionModel(GetMouseRay(GetMousePosition(), context.renderContext.camera), context.gridModel);
+
 		for (auto it = context.indicesBeingAdded.begin(); it != context.indicesBeingAdded.end(); ++it) {
-			Vector2 mouseDelta = GetMouseDelta();
-			context.frames->atoms[context.activeFrame].xyz[*it] += (Vector3){mouseDelta.x/10, mouseDelta.y/10, 0.0f};
+			if (hitInfo.hit)
+				context.frames->atoms[context.activeFrame].xyz[*it] = hitInfo.point;
 		}
 		OnAtomMove(context.frames->atoms[context.activeFrame], context.indicesBeingAdded, *context.renderContext.model);
-		if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-			context.addingNewAtoms = false;
+		if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && GetMouseX() > (context.uiSettings.menuWidth + context.uiSettings.borderWidth)) {
+			StopAddingAtoms(context);
 			// TODO: Remove the opacity from the material on the atom that was just placed.
 		}
 	}
+	EndMode3D();
 }

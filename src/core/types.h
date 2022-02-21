@@ -178,4 +178,7 @@ struct ActiveContext {
 	bool exportRotation;
 	bool exportAllFrames;
 	bool takeScreenshot;
+
+	// miscellaneous
+	Model gridModel;
 };

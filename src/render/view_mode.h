@@ -329,6 +329,7 @@ void ViewModeFrame(ActiveContext& context) {
 	// Check that we arent clicking on the UI
 	if ((context.drawUI == false) || GetMouseX() > (context.uiSettings.menuWidth + context.uiSettings.borderWidth))
 		HandleSelections(*context.renderContext.model, context);
+
 	///////////////////////////
 	// End drawing functions //
 	///////////////////////////

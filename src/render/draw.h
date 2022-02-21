@@ -124,6 +124,16 @@ void SticksModel::DrawHighlighted(const std::set<int>& indices) {
 	rlEnableDepthMask();
 }
 
+// PLANE MESH //
+void DrawPlane(Model& gridModel, const Vector3& normal, const Vector3& point) {
+	rlDisableBackfaceCulling();
+	// a plane is defined by a normal vector and a point on the plane.
+	gridModel.transform = MatrixTranslate(point) * MatrixAlignToAxis((Vector3){0,1,0}, normalize(normal));
+
+	DrawModelWires(gridModel, Vector3Zero(), 1.0f, WHITE);
+	rlEnableBackfaceCulling();
+}
+
 //////////////////////////////////
 ////// LINE DRAWING METHODS //////
 //////////////////////////////////
