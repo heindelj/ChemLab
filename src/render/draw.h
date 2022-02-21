@@ -23,6 +23,22 @@ void OnWindowResize(ActiveContext& context) {
 	}
 }
 
+void OnHideUI(ActiveContext& context) {
+	context.drawUI = !context.drawUI;
+
+	// TODO: Eventually I'll figure out how to translate and scale the model to fill a portion of the screen.
+	// This will be needed to allow split screens and all that.
+
+	//// loop through render contexts and model transforms to fit in their resized windows.
+	//Vector2 windowCenter = RectangleCenter(context.windows[0].rect);
+	////float fractionOfScreenArea = AspectRatio(context.windows[0].rect) / (context.screenWidth / context.screenHeight);
+	//Vector3 cameraForward = normalize(context.renderContext.camera.target - context.renderContext.camera.position);
+	//Vector3 cameraRight = cross(cameraForward, context.renderContext.camera.up);
+	//float aspectRatio = context.screenWidth / context.screenHeight;
+	//Matrix perspective = MatrixPerspective(context.renderContext.camera.fovy, aspectRatio, 0.1, 100.0); // not sure what near and far clipping planes really are.
+	//context.renderContext.model->modelTransform = MatrixTranslate(cameraRight);
+}
+
 void UpdateLighting(RenderContext& renderContext) {
 	SetShaderValue(renderContext.lightingShader, renderContext.lightingShader.locs[SHADER_LOC_VECTOR_VIEW], &renderContext.camera.position.x, SHADER_UNIFORM_VEC3);
 	renderContext.light.position = renderContext.camera.position;
@@ -40,10 +56,10 @@ void BallAndStickModel::Draw() {
 	// ColorAlpha(this->materials[i].maps[MATERIAL_MAP_DIFFUSE].color, 0.3f);
 	
 	for(int i = 0; i < this->numSpheres; i++) {
-		DrawMesh(this->sphereMesh, this->materials[i], this->transforms[i]);
+		DrawMesh(this->sphereMesh, this->materials[i], this->transforms[i] * this->modelTransform);
 	}
 	for(int i = this->numSpheres; i < (this->numSpheres + this->numSticks); i++) {
-		DrawMesh(this->stickMesh, this->materials[i], this->transforms[i]);
+		DrawMesh(this->stickMesh, this->materials[i], this->transforms[i] * this->modelTransform);
 	}
 }
 

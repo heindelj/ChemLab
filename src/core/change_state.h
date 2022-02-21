@@ -1,11 +1,21 @@
 #pragma once
 
+void OnAtomMove(Atoms& atoms, std::vector<int> updatedIndices, MolecularModel& model) {
+	// Recalculate bonds and update transforms appropriately
+	// SPEED: only need to recalculate for atoms that moved!
+	atoms.covalentBondList = MakeCovalentBondList(atoms);
+
+	// Update model transforms
+	for (auto it = updatedIndices.begin(); it != updatedIndices.end(); ++it)
+		UpdateTransformPosition(model.transforms[*it], atoms.xyz[*it]);
+}
+
 void ResetViewSelection(ActiveContext& context) {
 	context.selectionStep = NONE;
 	context.viewSelection.fill(-1);
 }
 
-inline void OnFrameChange(ActiveContext& context) {
+void OnFrameChange(ActiveContext& context) {
 	// Free the previous model
 	context.renderContext.model->free();
 
@@ -23,7 +33,7 @@ inline void OnAnimationModeStart(ActiveContext& context) {
 void CheckForAndHandleFrameChange(ActiveContext& context) {
 	// Handle switching active frame on key press
 	if (IsKeyPressed(KEY_RIGHT)) {
-		if ((context.activeFrame + 1) < context.numFrames) {
+		if ((context.activeFrame + 1) < context.frames->nframes) {
 			context.activeFrame += 1;
 			OnFrameChange(context);
 		}

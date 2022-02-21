@@ -11,8 +11,10 @@ void RotateAroundWorldUp(ActiveContext& context) {
 bool rotateAroundTargetView(Camera3D& camera, Vector3 target) {
     Vector2 mouseDelta = GetMouseDelta();
 
-    if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
-
+    // The check at the end for magnitude is a hack to remove a bug where sometimes on the very first change of
+    // mouse position, GetMouseDelta() will return an incorrect and large result. I'm not sure if it's a bug in
+    // raylib or what?
+    if ((mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) && abs(mouseDelta.x) < 100 && abs(mouseDelta.y) < 100) {
 	    Matrix V = MatrixLookAt(camera.position, camera.target, camera.up);
 	    Vector3 pivot = ToVector3(V * (Vector4){target.x, target.y, target.z, 1.0f});
 	    Vector3 axis  = (Vector3){mouseDelta.y, mouseDelta.x, 0.0f};

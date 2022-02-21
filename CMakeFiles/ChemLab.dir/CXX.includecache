@@ -95,8 +95,8 @@ core/change_state.h
 /home/heindelj/dev/c++_projects/ChemLab/src/core/change_state.h
 render/view_mode.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/view_mode.h
-render/edit_mode.h
-/home/heindelj/dev/c++_projects/ChemLab/src/render/edit_mode.h
+render/build_mode.h
+/home/heindelj/dev/c++_projects/ChemLab/src/render/build_mode.h
 render/animation_mode.h
 /home/heindelj/dev/c++_projects/ChemLab/src/render/animation_mode.h
 render/ui.h
@@ -156,13 +156,13 @@ chemlab.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/render/animation_mode.h
 
+/home/heindelj/dev/c++_projects/ChemLab/src/render/build_mode.h
+
 /home/heindelj/dev/c++_projects/ChemLab/src/render/camera.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/render/draw.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/render/drawing_window.h
-
-/home/heindelj/dev/c++_projects/ChemLab/src/render/edit_mode.h
 
 /home/heindelj/dev/c++_projects/ChemLab/src/render/globals.h
 

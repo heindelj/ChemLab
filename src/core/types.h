@@ -26,7 +26,7 @@ enum SelectionStep {
 struct MolecularModel
 {
 	Matrix modelTransform; // a transform applied to every mesh in the model uniformly. Used for translating and scaling an entire model.
-	std::vector<Matrix> transforms;
+	std::vector<Matrix> transforms; // Note that atom indices and transform indices are and MUST be the same.
 	std::vector<Material> materials;
 	std::vector<std::vector<int>> stickIndices; // indices of material for each stick for a given sphere index. Can have empty lists. Only used for ball and stick currently.
 
@@ -120,8 +120,8 @@ struct Window {
 
 struct RenderContext {
 	Camera3D camera;
-	Window* window;
-	RenderTexture2D renderTarget; // all drawing happens into this render texture
+	int windowID;
+	RenderTexture2D renderTarget;
 
 	Color backgroundColor;
 	
@@ -141,7 +141,6 @@ struct ActiveContext {
     std::vector<std::thread> computeThreads;
 
     // Frame variables
-	uint32_t numFrames;
 	uint32_t activeFrame;
 	Frames* frames;
 	
@@ -170,6 +169,10 @@ struct ActiveContext {
 	bool monitorFileChanges;
 	float timeBetweenFrameChanges;
 	double timeOfLastFrameChange;
+
+	// build mode variables
+	bool addingNewAtoms;
+	std::vector<int> indicesBeingAdded;
 
 	// Animation mode variables
 	bool exportRotation;

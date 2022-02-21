@@ -99,9 +99,9 @@ std::vector<Image> DrawAllFramesToRenderTextures(ActiveContext& context, int wid
 	int originalFrame = context.activeFrame;
 
 	std::vector<Image> renderedAnimationFrames;
-	renderedAnimationFrames.reserve(context.numFrames);
+	renderedAnimationFrames.reserve(context.frames->nframes);
 
-	for (int i = 0; i < context.numFrames; i++) {
+	for (int i = 0; i < context.frames->nframes; i++) {
 		context.activeFrame = i;
 		OnFrameChange(context);
 		renderedAnimationFrames.push_back(DrawToRenderTexture(context.renderContext, width, height));

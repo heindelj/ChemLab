@@ -15,20 +15,20 @@ void DoFrame(ActiveContext& context) {
 	BeginDrawing();
 		switch(context.mode) {
 			case VIEW:
-				ViewModeFrame(*context.renderContext.model, context);
+				ViewModeFrame(context);
 				break;
-			case EDIT:
-				EditModeFrame(*context.renderContext.model, context);
+			case BUILD:
+				BuildModeFrame(context);
 				break;
 			case ANIMATION:
 				AnimationModeFrame(*context.renderContext.model, context);
 				break;
 		}
 		if (context.drawUI) {
-			DrawSettingsPanel(context);
+			DrawUI(context);
 		} else {
 			DrawActiveMode(context.mode);
-			DrawText((std::to_string(context.activeFrame + 1) + "/" + std::to_string(context.numFrames)).c_str(), 15, context.screenHeight - 40, 30, RAYWHITE);
+			DrawText((std::to_string(context.activeFrame + 1) + "/" + std::to_string(context.frames->nframes)).c_str(), 15, context.screenHeight - 40, 30, RAYWHITE);
 		}
 	EndDrawing();
 	
@@ -40,11 +40,10 @@ void DoFrame(ActiveContext& context) {
 	if (IsKeyPressed(KEY_M))
 		context.mode == static_cast<InteractionMode>(static_cast<int>(NUMBER_OF_MODES) - 1) ? context.mode = static_cast<InteractionMode>(0) : context.mode = static_cast<InteractionMode>(static_cast<int>(context.mode) + 1);
 
-	if (IsKeyPressed(KEY_H))
-		context.drawUI = !context.drawUI;
-
 	if (IsKeyPressed(KEY_G))
 		context.drawGrid = !context.drawGrid;
-
+	if (IsKeyPressed(KEY_H))
+		OnHideUI(context);
+	
 	OnWindowResize(context);
 }

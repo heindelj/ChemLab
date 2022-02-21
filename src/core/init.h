@@ -46,11 +46,11 @@ RenderContext InitRenderContext(const Atoms& atoms, Window* window) {
 	RenderContext renderContext;
 
 	renderContext.camera = GetCameraWithGoodDefaultPosition(atoms.xyz);
-	renderContext.window = window;
+	renderContext.windowID = 0;
 	renderContext.backgroundColor = Color(30, 30, 30, 255);
 
-	renderContext.outlineShader = InitOutlineShader(renderContext.window->rect.width, renderContext.window->rect.height);
-	renderContext.renderTarget  = LoadRenderTexture(renderContext.window->rect.width, renderContext.window->rect.height);
+	renderContext.outlineShader = InitOutlineShader(window->rect.width, window->rect.height);
+	renderContext.renderTarget  = LoadRenderTexture(window->rect.width, window->rect.height);
 
 	renderContext.lightingShader = InitLightingShader();
 	renderContext.model = MolecularModelFromAtoms(atoms, &renderContext.lightingShader, BALL_AND_STICK);
@@ -85,7 +85,6 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 	context.lockCamera = false;
 	
 	context.activeFrame = 0;
-	context.numFrames = frames.nframes;
 
 	context.lineWidth = 3.0f;
 	context.timeOfLastClick = 0.0;
@@ -93,6 +92,7 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 	context.selectionStep = NONE;
 
 	float xPosScale = ((float)(context.screenWidth - 40) - 55.0f) / context.screenWidth;
+	// view mode
 	context.isRotating = false;
 	context.isCyclingAllFrames = false;
 	context.monitorFileChanges = false;
@@ -103,6 +103,9 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 	context.exportRotation = false;
 	context.exportAllFrames = false;
 	context.takeScreenshot = false;
+
+	// build mode
+	context.addingNewAtoms = false;
 
 	return context;
 }

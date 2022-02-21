@@ -313,22 +313,22 @@ void HandleSelections(MolecularModel& model, ActiveContext& context) {
 	}
 }
 
-void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
+void ViewModeFrame(ActiveContext& context) {
 	/////////////////////////////
 	// Begin drawing functions //
 	/////////////////////////////
 	ClearBackground(context.renderContext.backgroundColor);
 	BeginMode3D(context.renderContext.camera);
-		model.DrawHighlighted(context.atomsToHighlight);
-	    model.Draw();
+		context.renderContext.model->DrawHighlighted(context.atomsToHighlight);
+	    context.renderContext.model->Draw();
 	    if (context.drawGrid)
 	    	DrawGrid(10, 1.0f);
 	EndMode3D();
-	DrawPermanentSelections(model, context);
+	DrawPermanentSelections(*context.renderContext.model, context);
 
 	// Check that we arent clicking on the UI
 	if ((context.drawUI == false) || GetMouseX() > (context.uiSettings.menuWidth + context.uiSettings.borderWidth))
-		HandleSelections(model, context);
+		HandleSelections(*context.renderContext.model, context);
 	///////////////////////////
 	// End drawing functions //
 	///////////////////////////
@@ -340,7 +340,7 @@ void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
 		RotateAroundWorldUp(context);
 	if (context.isCyclingAllFrames && (GetTime() - context.timeOfLastFrameChange) > context.timeBetweenFrameChanges) {
 		context.timeOfLastFrameChange = context.timeOfLastFrameChange + (GetTime() - context.timeOfLastFrameChange);
-		(context.activeFrame < context.numFrames - 1) ? context.activeFrame += 1 : context.activeFrame = 0;
+		(context.activeFrame < context.frames->nframes - 1) ? context.activeFrame += 1 : context.activeFrame = 0;
 		OnFrameChange(context);
 	}
 	if (context.takeScreenshot) {
@@ -353,8 +353,7 @@ void ViewModeFrame(MolecularModel& model, ActiveContext& context) {
 	if (didUpdate) {
 		// can do other things here too like manage playing back at a fixed frame rate
 		// rather than just jumping to the newest frame.
-		context.numFrames = context.frames->nframes;
-		context.activeFrame = context.numFrames - 1;
+		context.activeFrame = context.frames->nframes - 1;
 		OnFrameChange(context);
 	}
 }

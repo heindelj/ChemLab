@@ -14,6 +14,7 @@ BallAndStickModel* BallAndStickModelFromAtoms(const Atoms& atoms, Shader* shader
 	model->stickIndices.resize(atoms.natoms); // ensure we have an index for every atom
 
 	model->transforms.reserve(model->numSpheres + model->numSticks);
+	model->modelTransform = MatrixIdentity();
 	// Get the sphere transforms and materials
 	for (int i = 0; i < atoms.natoms; i++) {
 		model->transforms.push_back(MatrixScale(atoms.renderData[i].vdwRadius * g_ballScale) * MatrixTranslate(atoms.xyz[i]));
@@ -173,7 +174,7 @@ Frames readXYZ(const std::string& file)
 				coordinates.push_back((Vector3){x, y, z});
 			}
 			atoms.xyz = coordinates;
-			atoms.covalentBondList = makeCovalentBondList(atoms);
+			atoms.covalentBondList = MakeCovalentBondList(atoms);
 			frames.push_back(atoms);
 		}
 	}

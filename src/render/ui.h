@@ -6,7 +6,7 @@ void DrawModeUI(ActiveContext& context) {
 			DrawViewUI(context);
 			break;
 		case BUILD:
-			//DrawBuildUI(context); // TODO
+			DrawBuildUI(context); // TODO
 			break;
 		case ANIMATION:
 			DrawAnimationUI(context);
@@ -21,10 +21,10 @@ void DrawModeUI(ActiveContext& context) {
 void CheckForAndHandleModeChange(ActiveContext& context) {
 	float sliderHeight = 20;
 	Rectangle comboBoxRect = (Rectangle){ context.uiSettings.menuWidth / 2 - context.uiSettings.menuWidth * 0.3f, 2 * context.uiSettings.borderWidth, context.uiSettings.menuWidth * 0.6f, sliderHeight * 1.5f };
-	context.mode = static_cast<InteractionMode>(GuiComboBox(comboBoxRect, "VIEW;EDIT;ANIMATION", static_cast<int>(context.mode)));
+	context.mode = static_cast<InteractionMode>(GuiComboBox(comboBoxRect, "VIEW;BUILD;ANIMATION", static_cast<int>(context.mode)));
 }
 
-void DrawSettingsPanel(ActiveContext& context) {
+void DrawUI(ActiveContext& context) {
 	float center = context.screenWidth / 10.0f;
 	// Draw menu background
     DrawRectangle(0, 0, context.uiSettings.menuWidth + 2 * context.uiSettings.borderWidth, context.screenHeight, VIOLET); // Border rectangle
@@ -37,5 +37,5 @@ void DrawSettingsPanel(ActiveContext& context) {
 	DrawModeUI(context);
 
 	// Draw frame number
-	DrawText((std::to_string(context.activeFrame + 1) + "/" + std::to_string(context.numFrames)).c_str(), 15, context.screenHeight - 40, 30, BLACK);
+	DrawText((std::to_string(context.activeFrame + 1) + "/" + std::to_string(context.frames->nframes)).c_str(), 15, context.screenHeight - 40, 30, BLACK);
 }

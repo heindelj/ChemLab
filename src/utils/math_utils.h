@@ -206,6 +206,12 @@ float norm(float x, float y, float z) {
 
 // See: https://math.stackexchange.com/questions/237369/given-this-transformation-matrix-how-do-i-decompose-it-into-translation-rotati/3554913
 
+void UpdateTransformPosition(Matrix& m, const Vector3& v) {
+	m.m12 = v.x;
+	m.m13 = v.y;
+	m.m14 = v.z;
+}
+
 Vector3 PositionVectorFromTransform(const Matrix& m) {
 	return (Vector3){m.m12, m.m13, m.m14};
 }
@@ -247,6 +253,14 @@ Vector3 centroid(std::vector<Vector3> points) {
 		centroid += point;
 	centroid /= (float)points.size();
 	return centroid;
+}
+
+inline Vector2 RectangleCenter(const Rectangle& rect) {
+	return (Vector2){rect.x + rect.width / 2, rect.y + rect.height / 2};
+}
+
+inline float AspectRatio(const Rectangle& rect) {
+	return rect.width / rect.height;
 }
 
 // See: https://math.stackexchange.com/questions/878785/how-to-find-an-angle-in-range0-360-between-2-vectors

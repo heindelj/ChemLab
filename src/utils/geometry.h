@@ -1,6 +1,6 @@
 #pragma once
 
-BondList makeCovalentBondList(const Atoms& atoms) {
+BondList MakeCovalentBondList(const Atoms& atoms) {
 	// Determines if two atoms are covalently bonded based on
 	// their covalent radii. Currently implement just Eq. (1) from
 	// the below paper.
