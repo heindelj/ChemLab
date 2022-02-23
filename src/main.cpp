@@ -13,9 +13,9 @@ int main(int argc, char** argv)
 
     while (!WindowShouldClose())
     {
-        debug(context.renderContext.camera.up);
         if (!context.lockCamera)
             UpdateCamera3D(context);
+        
         DoFrame(context);
     }
 

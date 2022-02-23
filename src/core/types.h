@@ -21,6 +21,15 @@ enum SelectionStep {
 	DIHEDRAL
 };
 
+struct ZMatrix {
+	Matrix transform; // encodes centroid position and rotational orientation of all atoms
+	std::vector<std::array<float,3>> coordinates; // stores distance (angstrom), angle (radians), and dihedral (radians)
+	std::vector<std::array<int, 3>> coordinateIndices;
+	// ^^^^ MUST BE THE SAME LENGTH AS COORDINATES ^^^^
+	// stores which atom the coordinates are relative to. 
+	// e.g. 1,2,3 would mean the distance is relative to atom index 1, angle to atom index 2, etc.
+};
+
 // Having a base MolecularModel class makes it easier to do things like hit detection
 // and geometry editing in a manner that is independent of the style with which we draw the molecule.
 struct MolecularModel
@@ -173,6 +182,15 @@ struct ActiveContext {
 	// build mode variables
 	bool addingNewAtoms;
 	std::vector<int> indicesBeingAdded;
+	bool buildingZMatrix;
+	ZMatrix* zmat;
+	bool spinnerEditMode;
+	int spinnerValue1;
+	int spinnerValue2;
+	int spinnerValue3;
+	float distanceSliderValue;
+	float angleSliderValue;
+	float dihedralSliderValue;
 
 	// Animation mode variables
 	bool exportRotation;

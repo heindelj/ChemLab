@@ -106,6 +106,14 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 
 	// build mode
 	context.addingNewAtoms = false;
+	context.buildingZMatrix = false;
+	context.spinnerEditMode = false;
+	context.spinnerValue1 = 0;
+	context.spinnerValue2 = 0;
+	context.spinnerValue3 = 0;
+	context.distanceSliderValue = 1.0f;
+	context.angleSliderValue = 0.0f;
+	context.dihedralSliderValue = 0.0f;
 
 	// miscellaneous
 	context.gridModel = LoadModelFromMesh(GenMeshPlane(10, 10, 10, 10));
