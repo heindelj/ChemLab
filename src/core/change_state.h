@@ -10,6 +10,15 @@ void OnAtomMove(Atoms& atoms, std::vector<int> updatedIndices, MolecularModel& m
 		UpdateTransformPosition(model.transforms[*it], atoms.xyz[*it]);
 }
 
+void OnAtomMove(Atoms& atoms, int index, MolecularModel& model) {
+	// Recalculate bonds and update transforms appropriately
+	// SPEED: only need to recalculate for atoms that moved!
+	atoms.covalentBondList = MakeCovalentBondList(atoms);
+
+	// Update model transforms
+	UpdateTransformPosition(model.transforms[index], atoms.xyz[index]);
+}
+
 void ResetViewSelection(ActiveContext& context) {
 	context.selectionStep = NONE;
 	context.viewSelection.fill(-1);

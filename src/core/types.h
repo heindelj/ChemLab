@@ -185,9 +185,9 @@ struct ActiveContext {
 	bool buildingZMatrix;
 	ZMatrix* zmat;
 	bool spinnerEditMode;
-	int spinnerValue1;
-	int spinnerValue2;
-	int spinnerValue3;
+	int distanceIndex;
+	int angleIndex;
+	int dihedralIndex;
 	float distanceSliderValue;
 	float angleSliderValue;
 	float dihedralSliderValue;
