@@ -41,13 +41,14 @@ void InvertSelection(ActiveContext& context) {
 }
 
 void SetHighlightedAtomColor(ActiveContext& context) {
-	for(auto itAtom = context.atomsToHighlight.begin(); itAtom != context.atomsToHighlight.end(); ++itAtom) {
-		context.renderContext.model->materials[*itAtom].maps[MATERIAL_MAP_DIFFUSE].color = context.uiSettings.colorPickerValue;
-		if (context.style == BALL_AND_STICK) {
-			for(auto itStick = context.renderContext.model->stickIndices[*itAtom].begin(); itStick != context.renderContext.model->stickIndices[*itAtom].end(); ++itStick)
-				context.renderContext.model->materials[*itStick].maps[MATERIAL_MAP_DIFFUSE].color = context.uiSettings.colorPickerValue;
-		}
-	}
+	UpdateMaterials(context.uiSettings.colorPickerValue, context.atomsToHighlight, *context.renderContext.model);
+	//for(auto itAtom = context.atomsToHighlight.begin(); itAtom != context.atomsToHighlight.end(); ++itAtom) {
+	//	context.renderContext.model->materials[*itAtom].maps[MATERIAL_MAP_DIFFUSE].color = context.uiSettings.colorPickerValue;
+	//	if (context.style == BALL_AND_STICK) {
+	//		for(auto itStick = context.renderContext.model->stickIndices[*itAtom].begin(); itStick != context.renderContext.model->stickIndices[*itAtom].end(); ++itStick)
+	//			context.renderContext.model->materials[*itStick].maps[MATERIAL_MAP_DIFFUSE].color = context.uiSettings.colorPickerValue;
+	//	}
+	//}
 }
 
 void SetHighlightedAtomAlpha(ActiveContext& context) {
@@ -82,7 +83,7 @@ void DrawViewUI(ActiveContext& context) {
 	context.uiSettings.colorPickerValue = GuiColorPicker((Rectangle){ 5 * context.uiSettings.borderWidth, 50, context.uiSettings.menuWidth * 0.8f, context.uiSettings.menuWidth * 0.8f}, NULL, context.uiSettings.colorPickerValue);
 	context.uiSettings.colorPickerAlpha = GuiColorBarAlpha((Rectangle){ 5 * context.uiSettings.borderWidth, 280, context.uiSettings.menuWidth * 0.8f, 20}, NULL, context.uiSettings.colorPickerAlpha);
 	
-	GuiSetStyle(BUTTON, TEXT_ALIGNMENT, GUI_TEXT_ALIGN_CENTER);
+	GuiSetStyle(BUTTON, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
 	if (GuiButton((Rectangle){ 50, 310, (float)MeasureText("APPLY COLOR", 12), 20}, "APPLY COLOR") && context.atomsToHighlight.size() > 0) {
 		if (context.style == BALL_AND_STICK)
 			SetHighlightedAtomColor(context);
@@ -208,26 +209,35 @@ void DrawPermanentSelections(MolecularModel& model, ActiveContext& context) {
 	// Draw any completed selections we've stored
 	for (int i = 0; i < context.permanentSelection.size(); i++) {
 		if (NumberOfValidIndices(context.permanentSelection[i]) == 2) {
+			EntityIndices indices_1 = model.IDToEntityIndices[context.permanentSelection[i][0]];
+			EntityIndices indices_2 = model.IDToEntityIndices[context.permanentSelection[i][1]];
 			DrawDistanceLineAndText(
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][0]]),
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][1]]),
+				PositionVectorFromTransform(model.transforms[indices_1.materialIndex][indices_1.transformIndex]),
+				PositionVectorFromTransform(model.transforms[indices_2.materialIndex][indices_2.transformIndex]),
 				GREEN,
 				context);
 		}
 		if (NumberOfValidIndices(context.permanentSelection[i]) == 3) {
+			EntityIndices indices_1 = model.IDToEntityIndices[context.permanentSelection[i][0]];
+			EntityIndices indices_2 = model.IDToEntityIndices[context.permanentSelection[i][1]];
+			EntityIndices indices_3 = model.IDToEntityIndices[context.permanentSelection[i][2]];
 			DrawAngleLineAndText(
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][0]]),
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][1]]),
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][2]]),
+				PositionVectorFromTransform(model.transforms[indices_1.materialIndex][indices_1.transformIndex]),
+				PositionVectorFromTransform(model.transforms[indices_2.materialIndex][indices_2.transformIndex]),
+				PositionVectorFromTransform(model.transforms[indices_3.materialIndex][indices_3.transformIndex]),
 				GREEN,
 				context);
 		}
 		if (NumberOfValidIndices(context.permanentSelection[i]) == 4) {
+			EntityIndices indices_1 = model.IDToEntityIndices[context.permanentSelection[i][0]];
+			EntityIndices indices_2 = model.IDToEntityIndices[context.permanentSelection[i][1]];
+			EntityIndices indices_3 = model.IDToEntityIndices[context.permanentSelection[i][2]];
+			EntityIndices indices_4 = model.IDToEntityIndices[context.permanentSelection[i][3]];
 			DrawDihedralLineAndText(
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][0]]),
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][1]]),
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][2]]),
-				PositionVectorFromTransform(model.transforms[context.permanentSelection[i][3]]),
+				PositionVectorFromTransform(model.transforms[indices_1.materialIndex][indices_1.transformIndex]),
+				PositionVectorFromTransform(model.transforms[indices_2.materialIndex][indices_2.transformIndex]),
+				PositionVectorFromTransform(model.transforms[indices_3.materialIndex][indices_3.transformIndex]),
+				PositionVectorFromTransform(model.transforms[indices_4.materialIndex][indices_4.transformIndex]),
 				GREEN,
 				context);
 		}
@@ -246,8 +256,8 @@ void HandleSelections(MolecularModel& model, ActiveContext& context) {
 					context.atomsToHighlight.erase(collisionIndex);
 				} else {
 					context.atomsToHighlight.insert(collisionIndex);
-					// set colorp picker value to highlighted atom
-					context.uiSettings.colorPickerValue = context.renderContext.model->materials[collisionIndex].maps[MATERIAL_MAP_DIFFUSE].color;
+					// set color picker value to highlighted atom
+					context.uiSettings.colorPickerValue = context.renderContext.model->materials[model.IDToEntityIndices[collisionIndex].materialIndex].maps[MATERIAL_MAP_DIFFUSE].color;
 				}
 			} 
 		}
@@ -267,7 +277,7 @@ void HandleSelections(MolecularModel& model, ActiveContext& context) {
 				break;
 		}
 
-		// check for collision with nothing, int collisionIndex
+		// check for collision with nothing
 		if (collisionIndex == -1 && timeSinceClick <= 0.5)
 			context.atomsToHighlight.clear();
 	}
@@ -284,30 +294,34 @@ void HandleSelections(MolecularModel& model, ActiveContext& context) {
 		case NONE :
 			break;
 		case DISTANCE : {
-			DrawDashedLineFromPointToCursor(GetWorldToScreen(PositionVectorFromTransform(model.transforms[context.viewSelection[0]]), context.renderContext.camera), context.lineWidth, YELLOW);
+			EntityIndices indices = model.IDToEntityIndices[context.viewSelection[0]];
+			DrawDashedLineFromPointToCursor(GetWorldToScreen(PositionVectorFromTransform(model.transforms[indices.materialIndex][indices.transformIndex]), context.renderContext.camera), context.lineWidth, YELLOW);
 			break;
 		}
 		case ANGLE : {
-			// Get distance for drawing
+			EntityIndices indices_1 = model.IDToEntityIndices[context.viewSelection[0]];
+			EntityIndices indices_2 = model.IDToEntityIndices[context.viewSelection[1]];
 			DrawDistanceLineAndText(
-				PositionVectorFromTransform(model.transforms[context.viewSelection[0]]), 
-				PositionVectorFromTransform(model.transforms[context.viewSelection[1]]),
+				PositionVectorFromTransform(model.transforms[indices_1.materialIndex][indices_1.transformIndex]), 
+				PositionVectorFromTransform(model.transforms[indices_2.materialIndex][indices_2.transformIndex]),
 				YELLOW,
 				context);
 			
-			DrawDashedLineFromPointToCursor(GetWorldToScreen(PositionVectorFromTransform(model.transforms[context.viewSelection[1]]), context.renderContext.camera), context.lineWidth, YELLOW);
+			DrawDashedLineFromPointToCursor(GetWorldToScreen(PositionVectorFromTransform(model.transforms[indices_2.materialIndex][indices_2.transformIndex]), context.renderContext.camera), context.lineWidth, YELLOW);
 			break;
 		}
 		case DIHEDRAL : {
-			// Get vectors for calculating angle
+			EntityIndices indices_1 = model.IDToEntityIndices[context.viewSelection[0]];
+			EntityIndices indices_2 = model.IDToEntityIndices[context.viewSelection[1]];
+			EntityIndices indices_3 = model.IDToEntityIndices[context.viewSelection[2]];
 			DrawAngleLineAndText(
-				PositionVectorFromTransform(model.transforms[context.viewSelection[0]]), 
-				PositionVectorFromTransform(model.transforms[context.viewSelection[1]]), 
-				PositionVectorFromTransform(model.transforms[context.viewSelection[2]]), 
+				PositionVectorFromTransform(model.transforms[indices_1.materialIndex][indices_1.transformIndex]), 
+				PositionVectorFromTransform(model.transforms[indices_2.materialIndex][indices_2.transformIndex]), 
+				PositionVectorFromTransform(model.transforms[indices_3.materialIndex][indices_3.transformIndex]), 
 				YELLOW,
 				context);
 
-			DrawDashedLineFromPointToCursor(GetWorldToScreen(PositionVectorFromTransform(model.transforms[context.viewSelection[2]]), context.renderContext.camera), context.lineWidth, YELLOW);
+			DrawDashedLineFromPointToCursor(GetWorldToScreen(PositionVectorFromTransform(model.transforms[indices_3.materialIndex][indices_3.transformIndex]), context.renderContext.camera), context.lineWidth, YELLOW);
 			break;
 		}
 	}
@@ -323,12 +337,14 @@ void ViewModeFrame(ActiveContext& context) {
 	    context.renderContext.model->Draw();
 	    if (context.drawGrid)
 	    	DrawGrid(10, 1.0f);
+
 	EndMode3D();
 	DrawPermanentSelections(*context.renderContext.model, context);
 
 	// Check that we arent clicking on the UI
 	if ((context.drawUI == false) || GetMouseX() > (context.uiSettings.menuWidth + context.uiSettings.borderWidth))
 		HandleSelections(*context.renderContext.model, context);
+
 
 	///////////////////////////
 	// End drawing functions //
@@ -352,9 +368,11 @@ void ViewModeFrame(ActiveContext& context) {
 	// check for changes to loaded file
 	bool didUpdate = CheckForFileChangesAndUpdate(context.frames);
 	if (didUpdate) {
-		// can do other things here too like manage playing back at a fixed frame rate
-		// rather than just jumping to the newest frame.
-		context.activeFrame = context.frames->nframes - 1;
+		// TODO: Should have a setting for viewing a trajectory which can be used for playing back
+		// a trajectory in real time vs. the case of editing a specific frame in an xyz file
+		// which is the more common case for me, but may not be for others.
+
+		context.frames->nframes > context.activeFrame ? context.activeFrame = context.activeFrame : context.activeFrame = context.frames->nframes - 1;
 		OnFrameChange(context);
 	}
 }

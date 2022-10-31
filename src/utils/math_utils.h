@@ -51,15 +51,15 @@ inline Vector3 operator-(const Vector3& v1, const Vector3& v2) {
 }
 
 inline void operator+=(Vector3& v1, const Vector3& v2) {
-	v1.x = v1.x + v2.x;
-	v1.y = v1.y + v2.y;
-	v1.z = v1.z + v2.z;
+	v1.x += v2.x;
+	v1.y += v2.y;
+	v1.z += v2.z;
 }
 
 inline void operator-=(Vector3& v1, const Vector3& v2) {
-	v1.x = v1.x - v2.x;
-	v1.y = v1.y - v2.y;
-	v1.z = v1.z - v2.z;
+	v1.x -= v2.x;
+	v1.y -= v2.y;
+	v1.z -= v2.z;
 }
 
 inline Vector3 operator*(const Vector3& v1, const Vector3& v2) {
@@ -96,9 +96,9 @@ inline Vector3 operator/(const Vector3& v1, const T a) {
 
 template<typename T>
 inline void operator/=(Vector3& v1, const T a) {
-	v1.x = v1.x / a;
-	v1.y = v1.y / a;
-	v1.z = v1.z / a;
+	v1.x /= a;
+	v1.y /= a;
+	v1.z /= a;
 }
 
 inline float norm(const Vector3& v) {
@@ -190,7 +190,7 @@ inline Matrix MatrixScale(const float f) {
 
 inline Matrix MatrixAlignToAxis(Vector3 srcAxis, Vector3 targetAxis) {
 	/*
-	Takes srcAxis (probably a eclidean basis vector) and rotates it to align with targetAxis.
+	Takes srcAxis (probably a eclidean basis vector) and returns rotation matrix to align with targetAxis.
 	*/
 	float rotAngle = acosf(dot(srcAxis, targetAxis) / (norm(srcAxis) * norm(targetAxis))); // radians
 	return MatrixRotate(cross(normalize(srcAxis), normalize(targetAxis)), rotAngle);
@@ -252,6 +252,15 @@ Vector3 centroid(std::vector<Vector3> points) {
 	for (auto& point : points)
 		centroid += point;
 	centroid /= (float)points.size();
+	return centroid;
+}
+
+Vector3 centroid(std::vector<Vector3> points, std::set<int> indices) {
+	// centroid only over the indices provided
+	Vector3 centroid = Vector3Zero();
+	for (auto& index : indices)
+		centroid += points[index];
+	centroid /= (float)indices.size();
 	return centroid;
 }
 

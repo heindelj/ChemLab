@@ -3,6 +3,7 @@
 // Define available file changes
 enum class FileStatus {created, modified, erased};
 
+/////// UNUSED! //////
 class FileWatcher {
 public:
     std::string path_to_watch;
@@ -63,7 +64,7 @@ private:
         auto el = paths_.find(key);
         return el != paths_.end();
     }
-};
+}; /////// <------- UNUSED! //////
 
 bool CheckForFileChangesAndUpdate(Frames* frames) {
 	bool didUpdate = false;

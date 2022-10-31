@@ -19,32 +19,34 @@
 #include <utility>
 #include <string>
 #include <algorithm>
-#include <filesystem>
 #include <stdexcept>
+#include <filesystem>
 #include <stdlib.h>
 #include <cmath>
+#include <fmt/format.h>
 
 // external
 #include "raylib.h"
 #include "rlgl.h"
 #include "raymath.h"
+#define RLIGHTS_IMPLEMENTATION
+#include "rlights.h"
 #include "utils/math_utils.h"
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
-#define RLIGHTS_IMPLEMENTATION
-#include "rlights.h"
 
 // core
+#include "render/globals.h"
 #include "core/types.h"
 
 //data
-#include "render/globals.h"
 #include "utils/atomic_data.h"
 #include "utils/geometry.h"
 
 #include "utils/load_and_create.h"
 #include "utils/monitor_file.h"
 #include "core/init.h"
+#include "render/shaders.h"
 
 // debug
 #include "utils/debug.h"

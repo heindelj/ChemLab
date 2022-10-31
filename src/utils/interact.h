@@ -9,7 +9,8 @@ int BallAndStickModel::TestRayAgainst(Ray ray) {
 	// so we should consider using a proper data structure
 	// for this if it becomes a bottleneck
 	for (int i = 0; i < this->numSpheres; i++) {
-		RayCollision collisionInfo = GetRayCollisionMesh(ray, this->sphereMesh, this->transforms[i]); // SPEED: Might be faster to check against sphere since we know these are spheres
+		EntityIndices indices = this->IDToEntityIndices[i];
+		RayCollision collisionInfo = GetRayCollisionMesh(ray, this->sphereMesh, this->transforms[indices.materialIndex][indices.transformIndex]); // SPEED: Might be faster to check against sphere since we know these are spheres
 		// Check if we got a collision and then make sure we don't
 		// overwrite a collision with a closer object
 		if (collisionInfo.hit) {
@@ -34,7 +35,9 @@ int SpheresModel::TestRayAgainst(Ray ray) {
 	// so we should consider using a proper data structure
 	// for this if it becomes a bottleneck
 	for (int i = 0; i < this->numSpheres; i++) {
-		RayCollision collisionInfo = GetRayCollisionMesh(ray, this->sphereMesh, this->transforms[i]); // SPEED: Might be faster to check against sphere since we know these are spheres
+		EntityIndices indices = this->IDToEntityIndices[i];
+		RayCollision collisionInfo = GetRayCollisionMesh(ray, this->sphereMesh,
+		this->transforms[indices.materialIndex][indices.transformIndex]); // SPEED: Might be faster to check against sphere since we know these are spheres
 		// Check if we got a collision and then make sure we don't
 		// overwrite a collision with a closer object
 		if (collisionInfo.hit) {
@@ -59,7 +62,9 @@ int SticksModel::TestRayAgainst(Ray ray) {
 	// so we should consider using a proper data structure
 	// for this if it becomes a bottleneck
 	for (int i = 0; i < this->numSticks; i++) {
-		RayCollision collisionInfo = GetRayCollisionMesh(ray, this->stickMesh, this->transforms[i]);
+		EntityIndices indices = this->IDToEntityIndices[i];
+		RayCollision collisionInfo = GetRayCollisionMesh(ray, this->stickMesh,
+			this->transforms[indices.materialIndex][indices.transformIndex]);
 		// Check if we got a collision and then make sure we don't
 		// overwrite a collision with a closer object
 		if (collisionInfo.hit) {

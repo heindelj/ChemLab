@@ -1,4 +1,4 @@
-#pragma once
+ #pragma once
 
 ///////////////////////////////////////////////////////////////////////////////
 // This file contains most rendering operations we might need to do.	     //
@@ -43,7 +43,10 @@ void UpdateLighting(RenderContext& renderContext) {
 	SetShaderValue(renderContext.lightingShader, renderContext.lightingShader.locs[SHADER_LOC_VECTOR_VIEW], &renderContext.camera.position.x, SHADER_UNIFORM_VEC3);
 	renderContext.light.position = renderContext.camera.position;
 	renderContext.light.target   = renderContext.camera.target;
+	//debug(renderContext.camera.position);
 	UpdateLightValues(renderContext.lightingShader, renderContext.light);
+
+	// HERE: For some reason the stick lighting direction is not being updated.
 }
 
 ///////////////////////////////////
@@ -54,12 +57,18 @@ void UpdateLighting(RenderContext& renderContext) {
 void BallAndStickModel::Draw() {
 	// If you color the alpha of the material, the output will respect the alpha value
 	// ColorAlpha(this->materials[i].maps[MATERIAL_MAP_DIFFUSE].color, 0.3f);
-	
-	for(int i = 0; i < this->numSpheres; i++) {
-		DrawMesh(this->sphereMesh, this->materials[i], this->transforms[i] * this->modelTransform);
-	}
-	for(int i = this->numSpheres; i < (this->numSpheres + this->numSticks); i++) {
-		DrawMesh(this->stickMesh, this->materials[i], this->transforms[i] * this->modelTransform);
+	//double start = GetTime();
+	for (int i = 0; i < meshes.size(); ++i) {
+		std::vector<RenderingIndices> allIndices = this->meshIndexToRenderingIndices[i];
+		for (auto indices : allIndices) { // loops over number of materials to be drawn on this mesh
+			//DrawMeshInstanced(this->meshes[i], this->materials[indices.materialIndex],
+			//	&this->transforms[indices.materialIndex][indices.firstTransformIndex],
+			//	indices.numTransforms);
+			for (int j = 0; j < indices.numTransforms; ++j) {
+				DrawMesh(this->meshes[i], this->materials[indices.materialIndex],
+					this->transforms[indices.materialIndex][indices.firstTransformIndex+j]);
+			}
+		}
 	}
 }
 
@@ -71,9 +80,14 @@ void BallAndStickModel::DrawHighlighted(const std::set<int>& indices) {
     Matrix rotationTransform = MatrixIdentity();
     Matrix positionTransform = MatrixIdentity();
 	for(auto it = indices.begin(); it != indices.end(); it++) {
-		scaleTransform = MatrixScale((Vector3){1.10f, 1.10f, 1.10f}) * MatrixScale(ScaleVectorFromTransform(this->transforms[*it]));
-		rotationTransform = RotationTransformFromTransform(this->transforms[*it]);
-		positionTransform = MatrixTranslate(PositionVectorFromTransform(this->transforms[*it]));
+		EntityIndices indices = this->IDToEntityIndices[*it];
+
+		scaleTransform = MatrixScale((Vector3){1.10f, 1.10f, 1.10f}) * MatrixScale(ScaleVectorFromTransform(
+
+			this->transforms[indices.materialIndex][indices.transformIndex])
+		);
+		rotationTransform = RotationTransformFromTransform(this->transforms[indices.materialIndex][indices.transformIndex]);
+		positionTransform = MatrixTranslate(PositionVectorFromTransform(this->transforms[indices.materialIndex][indices.transformIndex]));
 		DrawMesh(this->sphereMesh, outlineMaterial, scaleTransform * rotationTransform * positionTransform);
 	}
 	rlEnableDepthMask();
@@ -81,8 +95,10 @@ void BallAndStickModel::DrawHighlighted(const std::set<int>& indices) {
 
 // SPHERES //
 void SpheresModel::Draw() {
-	for(int i = 0; i < this->numSpheres; i++)
-		DrawMesh(this->sphereMesh, this->materials[i], this->transforms[i]);
+	for(int i = 0; i < this->numSpheres; i++) {
+		EntityIndices indices = this->IDToEntityIndices[i];
+		DrawMesh(this->sphereMesh, this->materials[i], this->transforms[indices.materialIndex][indices.transformIndex]);
+	}
 }
 
 void SpheresModel::DrawHighlighted(const std::set<int>& indices) {
@@ -93,9 +109,12 @@ void SpheresModel::DrawHighlighted(const std::set<int>& indices) {
     Matrix rotationTransform = MatrixIdentity();
     Matrix positionTransform = MatrixIdentity();
 	for(auto it = indices.begin(); it != indices.end(); it++) {
-		scaleTransform = MatrixScale((Vector3){1.10f, 1.10f, 1.10f}) * MatrixScale(ScaleVectorFromTransform(this->transforms[*it]));
-		rotationTransform = RotationTransformFromTransform(this->transforms[*it]);
-		positionTransform = MatrixTranslate(PositionVectorFromTransform(this->transforms[*it]));
+		EntityIndices indices = this->IDToEntityIndices[*it];
+		scaleTransform = MatrixScale((Vector3){1.10f, 1.10f, 1.10f}) * MatrixScale(ScaleVectorFromTransform(
+			this->transforms[indices.materialIndex][indices.transformIndex])
+		);
+		rotationTransform = RotationTransformFromTransform(this->transforms[indices.materialIndex][indices.transformIndex]);
+		positionTransform = MatrixTranslate(PositionVectorFromTransform(this->transforms[indices.materialIndex][indices.transformIndex]));
 		DrawMesh(this->sphereMesh, outlineMaterial, scaleTransform * rotationTransform * positionTransform);
 	}
 	rlEnableDepthMask();
@@ -104,8 +123,10 @@ void SpheresModel::DrawHighlighted(const std::set<int>& indices) {
 
 // STICKS //
 void SticksModel::Draw() {
-	for(int i = 0; i < this->numSticks; i++)
-		DrawMesh(this->stickMesh, this->materials[i], this->transforms[i]);
+	for(int i = 0; i < this->numSticks; i++) {
+		EntityIndices indices = this->IDToEntityIndices[i];
+		DrawMesh(this->stickMesh, this->materials[i], this->transforms[indices.materialIndex][indices.transformIndex]);
+	}
 }
 
 void SticksModel::DrawHighlighted(const std::set<int>& indices) {
@@ -116,9 +137,12 @@ void SticksModel::DrawHighlighted(const std::set<int>& indices) {
     Matrix rotationTransform = MatrixIdentity();
     Matrix positionTransform = MatrixIdentity();
 	for(auto it = indices.begin(); it != indices.end(); it++) {
-		scaleTransform = MatrixScale((Vector3){1.10f, 1.10f, 1.10f}) * MatrixScale(ScaleVectorFromTransform(this->transforms[*it]));
-		rotationTransform = RotationTransformFromTransform(this->transforms[*it]);
-		positionTransform = MatrixTranslate(PositionVectorFromTransform(this->transforms[*it]));
+		EntityIndices indices = this->IDToEntityIndices[*it];
+		scaleTransform = MatrixScale((Vector3){1.10f, 1.10f, 1.10f}) * MatrixScale(
+			ScaleVectorFromTransform(this->transforms[indices.materialIndex][indices.transformIndex])
+			);
+		rotationTransform = RotationTransformFromTransform(this->transforms[indices.materialIndex][indices.transformIndex]);
+		positionTransform = MatrixTranslate(PositionVectorFromTransform(this->transforms[indices.materialIndex][indices.transformIndex]));
 		DrawMesh(this->stickMesh, outlineMaterial, scaleTransform * rotationTransform * positionTransform);
 	}
 	rlEnableDepthMask();
@@ -172,9 +196,14 @@ void DrawLineBetweenPoints(const Vector3& v1, const Vector3& v2, const Camera3D&
 	}
 }
 
-void DrawLineBetweenPoints(const MolecularModel& model, const int i, const int j, const Camera3D& camera, const float width, const Color& color, const bool dashed=true) {
+void DrawLineBetweenPoints(MolecularModel& model, const int i, const int j, const Camera3D& camera, const float width, const Color& color, const bool dashed=true) {
+	EntityIndices indices_i = model.IDToEntityIndices[i];
+	EntityIndices indices_j = model.IDToEntityIndices[j];
 
-	DrawLineBetweenPoints(PositionVectorFromTransform(model.transforms[i]), PositionVectorFromTransform(model.transforms[j]), camera, width, color, dashed);
+	DrawLineBetweenPoints(
+		PositionVectorFromTransform(model.transforms[indices_i.materialIndex][indices_i.transformIndex]),
+		PositionVectorFromTransform(model.transforms[indices_j.materialIndex][indices_j.transformIndex]),
+		camera, width, color, dashed);
 }
 
 void DrawLineBetweenAtoms(const Atoms& atoms, const int i, const int j, const Camera3D& camera, const float width, const Color& color, const bool dashed=true) {
@@ -197,15 +226,36 @@ void OverlaySpheres(const Atoms& atoms) {
 	}
 }
 
-void OverlayNumbers(const Atoms& atoms, const Camera3D& camera) {
+Color ContrastingColor(const Color& color) {
+	float r = color.r / 255.0;
+	float g = color.g / 255.0;
+	float b = color.b / 255.0;
+	float alpha = 0.5 * (2 * r - g - b);
+	float beta = sqrt(3.0) / 2.0 * (g - b);
+	float H2 = atan2(alpha, beta);
+	if (H2 >= 60 * DEG2RAD && H2 < 180 * DEG2RAD) {
+		return GREEN;
+	} else if (H2 >=180 * DEG2RAD && H2 < 300 * DEG2RAD) {
+		return BLUE;
+	}
+	return RED;
+}
+
+void OverlayNumbers(const Atoms& atoms, const MolecularModel& model, const Camera3D& camera) {
 	// NOTE(JOE): this must be drawn in 2D mode, not 3D mode
 
 	// Currently this just draw the text independent of zoom.
 	// It also seems to be located at the top left, so there should be an offset
 	// based on the font size and the camera zoom should be taken into account somehow.
+
 	for (int i = 0; i < atoms.natoms; i++) {
 		Vector2 pos = GetWorldToScreen(atoms.xyz[i], camera);
-		DrawText(std::to_string(i+1).c_str(), (int)pos.x, (int)pos.y, 12, BLACK);
+		// SPEED: Need a faster way of testing for overlapping spheres to not draw background number
+		// Also, this isn't really a very important problem for most use cases.
+		//int collisionIndex = model.TestRayAgainst(GetMouseRay(pos, camera));
+		//if (collisionIndex != -1 && collisionIndex == i) {
+			DrawText(std::to_string(i+1).c_str(), (int)pos.x, (int)pos.y, 14, GREEN);//ContrastingColor(model.materials[i].maps[MATERIAL_MAP_DIFFUSE].color));
+		//}
 	}
 }
 
@@ -233,4 +283,27 @@ void DrawActiveMode(InteractionMode mode) {
 //	0.0,
 //	WHITE);
 //	//DrawTexture(renderContext.renderTarget.texture, renderContext.window.topLeftX, renderContext.window.topLeftY, WHITE);
+//}
+
+////////////////////////////////////
+////// WIDGET DRAWING METHODS //////
+////////////////////////////////////
+
+//void Draw3DAxes(const Vector3& point) {
+//	Material material = LoadMaterialDefault();
+//	material.maps[MATERIAL_MAP_DIFFUSE].color = GREEN;
+//	// Draw cylinder of 3D arrow
+//	Mesh cylinderMesh = GenMeshCylinder(0.1, 1.0, 24);
+//	Mesh coneMesh = GenMeshCone(0.2, 0.25, 24);
+//	// Y axis
+//	DrawMesh(cylinderMesh, material, MatrixTranslate(point));
+//	DrawMesh(coneMesh, material, MatrixTranslate(point + (Vector3){0.0f, 1.0f, 0.0f}));
+//	// Z axis
+//	material.maps[MATERIAL_MAP_DIFFUSE].color = BLUE;
+//	DrawMesh(cylinderMesh, material, MatrixTranslate(point) * MatrixAlignToAxis((Vector3){0,1,0}, (Vector3){0,0,1}));
+//	DrawMesh(coneMesh, material, MatrixTranslate(point + (Vector3){0.0f, 1.0f, 0.0f}) * MatrixAlignToAxis((Vector3){0,1,0}, (Vector3){0,0,1}));
+//	// X axis
+//	material.maps[MATERIAL_MAP_DIFFUSE].color = RED;
+//	DrawMesh(cylinderMesh, material, MatrixTranslate(point) * MatrixAlignToAxis((Vector3){0,1,0}, (Vector3){1,0,0}));
+//	DrawMesh(coneMesh, material, MatrixTranslate(point + (Vector3){0.0f, 1.0f, 0.0f}) * MatrixAlignToAxis((Vector3){0,1,0}, (Vector3){1,0,0}));
 //}

@@ -8,7 +8,7 @@ void DrawAnimationUI(ActiveContext& context) {
 	DrawText(title, context.uiSettings.menuWidth / 2 - MeasureText(title, fontSize) / 2,   (context.screenHeight - context.uiSettings.borderWidth) / 2, fontSize, BLACK);
 	DrawRectangle(context.uiSettings.menuWidth / 2 - MeasureText(title, fontSize) / 2 - 5, (context.screenHeight - context.uiSettings.borderWidth) / 2 + fontSize, MeasureText(title, fontSize) + 10, 5, BLACK); // underline text
 	
-	GuiSetStyle(BUTTON, TEXT_ALIGNMENT, GUI_TEXT_ALIGN_CENTER);
+	GuiSetStyle(BUTTON, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
 	if (GuiButton((Rectangle){context.uiSettings.menuWidth / 2, (context.screenHeight - context.uiSettings.borderWidth) / 2 + 2 * fontSize, 55.0f, 30.0f}, "ROTATE")) {
 		context.exportRotation = true;
 	}

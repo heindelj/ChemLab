@@ -21,6 +21,102 @@ enum SelectionStep {
 	DIHEDRAL
 };
 
+struct Axes3D {
+	Mesh cylinderMeshX;
+	Mesh coneMeshX;
+	Mesh cylinderMeshY;
+	Mesh coneMeshY;
+	Mesh cylinderMeshZ;
+	Mesh coneMeshZ;
+
+	Material materialX;
+	Material materialY;
+	Material materialZ;
+
+	Matrix transformX;
+	Matrix transformY;
+	Matrix transformZ;
+
+
+	void Draw(const Vector3& point) {
+		// Y axis
+		transformY = MatrixTranslate(point);
+		DrawMesh(cylinderMeshY, materialY, transformY);
+		DrawMesh(coneMeshY, materialY, transformY * MatrixTranslate((Vector3){0.0f, 1.0f, 0.0f}));
+		// Z axis
+		transformZ = MatrixAlignToAxis((Vector3){0,1,0}, (Vector3){0,0,1}) * MatrixTranslate(point);
+		DrawMesh(cylinderMeshZ, materialZ, transformZ);
+		DrawMesh(coneMeshZ, materialZ, transformZ * MatrixTranslate((Vector3){0.0f, 0.0f, 1.0f}));
+		// X axis
+		transformX = MatrixAlignToAxis((Vector3){0,1,0}, (Vector3){1,0,0}) * MatrixTranslate(point);
+		DrawMesh(cylinderMeshX, materialX, transformX);
+		DrawMesh(coneMeshX, materialX, transformX * MatrixTranslate((Vector3){1.0f, 0.0f, 0.0f}));
+	}
+
+	int TestRayAgainst(Ray ray) {
+		int collisonIndex = -1; // default which is returned on no collision
+		float collisionDistance = FLT_MAX;
+
+		// SPEED: This may be very slow for large numbers of atoms
+		// so we should consider using a proper data structure
+		// for this if it becomes a bottleneck
+		RayCollision collisionInfo[6];
+		collisionInfo[0] = GetRayCollisionMesh(ray, this->cylinderMeshX, this->transformX);
+		collisionInfo[1] = GetRayCollisionMesh(ray, this->coneMeshX, this->transformX * MatrixTranslate((Vector3){1.0f, 0.0f, 0.0f}));
+		collisionInfo[2] = GetRayCollisionMesh(ray, this->cylinderMeshY, this->transformY);
+		collisionInfo[3] = GetRayCollisionMesh(ray, this->coneMeshY, this->transformY * MatrixTranslate((Vector3){0.0f, 1.0f, 0.0f}));
+		collisionInfo[4] = GetRayCollisionMesh(ray, this->cylinderMeshZ, this->transformZ);
+		collisionInfo[5] = GetRayCollisionMesh(ray, this->coneMeshZ, this->transformZ * MatrixTranslate((Vector3){0.0f, 0.0f, 1.0f}));
+		// Check if we got a collision and then make sure we don't
+		// overwrite a collision with a closer object
+		for (int i = 0; i < 6; ++i) {
+			if (collisionInfo[i].hit) {
+				if (collisonIndex == -1) {
+					if (i == 0 || i == 1)
+						collisonIndex = 0; // Hit x axis
+					if (i == 2 || i == 3)
+						collisonIndex = 1; // Hit y axis
+					if (i == 4 || i == 5)
+						collisonIndex = 2; // Hit z axis
+					
+					collisionDistance = collisionInfo[i].distance;
+				} else if (collisionInfo[i].distance < collisionDistance) {
+					if (i == 0 || i == 1)
+						collisonIndex = 0; // Hit x axis
+					if (i == 2 || i == 3)
+						collisonIndex = 1; // Hit y axis
+					if (i == 4 || i == 5)
+						collisonIndex = 2; // Hit z axis
+
+					collisionDistance = collisionInfo[i].distance;
+				}		
+			}
+		}
+		return collisonIndex;
+	}
+
+	Axes3D(Shader* shader) {
+		cylinderMeshX = GenMeshCylinder(0.1, 1.0, 24);
+		coneMeshX = GenMeshCone(0.2, 0.25, 24);
+		cylinderMeshY = GenMeshCylinder(0.1, 1.0, 24);
+		coneMeshY = GenMeshCone(0.2, 0.25, 24);
+		cylinderMeshZ = GenMeshCylinder(0.1, 1.0, 24);
+		coneMeshZ = GenMeshCone(0.2, 0.25, 24);
+		
+		materialX = LoadMaterialDefault();
+		materialX.shader = *shader;
+		materialX.maps[MATERIAL_MAP_DIFFUSE].color = RED;
+
+		materialY = LoadMaterialDefault();
+		materialY.shader = *shader;
+		materialY.maps[MATERIAL_MAP_DIFFUSE].color = GREEN;
+
+		materialZ = LoadMaterialDefault();
+		materialZ.shader = *shader;
+		materialZ.maps[MATERIAL_MAP_DIFFUSE].color = BLUE;
+	}
+};
+
 struct ZMatrix {
 	Matrix transform; // encodes centroid position and rotational orientation of all atoms
 	std::vector<std::array<float,3>> coordinates; // stores distance (angstrom), angle (radians), and dihedral (radians)
@@ -30,14 +126,35 @@ struct ZMatrix {
 	// e.g. 1,2,3 would mean the distance is relative to atom index 1, angle to atom index 2, etc.
 };
 
+
+struct RenderingIndices {
+	int materialIndex;
+	int firstTransformIndex;
+	int numTransforms;
+};
+
+struct EntityIndices {
+	int meshIndex;
+	int materialIndex;
+	int transformIndex;
+};
+
 // Having a base MolecularModel class makes it easier to do things like hit detection
 // and geometry editing in a manner that is independent of the style with which we draw the molecule.
 struct MolecularModel
 {
 	Matrix modelTransform; // a transform applied to every mesh in the model uniformly. Used for translating and scaling an entire model.
-	std::vector<Matrix> transforms; // Note that atom indices and transform indices are and MUST be the same.
+	std::vector<std::vector<Matrix>> transforms; // array of size of materials with each transform which has that material
 	std::vector<Material> materials;
+	std::map<std::string, int> labelToMaterialIndex; // maps atom labels to material index in the materials vector
 	std::vector<std::vector<int>> stickIndices; // indices of material for each stick for a given sphere index. Can have empty lists. Only used for ball and stick currently.
+	std::map<int, EntityIndices> IDToEntityIndices; // maps any entity (atom, stick, etc.) to its corresponding material and transform indices
+	std::map<std::pair<int, int>, int> stickMaterialAndTransformToID; // maps the material and trasnform indices of a stick to its entity ID.
+
+	// Takes an index for a mesh and returns the material index
+	// and first transform index for this material and the number of those transforms.
+	std::map<int, std::vector<RenderingIndices>> meshIndexToRenderingIndices;
+	std::vector<Mesh> meshes; // all meshes to be drawn
 
 	virtual void Draw() = 0;
 	virtual void DrawHighlighted(const std::set<int>& indices) = 0;
@@ -163,13 +280,14 @@ struct ActiveContext {
 	bool drawUI;
 	bool drawGrid;
 	bool lockCamera;
+	bool drawNumbers;
 
 	// view mode context variables
 	double timeOfLastClick;
 	float lineWidth;
 	std::set<int> atomsToHighlight;
-	std::array<int, 4> viewSelection;
-	std::vector<std::array<int, 4>> permanentSelection;
+	std::array<int, 4> viewSelection; // selected entities by ID
+	std::vector<std::array<int, 4>> permanentSelection; // selected entities by ID
 	SelectionStep selectionStep;
 	Vector3 forwardOnStartingToRotate;
 	float rotationSpeed;
@@ -192,6 +310,10 @@ struct ActiveContext {
 	float angleSliderValue;
 	float dihedralSliderValue;
 
+	bool isAxisSelected;
+	int activeAxis;
+	Vector3 lastPoint;
+
 	// Animation mode variables
 	bool exportRotation;
 	bool exportAllFrames;
@@ -199,4 +321,5 @@ struct ActiveContext {
 
 	// miscellaneous
 	Model gridModel;
+	Axes3D* axes;
 };

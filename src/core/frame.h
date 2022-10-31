@@ -30,6 +30,9 @@ void DoFrame(ActiveContext& context) {
 			DrawActiveMode(context.mode);
 			DrawText((std::to_string(context.activeFrame + 1) + "/" + std::to_string(context.frames->nframes)).c_str(), 15, context.screenHeight - 40, 30, RAYWHITE);
 		}
+		// Draw overlay numbers
+		if (context.drawNumbers)
+			OverlayNumbers(context.frames->atoms[context.activeFrame], *context.renderContext.model, context.renderContext.camera);
 	EndDrawing();
 	
 	/////////////////////////////
@@ -44,6 +47,8 @@ void DoFrame(ActiveContext& context) {
 		context.drawGrid = !context.drawGrid;
 	if (IsKeyPressed(KEY_H))
 		OnHideUI(context);
+	if (IsKeyPressed(KEY_N))
+		context.drawNumbers = !context.drawNumbers;
 	
 	OnWindowResize(context);
 }

@@ -12,10 +12,16 @@ set(BUILD_GAMES    OFF CACHE BOOL "" FORCE) # or games
 
 #add_subdirectory(libs/raylib)
 link_directories(/usr/local/lib)
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/raylib/lib/)
 
 add_executable(${PROJECT_NAME} src/main.cpp)
-target_include_directories(${PROJECT_NAME} PRIVATE /usr/local/include)
+target_include_directories(${PROJECT_NAME} PRIVATE /usr/include/GLFW)
+target_include_directories(${PROJECT_NAME} PRIVATE /usr/include)
 target_include_directories(${PROJECT_NAME} PRIVATE /usr/include/eigen3)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/external/raylib/include/)
+
+find_package(fmt)
+target_link_libraries(${PROJECT_NAME} fmt::fmt)
 target_link_libraries(${PROJECT_NAME} Threads::Threads)
 target_link_libraries(${PROJECT_NAME} raylib)
 target_link_libraries(${PROJECT_NAME} glfw)

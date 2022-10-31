@@ -1,8 +1,8 @@
 #pragma once
 
 void RotateAroundWorldUp(ActiveContext& context) {
-	Vector3 cameraForward = normalize(context.renderContext.camera.target - context.renderContext.camera.position);
-	Vector3 cameraRight = cross(cameraForward, context.renderContext.camera.up);
+	const Vector3 cameraForward = normalize(context.renderContext.camera.target - context.renderContext.camera.position);
+	const Vector3 cameraRight = cross(cameraForward, context.renderContext.camera.up);
 
 	context.renderContext.camera.position = context.renderContext.camera.position + context.rotationSpeed * cameraRight;
 	UpdateLighting(context.renderContext);
@@ -37,9 +37,11 @@ bool rotateAroundTargetView(Camera3D& camera, Vector3 target) {
 bool zoomOnScroll(Camera3D& camera) {
 	float scrollDistance = GetMouseWheelMove();
 	if (scrollDistance) {
-		camera.fovy -= 2 * scrollDistance;
-		camera.fovy <= 10 ? camera.fovy = 10 : camera.fovy = camera.fovy;
-		camera.fovy >= 178 ? camera.fovy = 178 : camera.fovy = camera.fovy;
+		const Vector3 cameraForward = camera.target - camera.position;
+		if (norm(cameraForward) > 1.0f)
+			camera.position += 0.75f * scrollDistance * normalize(cameraForward);
+		else if (norm(cameraForward) <= 1.0f && scrollDistance < 0.0f)
+			camera.position += 0.75f * scrollDistance * normalize(cameraForward);
 
 		return true;
 	}
