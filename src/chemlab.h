@@ -46,7 +46,6 @@
 #include "utils/load_and_create.h"
 #include "utils/monitor_file.h"
 #include "core/init.h"
-#include "render/shaders.h"
 
 // debug
 #include "utils/debug.h"
