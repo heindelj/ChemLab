@@ -197,7 +197,6 @@ ActiveContext InitContext(Frames& frames, const int screenWidth, const int scree
 
 	context.windows.push_back((Window){0, (Rectangle){0, 0, (float)screenWidth, (float)screenHeight}});
 
-	SetConfigFlags(FLAG_MSAA_4X_HINT);
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 	InitWindow(context.screenWidth, context.screenHeight, "ChemLab");
 	SetTargetFPS(60);

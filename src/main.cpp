@@ -16,7 +16,7 @@ int main(int argc, char** argv)
         std::cout << e.what();
         return -1;
     }
-    ActiveContext context = InitContext(frames, 1440, 810);
+    ActiveContext context = InitContext(frames, 1000, 800);
 
     int fps = 0;
     while (!WindowShouldClose())

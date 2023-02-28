@@ -327,24 +327,24 @@ void BuildModeFrame(ActiveContext& context) {
 	    if (context.drawGrid)
 	    	DrawGrid(10, 1.0f);
 	
-	if(context.addingNewAtoms && !context.buildingZMatrix) {
-		DrawPlane(context.gridModel, context.renderContext.camera.position - context.renderContext.camera.target, context.renderContext.camera.target);
-		RayCollision hitInfo = GetRayCollisionModel(GetMouseRay(GetMousePosition(), context.renderContext.camera), context.gridModel);
+	//if(context.addingNewAtoms && !context.buildingZMatrix) {
+	//	DrawPlane(context.gridModel, context.renderContext.camera.position - context.renderContext.camera.target, context.renderContext.camera.target);
+	//	RayCollision hitInfo = GetRayCollisionMesh(GetMouseRay(GetMousePosition(), context.renderContext.camera), context.gridModel);
 
-		for (auto it = context.indicesBeingAdded.begin(); it != context.indicesBeingAdded.end(); ++it) {
-			if (hitInfo.hit)
-				context.frames->atoms[context.activeFrame].xyz[*it] = hitInfo.point;
-		}
-		OnAtomMove(context.frames->atoms[context.activeFrame], context.indicesBeingAdded, *context.renderContext.model);
-		if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && GetMouseX() > (context.uiSettings.menuWidth + context.uiSettings.borderWidth)) {
-			StopAddingAtoms(context);
-		}
-	}
-	else if (context.buildingZMatrix) {
-		BuildZMatrix(context);
-	} else {
-		EditActiveFrame(context);
-	}
+	//	for (auto it = context.indicesBeingAdded.begin(); it != context.indicesBeingAdded.end(); ++it) {
+	//		if (hitInfo.hit)
+	//			context.frames->atoms[context.activeFrame].xyz[*it] = hitInfo.point;
+	//	}
+	//	OnAtomMove(context.frames->atoms[context.activeFrame], context.indicesBeingAdded, *context.renderContext.model);
+	//	if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && GetMouseX() > (context.uiSettings.menuWidth + context.uiSettings.borderWidth)) {
+	//		StopAddingAtoms(context);
+	//	}
+	//}
+	//else if (context.buildingZMatrix) {
+	//	BuildZMatrix(context);
+	//} else {
+	//	EditActiveFrame(context);
+	//}
 
 	EndMode3D();
 }
