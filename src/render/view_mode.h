@@ -248,7 +248,7 @@ void HandleSelections(MolecularModel& model, ActiveContext& context) {
 	// handle mouse input based on selection step
 	if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
 		double timeSinceClick = GetTimeSinceClick(context);
-		int collisionIndex = model.TestRayAgainst(GetMouseRay(GetMousePosition(), context.renderContext.camera));
+		int collisionIndex = model.TestRayAgainst(GetScreenToWorldRay(GetMousePosition(), context.renderContext.camera));
 		// check if shift-clicking to highlight atom
 		if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) {
 			if (collisionIndex != -1) {

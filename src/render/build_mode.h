@@ -245,7 +245,7 @@ RayCollision CollisionWithPlane(ActiveContext& context, const Vector3& point, co
 	Vector3 n1 = normalize(cross(normalize(point), normalize(axis)));
 	Vector3 n2 = normalize(cross(n1, axis));
 	// just check collision with quad with vertices way far apart for getting poisition on plane.
-	RayCollision planeHitInfo = GetRayCollisionQuad(GetMouseRay(GetMousePosition(), context.renderContext.camera), 
+	RayCollision planeHitInfo = GetRayCollisionQuad(GetScreenToWorldRay(GetMousePosition(), context.renderContext.camera), 
 		point - 1000 * axis, point + 1000 * axis, point + 1000 * n1, point - 1000 * n1);
 
 	if (planeHitInfo.hit && norm(context.lastPoint) < 1e-7) {
@@ -264,7 +264,7 @@ void EditActiveFrame(ActiveContext& context) {
 		context.lastPoint = Vector3Zero();
 
 		double timeSinceClick = GetTimeSinceClick(context);
-		int collisionIndex = context.renderContext.model->TestRayAgainst(GetMouseRay(GetMousePosition(), context.renderContext.camera));
+		int collisionIndex = context.renderContext.model->TestRayAgainst(GetScreenToWorldRay(GetMousePosition(), context.renderContext.camera));
 		
 		HighlightAtomOnShiftClick(context, collisionIndex);
 
@@ -275,7 +275,7 @@ void EditActiveFrame(ActiveContext& context) {
 		// If there are axes being drawn and we are holding down the left mouse button,
 		// then check if we are clicking on one of the axes.
 		if (!context.isAxisSelected) {
-			context.activeAxis = context.axes->TestRayAgainst(GetMouseRay(GetMousePosition(), context.renderContext.camera));
+			context.activeAxis = context.axes->TestRayAgainst(GetScreenToWorldRay(GetMousePosition(), context.renderContext.camera));
 		}
 		if (context.activeAxis != -1) { // We're clicking on an axis
 			context.lockCamera = true;

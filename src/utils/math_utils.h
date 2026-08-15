@@ -136,14 +136,6 @@ inline Vector4 ToVector4(const Vector3& v) {
 	return (Vector4){v.x, v.y, v.z, 1.0f};
 }
 
-inline Vector4 Vector4Zero() {
-	return (Vector4){0.0f, 0.0f, 0.0f, 0.0f};
-}
-
-inline Vector4 Vector4Ones() {
-	return (Vector4){1.0f, 1.0f, 1.0f, 1.0f};
-}
-
 ////////////////////////////////
 //      Matrix operations     //
 ////////////////////////////////
