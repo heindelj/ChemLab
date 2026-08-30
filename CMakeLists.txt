@@ -150,6 +150,9 @@ add_executable(${PROJECT_NAME}
     src/app/project.cpp
     src/ui/theme.cpp
     src/ui/ui.cpp
+    src/ui/ui_spec.cpp
+    src/ui/ui_builder.cpp
+    src/ui/panel_registry.cpp
     src/ui/command_bar.cpp
     src/ui/panel_controls.cpp
     src/ui/panel_structure_view.cpp

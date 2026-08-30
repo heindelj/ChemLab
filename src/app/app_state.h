@@ -4,6 +4,7 @@
 // functions in actions.h so the command bar and the widgets stay in sync.
 
 #include <array>
+#include <map>
 #include <optional>
 #include <deque>
 #include <set>
@@ -18,6 +19,7 @@
 #include "render/molecular_model.h"
 #include "render/viewport.h"
 #include "ui/theme.h"
+#include "ui/ui_spec.h"
 
 struct Structure {
     std::string name;
@@ -119,12 +121,18 @@ struct AppState {
     bool showMetrics = false;
     bool showInputDebug = false;
     UITheme theme = UITheme::Mocha;   // crosshairs + numbers for diagnosing mouse/DPI mismatches
-    bool resetLayoutRequested = false;
+    bool resetLayoutRequested = false;   // re-dock and reset panel visibility from the active UI
     bool quitRequested = false;
-    struct PanelVisibility {
-        bool controls = true, structureView = true, calculate = true,
-             output = true, exportPanel = true, activeStructure = true, console = false;
-    } panels;
+
+    // ---- UI system ----
+    // The current arrangement is one UIDefinition among several: a layout
+    // (how the dockspace splits into slots) plus panels assigned to slots.
+    // See ui/ui_spec.h, ui/panel_registry.h and ui/ui_builder.h.
+    std::vector<UIDefinition> uis;           // built-in + user-defined UIs
+    int activeUI = 0;                        // index into `uis`
+    std::map<std::string, bool> panelOpen;   // panel id -> window currently shown
+    UIBuilderState uiBuilder;
+    bool& PanelOpen(const char* id);
 
     // ---- command bar ----
     CommandRegistry commands;

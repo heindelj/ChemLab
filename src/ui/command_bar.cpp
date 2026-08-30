@@ -92,7 +92,7 @@ void RunCommandLine(AppState& state, const std::string& line) {
     state.lastCommandResult = result.message;
     if (!result.message.empty()) Log(state, result.ok ? LogLevel::Result : LogLevel::Error, result.message);
     // Multi-line answers (help, lists) do not fit the bar: open the console.
-    if (result.message.find('\n') != std::string::npos) state.panels.console = true;
+    if (result.message.find('\n') != std::string::npos) state.PanelOpen("console") = true;
 }
 
 float CommandBarHeight() { return ImGui::GetFrameHeight() + 12.0f; }
@@ -149,7 +149,7 @@ void DrawCommandBar(AppState& state) {
     if (!state.lastCommandResult.empty() && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", state.lastCommandResult.c_str());
 
     ImGui::SameLine(ImGui::GetWindowWidth() - consoleButtonWidth - 8.0f);
-    if (ImGui::SmallButton(state.panels.console ? "Console v" : "Console ^")) state.panels.console = !state.panels.console;
+    if (ImGui::SmallButton(state.PanelOpen("console") ? "Console v" : "Console ^")) state.PanelOpen("console") = !state.PanelOpen("console");
 
     ImGui::End();
     ImGui::PopStyleColor();

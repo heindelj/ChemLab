@@ -38,3 +38,5 @@ int AppState::FrameCount() const {
     const Structure* s = ActiveStructure();
     return s ? (int)s->frames.nframes : 0;
 }
+
+bool& AppState::PanelOpen(const char* id) { return panelOpen[id]; }

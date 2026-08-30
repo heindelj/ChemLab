@@ -352,13 +352,14 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
                     if (a.size() < 1) return CommandResult::Error("usage: panel <name> [show|hide|toggle]");
                     bool* flag = nullptr;
                     const std::string& n = a[0];
-                    if (n == "controls") flag = &s.panels.controls;
-                    else if (n == "structure" || n == "view") flag = &s.panels.structureView;
-                    else if (n == "calculate") flag = &s.panels.calculate;
-                    else if (n == "output") flag = &s.panels.output;
-                    else if (n == "export") flag = &s.panels.exportPanel;
-                    else if (n == "active") flag = &s.panels.activeStructure;
-                    else if (n == "console") flag = &s.panels.console;
+                    // Aliases kept from the pre-registry command names.
+                    if (n == "controls") flag = &s.PanelOpen("controls");
+                    else if (n == "structure" || n == "view" || n == "structure_view") flag = &s.PanelOpen("structure_view");
+                    else if (n == "calculate") flag = &s.PanelOpen("calculate");
+                    else if (n == "output") flag = &s.PanelOpen("output");
+                    else if (n == "export") flag = &s.PanelOpen("export");
+                    else if (n == "active" || n == "active_structure") flag = &s.PanelOpen("active_structure");
+                    else if (n == "console") flag = &s.PanelOpen("console");
                     if (!flag) return CommandResult::Error("Unknown panel '" + n + "'");
                     if (a.size() < 2 || a[1] == "toggle") *flag = !*flag;
                     else if (a[1] == "show") *flag = true;
@@ -377,6 +378,26 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
     r.Register({"layout", "layout reset", "Restore the default dock layout.", "view", [](AppState& s, const CommandArgs&) {
                     s.resetLayoutRequested = true;
                     return CommandResult::Ok("Layout reset");
+                }});
+    r.Register({"ui", "ui [list|builder|<name>]", "List, apply or build user interfaces.", "view",
+                [](AppState& s, const CommandArgs& a) {
+                    if (a.size() < 1 || a[0] == "list") {
+                        std::string out = "UIs:";
+                        for (int i = 0; i < (int)s.uis.size(); ++i)
+                            out += fmt::format("\n  {}{}", s.uis[i].name, s.activeUI == i ? "  (active)" : "");
+                        return CommandResult::Ok(out);
+                    }
+                    if (a[0] == "builder") {
+                        s.uiBuilder.open = true;
+                        return CommandResult::Ok("UI Builder opened");
+                    }
+                    for (int i = 0; i < (int)s.uis.size(); ++i)
+                        if (s.uis[i].name == a[0]) {
+                            s.activeUI = i;
+                            s.resetLayoutRequested = true;
+                            return CommandResult::Ok(fmt::format("UI: {}", a[0]));
+                        }
+                    return CommandResult::Error(fmt::format("No UI named '{}' (try `ui list`)", a[0]));
                 }});
     r.Register({"plot", "plot <energy|measurements>", "Choose the plot shown under the 3D view.", "view",
                 [](AppState& s, const CommandArgs& a) {

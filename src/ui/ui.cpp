@@ -12,36 +12,21 @@
 #include "rlImGui.h"
 
 #include "app/actions.h"
+#include "ui/panel_registry.h"
 #include "ui/theme.h"
+#include "ui/ui_builder.h"
 
 namespace {
 
 bool gLayoutInitialised = false;
 ImGuiID gDockspaceId = 0;
 
-void BuildDefaultLayout(ImGuiID dockspaceId, ImVec2 size) {
-    ImGui::DockBuilderRemoveNode(dockspaceId);
-    ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
-    ImGui::DockBuilderSetNodeSize(dockspaceId, size);
-
-    // Same splits as quick-mag's create_docking_splits():
-    //   left 20% -> Controls (top) / Export (bottom 30%)
-    //   right 40% of the remainder -> Active Structure (top 32%) / Calculate+Output tabs
-    //   centre -> Structure View
-    ImGuiID mainId = dockspaceId;
-    ImGuiID leftId = ImGui::DockBuilderSplitNode(mainId, ImGuiDir_Left, 0.20f, nullptr, &mainId);
-    ImGuiID rightId = ImGui::DockBuilderSplitNode(mainId, ImGuiDir_Right, 0.40f, nullptr, &mainId);
-    ImGuiID exportId = ImGui::DockBuilderSplitNode(leftId, ImGuiDir_Down, 0.30f, nullptr, &leftId);
-    ImGuiID activeId = ImGui::DockBuilderSplitNode(rightId, ImGuiDir_Up, 0.32f, nullptr, &rightId);
-
-    ImGui::DockBuilderDockWindow(PanelName::Controls, leftId);
-    ImGui::DockBuilderDockWindow(PanelName::Export, exportId);
-    ImGui::DockBuilderDockWindow(PanelName::StructureView, mainId);
-    ImGui::DockBuilderDockWindow(PanelName::ActiveStructure, activeId);
-    ImGui::DockBuilderDockWindow(PanelName::Calculate, rightId);
-    ImGui::DockBuilderDockWindow(PanelName::Output, rightId);
-    ImGui::DockBuilderDockWindow(PanelName::Console, rightId);
-    ImGui::DockBuilderFinish(dockspaceId);
+// The active UIDefinition is applied through ApplyUIDockLayout (ui_builder.h);
+// the old hard-coded dock layout is now the built-in "Default" UI in ui_spec.cpp.
+const UIDefinition& ActiveUI(AppState& state) {
+    if (state.uis.empty()) state.uis = BuiltinUIs();
+    if (state.activeUI < 0 || state.activeUI >= (int)state.uis.size()) state.activeUI = 0;
+    return state.uis[state.activeUI];
 }
 
 void DrawMenuBar(AppState& state) {
@@ -83,13 +68,19 @@ void DrawMenuBar(AppState& state) {
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("View")) {
-        ImGui::MenuItem(PanelName::Controls, nullptr, &state.panels.controls);
-        ImGui::MenuItem(PanelName::StructureView, nullptr, &state.panels.structureView);
-        ImGui::MenuItem(PanelName::ActiveStructure, nullptr, &state.panels.activeStructure);
-        ImGui::MenuItem(PanelName::Calculate, nullptr, &state.panels.calculate);
-        ImGui::MenuItem(PanelName::Output, nullptr, &state.panels.output);
-        ImGui::MenuItem(PanelName::Export, nullptr, &state.panels.exportPanel);
-        ImGui::MenuItem(PanelName::Console, "Ctrl+`", &state.panels.console);
+        for (const PanelInfo& p : PanelCatalog())
+            ImGui::MenuItem(p.title, std::string(p.id) == "console" ? "Ctrl+`" : nullptr, &state.PanelOpen(p.id));
+        ImGui::Separator();
+        if (ImGui::BeginMenu("Interface")) {
+            for (int i = 0; i < (int)state.uis.size(); ++i)
+                if (ImGui::MenuItem(state.uis[i].name.c_str(), nullptr, state.activeUI == i)) {
+                    state.activeUI = i;
+                    state.resetLayoutRequested = true;
+                }
+            ImGui::Separator();
+            if (ImGui::MenuItem("UI Builder...")) state.uiBuilder.open = true;
+            ImGui::EndMenu();
+        }
         ImGui::Separator();
         ImGui::MenuItem("Grid", "G", &state.drawGrid);
         ImGui::MenuItem("Atom numbers", "N", &state.drawAtomNumbers);
@@ -107,7 +98,7 @@ void DrawMenuBar(AppState& state) {
     }
     if (ImGui::BeginMenu("Help")) {
         if (ImGui::MenuItem("Command reference")) {
-            state.panels.console = true;
+            state.PanelOpen("console") = true;
             RunCommandLine(state, "help");
         }
         ImGui::Separator();
@@ -127,7 +118,7 @@ void HandleGlobalShortcuts(AppState& state) {
     ImGuiIO& io = ImGui::GetIO();
     const bool ctrl = io.KeyCtrl || io.KeySuper;
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_K, false)) state.focusCommandBar = true;
-    if (ctrl && ImGui::IsKeyPressed(ImGuiKey_GraveAccent, false)) state.panels.console = !state.panels.console;
+    if (ctrl && ImGui::IsKeyPressed(ImGuiKey_GraveAccent, false)) state.PanelOpen("console") = !state.PanelOpen("console");
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_Q, false)) state.quitRequested = true;
     if (ctrl && io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_S, false) && state.project) RunCommandLine(state, "project save");
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_O, false)) {
@@ -168,6 +159,10 @@ void UIInit(AppState& state) {
     ImPlot3D::CreateContext();
     ApplyChemLabTheme(state.theme);
     RegisterBuiltinCommands(state.commands);
+    state.uis = BuiltinUIs();
+    LoadUserUIsIntoState(state);
+    if (state.activeUI < 0 || state.activeUI >= (int)state.uis.size()) state.activeUI = 0;
+    ApplyUIVisibility(state, state.uis[state.activeUI]);
     LogInfo(state, "ChemLab ready. Type `help` in the command bar (Ctrl+K) for the command list.");
 }
 
@@ -219,46 +214,36 @@ void UIFrame(AppState& state) {
     const ImVec2 dockSize = ImGui::GetContentRegionAvail();
     if (!gLayoutInitialised || state.resetLayoutRequested) {
         // Only build the layout ourselves if there is no saved one (or on request).
+        const UIDefinition& ui = ActiveUI(state);
         if (state.resetLayoutRequested || ImGui::DockBuilderGetNode(gDockspaceId) == nullptr)
-            BuildDefaultLayout(gDockspaceId, dockSize);
-        if (state.resetLayoutRequested) state.panels = AppState::PanelVisibility{};
+            ApplyUIDockLayout(state, ui, gDockspaceId, dockSize);
+        if (state.resetLayoutRequested) {
+            ApplyUIVisibility(state, ui);
+            // Remember which UI the saved dock arrangement belongs to.
+            SaveUserUIsFromState(state);
+        }
         gLayoutInitialised = true;
         state.resetLayoutRequested = false;
     }
+    UIBuilderPreDockspace(state, gDockspaceId, dockSize);
     ImGui::DockSpace(gDockspaceId, dockSize, ImGuiDockNodeFlags_None);
     ImGui::End();
 
+    // Panels are drawn generically from the registry. While the UI builder's
+    // edit mode is active the real panels hide and slot placeholders render
+    // in their place (see DrawUIBuilder).
     const ImGuiWindowFlags panelFlags = ImGuiWindowFlags_NoCollapse;
-    if (state.panels.controls) {
-        if (ImGui::Begin(PanelName::Controls, &state.panels.controls, panelFlags)) DrawControlsPanel(state);
-        ImGui::End();
+    if (!state.uiBuilder.editing) {
+        for (const PanelInfo& p : PanelCatalog()) {
+            bool& open = state.PanelOpen(p.id);
+            if (!open) continue;
+            if (p.tightPadding) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
+            if (ImGui::Begin(p.title, &open, panelFlags)) p.draw(state);
+            ImGui::End();
+            if (p.tightPadding) ImGui::PopStyleVar();
+        }
     }
-    if (state.panels.structureView) {
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
-        if (ImGui::Begin(PanelName::StructureView, &state.panels.structureView, panelFlags)) DrawStructureViewPanel(state);
-        ImGui::End();
-        ImGui::PopStyleVar();
-    }
-    if (state.panels.output) {
-        if (ImGui::Begin(PanelName::Output, &state.panels.output, panelFlags)) DrawOutputPanel(state);
-        ImGui::End();
-    }
-    if (state.panels.calculate) {
-        if (ImGui::Begin(PanelName::Calculate, &state.panels.calculate, panelFlags)) DrawCalculatePanel(state);
-        ImGui::End();
-    }
-    if (state.panels.exportPanel) {
-        if (ImGui::Begin(PanelName::Export, &state.panels.exportPanel, panelFlags)) DrawExportPanel(state);
-        ImGui::End();
-    }
-    if (state.panels.activeStructure) {
-        if (ImGui::Begin(PanelName::ActiveStructure, &state.panels.activeStructure, panelFlags)) DrawActiveStructurePanel(state);
-        ImGui::End();
-    }
-    if (state.panels.console) {
-        if (ImGui::Begin(PanelName::Console, &state.panels.console, panelFlags)) DrawConsolePanel(state);
-        ImGui::End();
-    }
+    DrawUIBuilder(state);
     if (state.showImGuiDemo) ImGui::ShowDemoWindow(&state.showImGuiDemo);
     if (state.showImPlotDemo) ImPlot::ShowDemoWindow(&state.showImPlotDemo);
     if (state.showMetrics) ImGui::ShowMetricsWindow(&state.showMetrics);

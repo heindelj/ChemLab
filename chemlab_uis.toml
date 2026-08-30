@@ -1,0 +1,8 @@
+# ChemLab user interfaces. Edit by hand or via View > UI Builder.
+active = "Default"
+
+[[ui]]
+name = "test"
+layout = "sidebar-left"
+slot0 = ["structure_view"]
+slot1 = ["active_structure"]
