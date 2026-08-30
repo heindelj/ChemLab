@@ -7,3 +7,7 @@ build/
 out/
 CMakeSettings.json
 chemlab.sublime-workspace
+chemlab_imgui.ini
+imgui.ini
+CMakeFiles/
+_chemlab_*.tgz
