@@ -5,6 +5,7 @@
 #include "rlgl.h"
 
 #include "core/math_utils.h"
+#include "render/impostor_renderer.h"
 #include "render/shaders.h"
 
 void FixAppleScreenScale() {
@@ -31,6 +32,7 @@ Viewport::~Viewport() { Shutdown(); }
 void Viewport::Init() {
     if (initialised) return;
     lightingShader = LoadLightingShader();
+    InitImpostorRenderer();
     orbit.Reset(Vector3Zero(), 20.0f);
     light = CreateLight(LIGHT_DIRECTIONAL, orbit.camera.position, orbit.camera.target, WHITE, lightingShader);
     initialised = true;
@@ -41,6 +43,7 @@ void Viewport::Shutdown() {
     if (!initialised) return;
     if (HasTarget()) UnloadRenderTexture(target);
     UnloadShader(lightingShader);
+    ShutdownImpostorRenderer();
     width = height = 0;
     initialised = false;
 }

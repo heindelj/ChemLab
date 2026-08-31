@@ -141,6 +141,7 @@ add_executable(${PROJECT_NAME}
     src/core/molecule.cpp
     src/core/xyz_io.cpp
     src/render/shaders.cpp
+    src/render/impostor_renderer.cpp
     src/render/molecular_model.cpp
     src/render/orbit_camera.cpp
     src/render/viewport.cpp

@@ -319,7 +319,7 @@ void RebuildModel(AppState& state) {
     if (state.model.IsLoaded() && state.model.AtomCount() == atoms->natoms) {
         state.model.UpdateGeometry(*atoms, state.render);
     } else {
-        state.model.Build(*atoms, state.viewport.LightingShader(), state.render);
+        state.model.Build(*atoms, state.render);
     }
 }
 

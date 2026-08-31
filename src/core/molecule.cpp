@@ -1,5 +1,6 @@
 #include "core/molecule.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
@@ -27,14 +28,58 @@ bool IsKnownElement(const std::string& atomLabel) {
 BondList MakeCovalentBondList(const Atoms& atoms, float tolerance) {
     // Eq. (1) of "A rule-based algorithm for automatic bond type perception",
     // J. Cheminformatics 4, 26 (2012). Only the distance criterion for now.
+    // Implemented with a uniform cell grid (cell size = max cutoff) so the
+    // search is O(N) instead of O(N^2); large systems load interactively.
     BondList bonds;
-    for (uint32_t i = 0; i + 1 < atoms.natoms; i++) {
-        for (uint32_t j = i + 1; j < atoms.natoms; j++) {
-            const float cutoff = atoms.renderData[i].covalentRadius + atoms.renderData[j].covalentRadius + tolerance;
-            if (Vector3Length(Vector3Subtract(atoms.xyz[i], atoms.xyz[j])) < cutoff)
-                bonds.pairs.emplace_back(i, j);
+    if (atoms.natoms < 2) return bonds;
+
+    float maxCovalent = 0.0f;
+    Vector3 lo = atoms.xyz[0], hi = atoms.xyz[0];
+    for (uint32_t i = 0; i < atoms.natoms; i++) {
+        maxCovalent = std::max(maxCovalent, atoms.renderData[i].covalentRadius);
+        lo = Vector3Min(lo, atoms.xyz[i]);
+        hi = Vector3Max(hi, atoms.xyz[i]);
+    }
+    const float cell = std::max(2.0f * maxCovalent + tolerance, 1e-3f);
+
+    const auto cellIndex = [&](const Vector3& p, int& cx, int& cy, int& cz) {
+        cx = (int)((p.x - lo.x) / cell);
+        cy = (int)((p.y - lo.y) / cell);
+        cz = (int)((p.z - lo.z) / cell);
+    };
+    const int nx = (int)((hi.x - lo.x) / cell) + 1;
+    const int ny = (int)((hi.y - lo.y) / cell) + 1;
+    const int nz = (int)((hi.z - lo.z) / cell) + 1;
+
+    // Bucket atoms by cell (hash map keeps memory bounded for sparse systems).
+    std::unordered_map<int64_t, std::vector<uint32_t>> grid;
+    grid.reserve(atoms.natoms);
+    const auto key = [&](int cx, int cy, int cz) -> int64_t {
+        return ((int64_t)cx * ny + cy) * nz + cz;
+    };
+    for (uint32_t i = 0; i < atoms.natoms; i++) {
+        int cx, cy, cz;
+        cellIndex(atoms.xyz[i], cx, cy, cz);
+        grid[key(cx, cy, cz)].push_back(i);
+    }
+
+    for (uint32_t i = 0; i < atoms.natoms; i++) {
+        int cx, cy, cz;
+        cellIndex(atoms.xyz[i], cx, cy, cz);
+        for (int dx = -1; dx <= 1; dx++)
+        for (int dy = -1; dy <= 1; dy++)
+        for (int dz = -1; dz <= 1; dz++) {
+            const auto it = grid.find(key(cx + dx, cy + dy, cz + dz));
+            if (it == grid.end()) continue;
+            for (uint32_t j : it->second) {
+                if (j <= i) continue;   // each pair once
+                const float cutoff = atoms.renderData[i].covalentRadius + atoms.renderData[j].covalentRadius + tolerance;
+                if (Vector3Length(Vector3Subtract(atoms.xyz[i], atoms.xyz[j])) < cutoff)
+                    bonds.pairs.emplace_back(i, j);
+            }
         }
     }
+    std::sort(bonds.pairs.begin(), bonds.pairs.end());
     return bonds;
 }
 
