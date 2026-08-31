@@ -9,8 +9,24 @@ endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
+if(NOT EMSCRIPTEN)
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+endif()
+
+# ---------------------------------------------------------------------------
+# Web (Emscripten) build. Configure with:
+#     emcmake cmake -B build-web -DCMAKE_BUILD_TYPE=Release && cmake --build build-web
+# The impostor renderer needs gl_FragDepth, flat varyings and instanced arrays,
+# which are core in GLSL ES 3.00 but not in ES 1.00, so the web build targets
+# WebGL2 only. raylib adds -sMIN/MAX_WEBGL_VERSION=2 itself when it is built
+# with OPENGL_VERSION="ES 3.0".
+# ---------------------------------------------------------------------------
+if(EMSCRIPTEN)
+    set(PLATFORM Web CACHE STRING "" FORCE)
+    set(OPENGL_VERSION "ES 3.0" CACHE STRING "" FORCE)
+    set(CMAKE_EXECUTABLE_SUFFIX ".html")
+endif()
 
 # ---------------------------------------------------------------------------
 # raylib: owns the window, the GL context and all 3D rendering.
@@ -33,7 +49,7 @@ if(NOT fmt_FOUND)
     FetchContent_Declare(
         fmt
         GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-        GIT_TAG 11.2.0
+        GIT_TAG 12.2.0
         GIT_SHALLOW TRUE
     )
     FetchContent_MakeAvailable(fmt)
@@ -121,13 +137,32 @@ target_link_libraries(chemlab_imgui PUBLIC raylib)
 # Embedded UI font: Roboto-Medium from ImGui's misc/fonts, compressed into a
 # C array at build time so the binary does not depend on the assets folder.
 # ---------------------------------------------------------------------------
-add_executable(binary_to_compressed_c ${imgui_SOURCE_DIR}/misc/fonts/binary_to_compressed_c.cpp)
+# The tool has to run on the build machine. Cross-compiling (Emscripten) would
+# otherwise turn it into a wasm module CMake cannot execute, so build it with
+# the host compiler at configure time instead.
 set(CHEMLAB_FONT_SRC ${CMAKE_CURRENT_BINARY_DIR}/generated/font_roboto_medium.c)
+if(CMAKE_CROSSCOMPILING)
+    find_program(CHEMLAB_HOST_CXX NAMES c++ g++ clang++ REQUIRED)
+    set(CHEMLAB_FONT_TOOL ${CMAKE_CURRENT_BINARY_DIR}/binary_to_compressed_c_host)
+    execute_process(
+        COMMAND ${CHEMLAB_HOST_CXX} -O2 -o ${CHEMLAB_FONT_TOOL}
+                ${imgui_SOURCE_DIR}/misc/fonts/binary_to_compressed_c.cpp
+        RESULT_VARIABLE CHEMLAB_FONT_TOOL_RESULT
+    )
+    if(NOT CHEMLAB_FONT_TOOL_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to build binary_to_compressed_c with the host compiler")
+    endif()
+    set(CHEMLAB_FONT_TOOL_DEP ${CHEMLAB_FONT_TOOL})
+else()
+    add_executable(binary_to_compressed_c ${imgui_SOURCE_DIR}/misc/fonts/binary_to_compressed_c.cpp)
+    set(CHEMLAB_FONT_TOOL binary_to_compressed_c)
+    set(CHEMLAB_FONT_TOOL_DEP binary_to_compressed_c)
+endif()
 add_custom_command(
     OUTPUT ${CHEMLAB_FONT_SRC}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/generated
-    COMMAND binary_to_compressed_c -nostatic ${imgui_SOURCE_DIR}/misc/fonts/Roboto-Medium.ttf roboto_medium > ${CHEMLAB_FONT_SRC}
-    DEPENDS binary_to_compressed_c ${imgui_SOURCE_DIR}/misc/fonts/Roboto-Medium.ttf
+    COMMAND ${CHEMLAB_FONT_TOOL} -nostatic ${imgui_SOURCE_DIR}/misc/fonts/Roboto-Medium.ttf roboto_medium > ${CHEMLAB_FONT_SRC}
+    DEPENDS ${CHEMLAB_FONT_TOOL_DEP} ${imgui_SOURCE_DIR}/misc/fonts/Roboto-Medium.ttf
     COMMENT "Embedding Roboto-Medium.ttf"
     VERBATIM
 )
@@ -172,12 +207,31 @@ target_include_directories(${PROJECT_NAME}
         ${raylib_SOURCE_DIR}/examples/shaders   # rlights.h
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE chemlab_imgui fmt::fmt Threads::Threads raylib)
-target_compile_definitions(${PROJECT_NAME}
-    PRIVATE
-        ASSETS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/"
-        RAYMATH_DISABLE_CPP_OPERATORS
-)
+target_link_libraries(${PROJECT_NAME} PRIVATE chemlab_imgui fmt::fmt raylib)
+if(NOT EMSCRIPTEN)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads)
+endif()
+target_compile_definitions(${PROJECT_NAME} PRIVATE RAYMATH_DISABLE_CPP_OPERATORS)
+
+if(EMSCRIPTEN)
+    # assets/ is baked into the .data package and mounted at /assets.
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ASSETS_PATH="/assets/")
+    target_compile_options(${PROJECT_NAME} PRIVATE -fexceptions)
+    target_compile_options(chemlab_imgui PRIVATE -fexceptions)
+    target_link_options(${PROJECT_NAME} PRIVATE
+        -fexceptions                       # xyz/toml parsing reports errors by throwing
+        -sALLOW_MEMORY_GROWTH=1            # big trajectories are loaded at runtime
+        -sINITIAL_MEMORY=268435456         # 256 MB, enough for the bundled samples
+        -sSTACK_SIZE=4194304                # 4 MB; the default 64 kB is not enough for ImGui
+        -sFORCE_FILESYSTEM=1               # dropped files land in MEMFS
+        --preload-file ${CMAKE_CURRENT_SOURCE_DIR}/assets@/assets
+        --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html
+    )
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html)
+else()
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ASSETS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/")
+endif()
 
 if(APPLE)
     target_link_libraries(${PROJECT_NAME} PRIVATE "-framework IOKit" "-framework Cocoa" "-framework OpenGL")

@@ -5,6 +5,7 @@ cmake-build-debug/
 bin/
 build/
 out/
+build-web/
 CMakeSettings.json
 chemlab.sublime-workspace
 chemlab_imgui.ini

@@ -1,9 +1,14 @@
 #include "render/shaders.h"
 
-#if defined(PLATFORM_DESKTOP) || !defined(PLATFORM_WEB)
-#define GLSL_VERSION_LINE "#version 330\n"
+// Desktop targets GL 3.3 core; the web build targets WebGL2 (GLSL ES 3.00),
+// which shares the in/out + texture() syntax below but needs explicit
+// precision qualifiers. WebGL1 / GLSL ES 1.00 is not supported: the impostor
+// renderer needs gl_FragDepth, flat varyings and instancing, all of which are
+// core in ES 3.00 but extensions at best in ES 1.00.
+#if defined(__EMSCRIPTEN__)
+#define GLSL_VERSION_LINE "#version 300 es\nprecision highp float;\nprecision highp int;\n"
 #else
-#define GLSL_VERSION_LINE "#version 100\nprecision mediump float;\n"
+#define GLSL_VERSION_LINE "#version 330\n"
 #endif
 
 static const char* kLightingVS = GLSL_VERSION_LINE R"(

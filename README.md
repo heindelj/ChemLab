@@ -139,3 +139,43 @@ On Linux the usual raylib X11/GL development packages are needed
 File dialogs use `portable-file-dialogs` (osascript on macOS, zenity/kdialog on Linux).
 
 If Homebrew's `cmake` is not on your PATH: `export PATH="/opt/homebrew/bin:$PATH"`.
+
+### Web build (WebAssembly)
+
+ChemLab also builds for the browser with Emscripten. The impostor renderer
+needs `gl_FragDepth`, `flat` varyings and instanced arrays, so the web build
+targets **WebGL2 / GLSL ES 3.00 only** (raylib is configured with
+`OPENGL_VERSION="ES 3.0"`, which makes it pass `-sMIN/MAX_WEBGL_VERSION=2`).
+WebGL1 is not supported and there is no fallback.
+
+```sh
+# once: https://emscripten.org/docs/getting_started/downloads.html
+source /path/to/emsdk/emsdk_env.sh
+
+emcmake cmake -S . -B build-web -DCMAKE_BUILD_TYPE=Release
+cmake --build build-web -j
+python3 -m http.server --directory build-web 8000   # then open localhost:8000/ChemLab.html
+```
+
+The output is `build-web/ChemLab.{html,js,wasm,data}`; it must be served over
+HTTP, not opened as a `file://` URL. `web/shell.html` is the page template.
+
+Differences from the desktop build:
+
+- `assets/` is baked into `ChemLab.data` and mounted at `/assets`, so the
+  bundled samples load as usual and `caffeine.xyz` still opens on startup.
+- The native file dialogs are compiled out (`portable-file-dialogs` spawns a
+  helper process). **Drag an `.xyz` file onto the canvas** to load it; the
+  dialog buttons are inert. Screenshots and exports write into the in-memory
+  filesystem, i.e. they are effectively unavailable.
+- ImGui's `.ini` layout lives in the in-memory filesystem and is lost on
+  reload. Wiring it to IDBFS would make layouts persist.
+- The frame body is `RunFrame()` in `src/main.cpp`, driven by
+  `emscripten_set_main_loop_arg()`; raylib's `WindowShouldClose()` calls
+  `emscripten_sleep()` and would need ASYNCIFY, so the web build never calls it.
+- Use a current emsdk. The code uses parenthesized aggregate initialisation
+  (`Color(r,g,b,a)` in `src/core/atomic_data.h`), which needs Clang 16+; older
+  toolchains want brace initialisation instead.
+- fmt is pinned at 12.2.0 rather than 11.2.0: 11.2.0's `format.h` calls
+  `malloc`/`free` without including `<cstdlib>` and only compiles where some
+  other header drags it in, which recent libc++ (emsdk's clang) no longer does.

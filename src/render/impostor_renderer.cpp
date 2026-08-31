@@ -19,7 +19,15 @@
 // look -- same NdotL term, same pow-16 specular divided by 10, same 0.2
 // ambient and 1/2.2 gamma -- without needing any light uniforms.
 
+// GL 3.3 core on desktop, GLSL ES 3.00 (WebGL2) on the web. Everything these
+// shaders rely on -- gl_FragDepth, `flat` varyings, instanced arrays -- is
+// core in ES 3.00, so the bodies below are shared verbatim; ES only adds the
+// requirement that precision be declared.
+#if defined(__EMSCRIPTEN__)
+static const char* kGlslVersion = "#version 300 es\nprecision highp float;\nprecision highp int;\n";
+#else
 static const char* kGlslVersion = "#version 330\n";
+#endif
 
 // Shared fragment-shader helper: shade a view-space hit point.
 static const char* kShadeCommon = R"(

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>ChemLab</title>
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+               background: #1e1f22; color: #ddd;
+               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  canvas.emscripten { display: block; width: 100vw; height: 100vh; border: 0; outline: none; }
+  #status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            flex-direction: column; gap: 12px; font-size: 14px; pointer-events: none; }
+  #bar { width: 240px; height: 4px; background: #333; border-radius: 2px; overflow: hidden; }
+  #bar > div { height: 100%; width: 0; background: #6c9; transition: width .2s; }
+  #hint { position: absolute; bottom: 8px; right: 12px; font-size: 11px; color: #666;
+          pointer-events: none; }
+</style>
+</head>
+<body>
+  <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+  <div id="status"><div id="status-text">Loading ChemLab…</div><div id="bar"><div id="fill"></div></div></div>
+  <div id="hint">drop an .xyz file anywhere to load it</div>
+<script>
+  var statusEl = document.getElementById('status');
+  var textEl = document.getElementById('status-text');
+  var fillEl = document.getElementById('fill');
+
+  var Module = {
+    canvas: (function () {
+      var canvas = document.getElementById('canvas');
+      // Losing the WebGL context silently leaves a black canvas; say so instead.
+      canvas.addEventListener('webglcontextlost', function (e) {
+        alert('WebGL context lost. Reload the page.'); e.preventDefault();
+      }, false);
+      return canvas;
+    })(),
+    print: function (t) { console.log(t); },
+    printErr: function (t) { console.error(t); },
+    setStatus: function (text) {
+      if (!text) { statusEl.style.display = 'none'; return; }
+      var m = /([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/.exec(text);
+      if (m) { textEl.textContent = m[1]; fillEl.style.width = (100 * m[2] / m[4]) + '%'; }
+      else { textEl.textContent = text; }
+    },
+    totalDependencies: 0,
+    monitorRunDependencies: function (left) {
+      this.totalDependencies = Math.max(this.totalDependencies, left);
+      Module.setStatus(left ? 'Preparing… (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : '');
+    }
+  };
+  Module.setStatus('Downloading…');
+
+  // Size the drawing buffer to the CSS size so the UI is not upscaled.
+  function fitCanvas() {
+    var c = Module.canvas;
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+  }
+  fitCanvas();
+  window.addEventListener('resize', fitCanvas);
+
+  window.onerror = function (msg) { Module.setStatus('Error: ' + msg); };
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

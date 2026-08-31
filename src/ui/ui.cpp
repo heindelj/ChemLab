@@ -9,7 +9,9 @@
 #include "imgui_internal.h"
 #include "implot.h"
 #include "implot3d.h"
-#include "portable-file-dialogs.h"
+#if !defined(__EMSCRIPTEN__)
+#include "portable-file-dialogs.h"   // shells out to zenity/Cocoa/Win32: native only
+#endif
 #include "rlImGui.h"
 
 #include "app/actions.h"
@@ -338,6 +340,30 @@ void HelpMarker(const char* text) {
     }
 }
 
+#if defined(__EMSCRIPTEN__)
+
+// The browser has no synchronous native file picker, and portable-file-dialogs
+// works by spawning a helper process, which Emscripten cannot do. Files reach
+// the web build by being dropped onto the canvas (Emscripten's GLFW writes
+// them into the virtual filesystem and raylib reports them through
+// IsFileDropped) or by being preloaded from assets/.
+bool OpenFileDialog(const char*, std::vector<std::string>& outPaths, bool) {
+    outPaths.clear();
+    return false;
+}
+
+bool SelectFolderDialog(const char*, std::string& outPath) {
+    outPath.clear();
+    return false;
+}
+
+bool SaveFileDialog(const char*, const std::string&, std::string& outPath) {
+    outPath.clear();
+    return false;
+}
+
+#else
+
 bool OpenFileDialog(const char* title, std::vector<std::string>& outPaths, bool multiple) {
     auto dialog = pfd::open_file(title, ".", {"Geometry files", "*.xyz", "All files", "*"},
                                  multiple ? pfd::opt::multiselect : pfd::opt::none);
@@ -354,3 +380,5 @@ bool SaveFileDialog(const char* title, const std::string& defaultName, std::stri
     outPath = pfd::save_file(title, defaultName, {"All files", "*"}).result();
     return !outPath.empty();
 }
+
+#endif
