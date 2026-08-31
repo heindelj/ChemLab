@@ -347,7 +347,7 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
                     LookDownAxis(s, axis - 'x', flip);
                     return CommandResult::Ok(fmt::format("Looking down {}", w));
                 }});
-    r.Register({"panel", "panel <name> [show|hide|toggle]", "Show or hide a panel (controls, structure, calculate, output, export, active, console).",
+    r.Register({"panel", "panel <name> [show|hide|toggle]", "Show or hide a panel (controls, structure, plot, calculate, output, export, active, console).",
                 "view", [](AppState& s, const CommandArgs& a) {
                     if (a.size() < 1) return CommandResult::Error("usage: panel <name> [show|hide|toggle]");
                     bool* flag = nullptr;
@@ -355,6 +355,7 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
                     // Aliases kept from the pre-registry command names.
                     if (n == "controls") flag = &s.PanelOpen("controls");
                     else if (n == "structure" || n == "view" || n == "structure_view") flag = &s.PanelOpen("structure_view");
+                    else if (n == "plot" || n == "plot_2d" || n == "2d") flag = &s.PanelOpen("plot_2d");
                     else if (n == "calculate") flag = &s.PanelOpen("calculate");
                     else if (n == "output") flag = &s.PanelOpen("output");
                     else if (n == "export") flag = &s.PanelOpen("export");
@@ -399,12 +400,13 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
                         }
                     return CommandResult::Error(fmt::format("No UI named '{}' (try `ui list`)", a[0]));
                 }});
-    r.Register({"plot", "plot <energy|measurements>", "Choose the plot shown under the 3D view.", "view",
+    r.Register({"plot", "plot <energy|measurements>", "Choose the series shown in the 2D Plot panel (and show it).", "view",
                 [](AppState& s, const CommandArgs& a) {
                     if (a.size() < 1) return CommandResult::Error("usage: plot <energy|measurements>");
                     if (a[0] == "energy") s.twoDPlotIndex = 0;
                     else if (a[0] == "measurements") s.twoDPlotIndex = 1;
                     else return CommandResult::Error("Expected energy or measurements");
+                    s.PanelOpen("plot_2d") = true;
                     return CommandResult::Ok("Plot: " + a[0]);
                 }});
 

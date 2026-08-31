@@ -21,18 +21,22 @@ workflows will grow into.
 +----------------+---------------------------------+---------------------+
 | Controls       | Structure View (3D, raylib)     | Active Structure    |
 |  frames        |                                 |  loaded files       |
-|  rendering     |  ---- draggable splitter ----   +---------------------+
-|  selection     | 2D pane (ImPlot):               | Calculate | Output  |
-|  measurements  |  energy / measurements vs frame |  per-frame table    |
-+----------------+                                 |                     |
+|  rendering     |                                 +---------------------+
+|  selection     +---------------------------------+ Calculate | Output  |
+|  measurements  | 2D Plot (ImPlot):               |  per-frame table    |
++----------------+  energy / measurements vs frame |                     |
 | Export         |                                 |                     |
 +----------------+---------------------------------+---------------------+
 | > command bar                                     status     [Console] |
 +------------------------------------------------------------------------+
 ```
 
-Panels can be dragged, tabbed and closed (View menu / `panel` command);
-`View > Reset layout` restores the default.
+The 3D view and the 2D plot are two independent panels, so the divider
+between them is an ordinary dock splitter: either can be resized, moved,
+tabbed with another panel, torn off or closed on its own. Panels can be
+dragged, tabbed and closed (View menu / `panel` command);
+`View > Reset layout` restores the default. A layout saved by an older
+build gets the 2D Plot panel docked under the 3D view automatically.
 
 ### 3D view
 

@@ -13,6 +13,7 @@ void UIShutdown(AppState& state);
 // Panel entry points (one per docked window).
 void DrawControlsPanel(AppState& state);
 void DrawStructureViewPanel(AppState& state);
+void DrawPlotPanel(AppState& state);
 void DrawActiveStructurePanel(AppState& state);
 void DrawCalculatePanel(AppState& state);
 void DrawOutputPanel(AppState& state);
@@ -36,6 +37,7 @@ bool SaveFileDialog(const char* title, const std::string& defaultName, std::stri
 namespace PanelName {
 inline constexpr const char* Controls = "Controls";
 inline constexpr const char* StructureView = "Structure View";
+inline constexpr const char* Plot = "2D Plot";
 inline constexpr const char* ActiveStructure = "Active Structure";
 inline constexpr const char* Calculate = "Calculate";
 inline constexpr const char* Output = "Calculation Output";

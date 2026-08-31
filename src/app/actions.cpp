@@ -48,7 +48,6 @@ static void ApplyProjectToState(AppState& state) {
     state.render.ballScale = c.view.ballScale;
     state.render.stickRadius = c.view.stickRadius;
     state.render.sphereScale = c.view.sphereScale;
-    state.twoDPaneFraction = c.view.twoDPaneFraction;
     state.twoDPlotIndex = c.view.twoDPlotIndex;
     state.calc.bondTolerance = c.view.bondTolerance;
 
@@ -97,7 +96,6 @@ void CaptureProjectState(AppState& state) {
     c.view.ballScale = state.render.ballScale;
     c.view.stickRadius = state.render.stickRadius;
     c.view.sphereScale = state.render.sphereScale;
-    c.view.twoDPaneFraction = state.twoDPaneFraction;
     c.view.twoDPlotIndex = state.twoDPlotIndex;
     c.view.bondTolerance = state.calc.bondTolerance;
 

@@ -30,7 +30,6 @@ struct ProjectViewSettings {
     float ballScale = 0.25f;
     float stickRadius = 0.2f;
     float sphereScale = 1.0f;
-    float twoDPaneFraction = 0.30f;
     int twoDPlotIndex = 0;
     float bondTolerance = 0.4f;
 };

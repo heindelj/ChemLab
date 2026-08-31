@@ -157,6 +157,7 @@ add_executable(${PROJECT_NAME}
     src/ui/command_bar.cpp
     src/ui/panel_controls.cpp
     src/ui/panel_structure_view.cpp
+    src/ui/panel_plot.cpp
     src/ui/panel_active_structure.cpp
     src/ui/panel_calculate.cpp
     src/ui/panel_output.cpp

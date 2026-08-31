@@ -65,10 +65,15 @@ const std::vector<LayoutDef>& BuiltinLayouts() {
         {"three-column", "Three Column", {{0, SplitDir::Left, 0.20f}, {0, SplitDir::Right, 0.35f}}},
         {"quad", "Quad", {{0, SplitDir::Right, 0.50f}, {0, SplitDir::Down, 0.50f}, {1, SplitDir::Down, 0.50f}}},
         // The classic ChemLab arrangement:
-        //   slot 0 = centre, 1 = left column, 2 = right column,
-        //   3 = bottom of the left column, 4 = top of the right column.
+        //   slot 0 = centre (3D view), 1 = left column, 2 = right column,
+        //   3 = bottom of the left column, 4 = top of the right column,
+        //   5 = bottom of the centre column (the 2D plot).
         {"chemlab-classic", "ChemLab Classic",
-         {{0, SplitDir::Left, 0.20f}, {0, SplitDir::Right, 0.40f}, {1, SplitDir::Down, 0.30f}, {2, SplitDir::Up, 0.32f}}},
+         {{0, SplitDir::Left, 0.20f},
+          {0, SplitDir::Right, 0.40f},
+          {1, SplitDir::Down, 0.30f},
+          {2, SplitDir::Up, 0.32f},
+          {0, SplitDir::Down, 0.30f}}},
     };
     return layouts;
 }
@@ -93,6 +98,7 @@ std::vector<UIDefinition> BuiltinUIs() {
         {{"calculate"}, {"output"}, {"console", false}}, // 2: right column (tabs)
         {{"export"}},                                    // 3: bottom-left
         {{"active_structure"}},                          // 4: top-right
+        {{"plot_2d"}},                                   // 5: below the 3D view
     };
     return {def};
 }

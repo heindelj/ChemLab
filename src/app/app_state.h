@@ -114,7 +114,6 @@ struct AppState {
         std::vector<std::vector<double>> series;   // parallel to measurements
     } measurementPlotCache;
 
-    float twoDPaneFraction = 0.30f;
     int twoDPlotIndex = 0;
     bool showImGuiDemo = false;
     bool showImPlotDemo = false;

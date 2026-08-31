@@ -32,7 +32,6 @@ std::string SerialiseProjectConfig(const ProjectConfig& c) {
         {"ball_scale", Tidy(c.view.ballScale)},
         {"stick_radius", Tidy(c.view.stickRadius)},
         {"sphere_scale", Tidy(c.view.sphereScale)},
-        {"plot_pane_fraction", Tidy(c.view.twoDPaneFraction)},
         {"plot", c.view.twoDPlotIndex == 1 ? "measurements" : "energy"},
         {"bond_tolerance", Tidy(c.view.bondTolerance)},
     };
@@ -99,7 +98,6 @@ bool ParseProjectConfig(const std::string& text, ProjectConfig& c, std::string& 
         c.view.ballScale = (float)(*v)["ball_scale"].value_or((double)d.ballScale);
         c.view.stickRadius = (float)(*v)["stick_radius"].value_or((double)d.stickRadius);
         c.view.sphereScale = (float)(*v)["sphere_scale"].value_or((double)d.sphereScale);
-        c.view.twoDPaneFraction = (float)(*v)["plot_pane_fraction"].value_or((double)d.twoDPaneFraction);
         c.view.twoDPlotIndex = (*v)["plot"].value_or(std::string{"energy"}) == "measurements" ? 1 : 0;
         c.view.bondTolerance = (float)(*v)["bond_tolerance"].value_or((double)d.bondTolerance);
     }

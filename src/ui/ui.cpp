@@ -1,5 +1,6 @@
 #include "ui/ui.h"
 
+#include <cmath>
 #include <filesystem>
 
 #include <fmt/format.h>
@@ -19,7 +20,47 @@
 namespace {
 
 bool gLayoutInitialised = false;
+bool gPlotPanelMigrated = false;
+int gFramesSinceLayoutLoad = 0;
 ImGuiID gDockspaceId = 0;
+
+// Share of the centre column given to the 2D plot, matching the fixed
+// splitter it replaced (the old AppState::twoDPaneFraction default).
+constexpr float kPlotPaneFraction = 0.30f;
+
+// The 2D plot used to be drawn inside the Structure View panel. A dock layout
+// saved by an older build knows nothing about the new "2D Plot" window, which
+// would leave it floating; dock it under the 3D view at the same share of the
+// column the old splitter used, leaving the rest of the saved arrangement
+// alone. (View > Reset layout rebuilds everything from the active UI.)
+//
+// This deliberately runs a frame late: the nodes restored from the ini file
+// only get their real sizes once the dockspace has been submitted, and
+// splitting a zero-sized node yields a zero SizeRef, which is what made the
+// new panel come up as a sliver.
+void MigrateSavedLayoutForPlotPanel(ImGuiID dockspaceId, ImVec2 dockSize) {
+    if (gPlotPanelMigrated) return;
+    if (gFramesSinceLayoutLoad++ < 1) return;
+    gPlotPanelMigrated = true;
+    if (ImGui::FindWindowSettingsByID(ImHashStr(PanelName::Plot))) return;   // layout already knows it
+    ImGuiWindowSettings* view = ImGui::FindWindowSettingsByID(ImHashStr(PanelName::StructureView));
+    if (!view || view->DockId == 0) return;
+    ImGuiDockNode* node = ImGui::DockBuilderGetNode(view->DockId);
+    if (!node) return;
+
+    ImVec2 size = node->Size;
+    if (size.x < 1.0f) size.x = std::fmax(view->Size.x, dockSize.x);
+    if (size.y < 1.0f) size.y = std::fmax(view->Size.y, dockSize.y);
+    if (size.x < 1.0f || size.y < 1.0f) return;
+
+    ImGuiID below = 0, above = 0;
+    ImGui::DockBuilderSplitNode(view->DockId, ImGuiDir_Down, kPlotPaneFraction, &below, &above);
+    // Split ratios alone are unreliable here; state the sizes outright.
+    ImGui::DockBuilderSetNodeSize(above, ImVec2(size.x, std::fmax(size.y * (1.0f - kPlotPaneFraction), 1.0f)));
+    ImGui::DockBuilderSetNodeSize(below, ImVec2(size.x, std::fmax(size.y * kPlotPaneFraction, 1.0f)));
+    ImGui::DockBuilderDockWindow(PanelName::Plot, below);
+    ImGui::DockBuilderFinish(dockspaceId);
+}
 
 // The active UIDefinition is applied through ApplyUIDockLayout (ui_builder.h);
 // the old hard-coded dock layout is now the built-in "Default" UI in ui_spec.cpp.
@@ -184,6 +225,8 @@ static void ApplyPendingIniFile(AppState& state) {
     if (std::filesystem::exists(state.iniFileName)) {
         ImGui::LoadIniSettingsFromDisk(state.iniFileName.c_str());
         gLayoutInitialised = false;   // re-check that the dockspace exists
+        gPlotPanelMigrated = false;   // ...and that this layout knows the 2D Plot panel
+        gFramesSinceLayoutLoad = 0;
     } else {
         state.resetLayoutRequested = true;
     }
@@ -215,8 +258,10 @@ void UIFrame(AppState& state) {
     if (!gLayoutInitialised || state.resetLayoutRequested) {
         // Only build the layout ourselves if there is no saved one (or on request).
         const UIDefinition& ui = ActiveUI(state);
-        if (state.resetLayoutRequested || ImGui::DockBuilderGetNode(gDockspaceId) == nullptr)
+        if (state.resetLayoutRequested || ImGui::DockBuilderGetNode(gDockspaceId) == nullptr) {
             ApplyUIDockLayout(state, ui, gDockspaceId, dockSize);
+            gPlotPanelMigrated = true;   // a freshly built layout already has the 2D Plot panel
+        }
         if (state.resetLayoutRequested) {
             ApplyUIVisibility(state, ui);
             // Remember which UI the saved dock arrangement belongs to.
@@ -225,6 +270,7 @@ void UIFrame(AppState& state) {
         gLayoutInitialised = true;
         state.resetLayoutRequested = false;
     }
+    MigrateSavedLayoutForPlotPanel(gDockspaceId, dockSize);
     UIBuilderPreDockspace(state, gDockspaceId, dockSize);
     ImGui::DockSpace(gDockspaceId, dockSize, ImGuiDockNodeFlags_None);
     ImGui::End();

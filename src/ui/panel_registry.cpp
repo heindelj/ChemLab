@@ -4,8 +4,8 @@
 
 const std::vector<PanelInfo>& PanelCatalog() {
     static const std::vector<PanelInfo> catalog = {
-        {"structure_view", PanelName::StructureView, "3D view of the active structure with the 2D plot pane.",
-         &DrawStructureViewPanel, true},
+        {"structure_view", PanelName::StructureView, "3D view of the active structure.", &DrawStructureViewPanel, true},
+        {"plot_2d", PanelName::Plot, "2D plot of energy or measurements against frame.", &DrawPlotPanel},
         {"controls", PanelName::Controls, "Structure list, playback, and render settings.", &DrawControlsPanel},
         {"active_structure", PanelName::ActiveStructure, "Details of the active file: atoms, frames, selection.",
          &DrawActiveStructurePanel},
