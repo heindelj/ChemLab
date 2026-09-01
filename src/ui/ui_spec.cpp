@@ -62,6 +62,7 @@ const std::vector<LayoutDef>& BuiltinLayouts() {
         {"sidebar-left", "Sidebar Left", {{0, SplitDir::Left, 0.25f}}},
         {"sidebar-right", "Sidebar Right", {{0, SplitDir::Right, 0.30f}}},
         {"main-bottom", "Main + Bottom", {{0, SplitDir::Down, 0.30f}}},
+        {"two-row", "Two Row", {{0, SplitDir::Down, 0.55f}}},
         {"three-column", "Three Column", {{0, SplitDir::Left, 0.20f}, {0, SplitDir::Right, 0.35f}}},
         {"quad", "Quad", {{0, SplitDir::Right, 0.50f}, {0, SplitDir::Down, 0.50f}, {1, SplitDir::Down, 0.50f}}},
         // The classic ChemLab arrangement:
@@ -100,7 +101,16 @@ std::vector<UIDefinition> BuiltinUIs() {
         {{"active_structure"}},                          // 4: top-right
         {{"plot_2d"}},                                   // 5: below the 3D view
     };
-    return {def};
+    // Plot Lab: the live 2D plot on top, the node graph that feeds it below.
+    UIDefinition lab;
+    lab.name = "Plot Lab";
+    lab.layoutId = "two-row";
+    lab.builtin = true;
+    lab.slots = {
+        {{"plot_2d"}},                                   // 0: top
+        {{"node_graph"}, {"console", false}},            // 1: bottom (tabs)
+    };
+    return {def, lab};
 }
 
 // ---------------------------------------------------------------------------

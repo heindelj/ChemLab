@@ -1,4 +1,6 @@
-// 2D Plot panel: energy or measurements against frame number (ImPlot).
+// 2D Plot panel (ImPlot): the built-in per-frame plots (energy, measurements)
+// plus any plot published by name into AppState::plots (Plot 2D nodes). A
+// floating picker in the panel's corner switches between them.
 // Used to live in the bottom half of the Structure View panel; it is now a
 // dockable panel of its own, so the split between it and the 3D view is a
 // normal dock splitter and either one can be resized, tabbed or closed.
@@ -16,7 +18,8 @@
 
 namespace {
 
-const char* kPlotNames[] = {"Energy per frame", "Measurements per frame"};
+const char* kBuiltinPlotNames[] = {"Energy per frame", "Measurements per frame"};
+static_assert(IM_ARRAYSIZE(kBuiltinPlotNames) == AppState::kBuiltinPlotCount);
 
 // Above this many points, markers and the NaN-skipping line style get too
 // slow / too dense to be useful; draw a plain decimated-looking line instead.
@@ -114,20 +117,89 @@ void PlotMeasurements(AppState& state, const Structure& s) {
     }
 }
 
+// Bar width for PlotBars: a fraction of the smallest x spacing.
+double BarSize(const std::vector<double>& x) {
+    double dx = std::numeric_limits<double>::max();
+    for (size_t i = 1; i < x.size(); ++i) dx = std::fmin(dx, std::fabs(x[i] - x[i - 1]));
+    return (x.size() < 2 || !(dx > 0) || !std::isfinite(dx)) ? 0.67 : 0.67 * dx;
+}
+
+void DrawSeries(const plot::Series& sr) {
+    using plot::SeriesKind;
+    const int n = (int)sr.Count();
+    const char* label = sr.label.c_str();
+    ImPlotSpec spec;
+    switch (sr.kind) {
+        case SeriesKind::Line:
+            spec.Flags = ImPlotLineFlags_SkipNaN;
+            if (sr.markers && n <= kMaxMarkerPoints) {
+                spec.Marker = ImPlotMarker_Circle;
+                spec.MarkerSize = 3.0f;
+            }
+            ImPlot::PlotLine(label, sr.x.data(), sr.y.data(), n, spec);
+            break;
+        case SeriesKind::Scatter:
+            spec.Marker = ImPlotMarker_Circle;
+            spec.MarkerSize = 3.0f;
+            ImPlot::PlotScatter(label, sr.x.data(), sr.y.data(), n, spec);
+            break;
+        case SeriesKind::Bars:
+            ImPlot::PlotBars(label, sr.x.data(), sr.y.data(), n, BarSize(sr.x));
+            break;
+        case SeriesKind::Stairs:
+            ImPlot::PlotStairs(label, sr.x.data(), sr.y.data(), n);
+            break;
+        case SeriesKind::Stems:
+            ImPlot::PlotStems(label, sr.x.data(), sr.y.data(), n, 0.0);
+            break;
+        case SeriesKind::Histogram:
+            ImPlot::PlotHistogram(label, sr.y.data(), n, sr.bins > 0 ? sr.bins : (int)ImPlotBin_Sturges);
+            break;
+    }
+}
+
+void PlotNamed(plot::NamedPlot& p) {
+    const plot::PlotSpec& spec = p.spec;
+    // Re-fit only when the data changed: keeps the user's pan/zoom between
+    // auto-run ticks that publish identical data... and follows real changes.
+    if (p.fittedVersion != p.version) {
+        ImPlot::SetNextAxesToFit();
+        p.fittedVersion = p.version;
+    }
+    const std::string title = (spec.title.empty() ? p.name : spec.title) + "##named_" + p.name;
+    ImPlotFlags flags = ImPlotFlags_NoMouseText;
+    if (spec.series.size() == 1 && spec.series[0].label == p.name) flags |= ImPlotFlags_NoLegend;
+    if (ImPlot::BeginPlot(title.c_str(), ImVec2(-1, -1), flags)) {
+        ImPlot::SetupAxes(spec.xlabel.empty() ? nullptr : spec.xlabel.c_str(),
+                          spec.ylabel.empty() ? nullptr : spec.ylabel.c_str());
+        // North-west: the plot picker floats over the north-east corner.
+        ImPlot::SetupLegend(ImPlotLocation_NorthWest);
+        for (const plot::Series& sr : spec.series) DrawSeries(sr);
+        ImPlot::EndPlot();
+    }
+}
+
 }  // namespace
 
 void DrawPlotPanel(AppState& state) {
     const Structure* s = state.ActiveStructure();
-    if (!s) {
-        ImGui::TextDisabled("No structure loaded.");
-        ImGui::TextDisabled("Open an xyz file (File > Open, drag & drop, or `load path.xyz`).");
-        return;
-    }
+    const int named = state.twoDPlotIndex - AppState::kBuiltinPlotCount;
+    if (state.twoDPlotIndex >= AppState::kBuiltinPlotCount && named >= (int)state.plots.size())
+        state.twoDPlotIndex = 0;   // the selected plot went away
 
     const ImVec2 origin = ImGui::GetCursorScreenPos();
     const float paneWidth = ImGui::GetContentRegionAvail().x;
-    if (state.twoDPlotIndex == 1) PlotMeasurements(state, *s);
-    else PlotEnergy(state, *s);
+    if (state.twoDPlotIndex >= AppState::kBuiltinPlotCount) {
+        PlotNamed(state.plots[(size_t)named]);
+    } else if (!s) {
+        ImGui::TextDisabled("No structure loaded.");
+        ImGui::TextDisabled("Open an xyz file (File > Open, drag & drop, or `load path.xyz`),");
+        ImGui::TextDisabled("or publish a plot from the node graph (`graph demo plots`).");
+    } else if (state.twoDPlotIndex == 1) {
+        PlotMeasurements(state, *s);
+    } else {
+        PlotEnergy(state, *s);
+    }
 
     // Plot picker floated over the top-right corner of the panel (quick-mag puts
     // it top-left; here the y-axis label lives there).
@@ -138,8 +210,19 @@ void DrawPlotPanel(AppState& state) {
                                    ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
                                    ImGuiWindowFlags_AlwaysAutoResize;
     if (ImGui::Begin("##plot_picker", nullptr, flags)) {
-        ImGui::SetNextItemWidth(190.0f);
-        ImGui::Combo("##plot_kind", &state.twoDPlotIndex, kPlotNames, IM_ARRAYSIZE(kPlotNames));
+        ImGui::SetNextItemWidth(210.0f);
+        const int count = AppState::kBuiltinPlotCount + (int)state.plots.size();
+        auto nameOf = [&](int i) -> const char* {
+            return i < AppState::kBuiltinPlotCount ? kBuiltinPlotNames[i]
+                                                   : state.plots[(size_t)(i - AppState::kBuiltinPlotCount)].name.c_str();
+        };
+        if (ImGui::BeginCombo("##plot_kind", nameOf(state.twoDPlotIndex))) {
+            for (int i = 0; i < count; ++i) {
+                if (i == AppState::kBuiltinPlotCount) ImGui::Separator();
+                if (ImGui::Selectable(nameOf(i), i == state.twoDPlotIndex)) state.twoDPlotIndex = i;
+            }
+            ImGui::EndCombo();
+        }
     }
     ImGui::End();
 }

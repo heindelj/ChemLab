@@ -38,6 +38,8 @@ ImVec4 TypeColor(graph::ValueType t) {
         case VT::FloatVec: return {0.85f, 0.7f, 1.0f, 1.0f};
         case VT::Positions: return {1.0f, 0.6f, 0.6f, 1.0f};
         case VT::Labels: return {1.0f, 1.0f, 0.6f, 1.0f};
+        case VT::Table: return {0.6f, 0.9f, 0.85f, 1.0f};
+        case VT::Series: return {1.0f, 0.7f, 0.85f, 1.0f};
         default: return {0.75f, 0.75f, 0.75f, 1.0f};
     }
 }

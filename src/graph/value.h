@@ -14,10 +14,11 @@
 #include <nlohmann/json_fwd.hpp>
 
 #include "graph/chemical_data.h"
+#include "plot/plot_spec.h"
 
 namespace graph {
 
-enum class ValueType { Any, Float, Int, Text, FloatVec, Positions, Labels, IntVec, Chem };
+enum class ValueType { Any, Float, Int, Text, FloatVec, Positions, Labels, IntVec, Chem, Table, Series };
 
 // N x 3 cartesian coordinates, flat xyzxyz... (angstrom).
 struct Positions {
@@ -27,9 +28,22 @@ struct Positions {
 
 using Labels = std::vector<std::string>;
 
+// Numeric tabular data (a CSV file, say): named columns of equal length.
+// Column-major so a column can be handed out as a FloatVec without copying.
+struct Table {
+    std::vector<std::string> columns;            // column names
+    std::vector<std::vector<double>> data;       // data[c][row]
+    size_t Rows() const { return data.empty() ? 0 : data[0].size(); }
+    size_t Cols() const { return columns.size(); }
+    int FindColumn(const std::string& name) const;   // -1 when absent
+};
+
+// One plot series (see plot/plot_spec.h); flows from Series nodes into Plot nodes.
+using Series = plot::Series;
+
 struct Value {
     std::variant<std::monostate, double, int64_t, std::string, std::vector<double>, Positions, Labels,
-                 std::vector<int64_t>, ChemicalData>
+                 std::vector<int64_t>, ChemicalData, Table, Series>
         v;
 
     Value() = default;
@@ -49,6 +63,8 @@ struct Value {
     const Labels* AsLabels() const;
     const std::vector<int64_t>* AsIntVec() const;
     const ChemicalData* AsChem() const;
+    const Table* AsTable() const;
+    const Series* AsSeries() const;
 
     // Short human-readable form for node bodies / the console.
     std::string Preview(size_t maxItems = 4) const;

@@ -17,6 +17,7 @@
 #include "app/commands.h"
 #include "app/project.h"
 #include "core/molecule.h"
+#include "plot/plot_spec.h"
 #include "render/molecular_model.h"
 #include "render/viewport.h"
 #include "ui/theme.h"
@@ -131,7 +132,22 @@ struct AppState {
         std::vector<std::vector<double>> series;   // parallel to measurements
     } measurementPlotCache;
 
+    // ---- 2D plots ----
+    // The 2D Plot panel shows one of: the built-in per-frame plots (energy,
+    // measurements) or a plot published by name (by Plot nodes, scripts, ...).
+    // twoDPlotIndex < kBuiltinPlotCount picks a built-in plot; otherwise it is
+    // kBuiltinPlotCount + index into `plots`.
+    static constexpr int kBuiltinPlotCount = 2;
+    std::vector<plot::NamedPlot> plots;
     int twoDPlotIndex = 0;
+    // Replace (or add) the plot called `name`. A brand-new name becomes the
+    // selected plot when `activate` is set.
+    plot::NamedPlot& PublishPlot(const std::string& name, plot::PlotSpec spec, bool activate = true);
+    plot::NamedPlot* FindPlot(const std::string& name);
+    bool RemovePlot(const std::string& name);   // keeps the selection sensible
+    void ClearPlots();
+    bool SelectPlot(const std::string& name);   // "energy", "measurements" or a published name
+    std::string SelectedPlotName() const;
     bool showImGuiDemo = false;
     bool showImPlotDemo = false;
     bool showMetrics = false;

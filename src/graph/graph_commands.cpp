@@ -117,6 +117,89 @@ CommandResult BuildHighlightDemo(AppState& s) {
         "Alpha; atoms not bonded to the picked atom are dimmed. `graph run` (or Auto) applies it.");
 }
 
+// Load Table -> Column x3 -> Series -> three named plots, shown in the
+// "Plot Lab" UI (2D plot on top, this graph below) so the picker in the plot
+// pane switches between them.
+CommandResult BuildPlotsDemo(AppState& s) {
+    GraphSystem& gs = s.GraphSys();
+    gs.graph.Clear();
+    s.ClearPlots();
+
+    Node* load = gs.graph.AddNode("data.load_table", 40, 60);
+    Node* time = gs.graph.AddNode("data.column", 340, 40);
+    Node* temp = gs.graph.AddNode("data.column", 340, 250);
+    Node* pot = gs.graph.AddNode("data.column", 340, 460);
+    Node* kin = gs.graph.AddNode("data.column", 340, 670);
+    Node* sTemp = gs.graph.AddNode("plot.series", 640, 40);
+    Node* sPot = gs.graph.AddNode("plot.series", 640, 260);
+    Node* sKin = gs.graph.AddNode("plot.series", 640, 480);
+    Node* sHist = gs.graph.AddNode("plot.series", 640, 700);
+    Node* pTemp = gs.graph.AddNode("plot.plot2d", 960, 40);
+    Node* pEnergy = gs.graph.AddNode("plot.plot2d", 960, 330);
+    Node* pHist = gs.graph.AddNode("plot.plot2d", 960, 620);
+    if (!load || !time || !temp || !pot || !kin || !sTemp || !sPot || !sKin || !sHist || !pTemp || !pEnergy || !pHist)
+        return CommandResult::Error("data/plot node types missing");
+
+    load->params["path"] = Value::S(std::string(ASSETS_PATH) + "data/md_demo.csv");
+    time->params["column"] = Value::S("time_ps");
+    temp->params["column"] = Value::S("temperature_K");
+    pot->params["column"] = Value::S("potential_E");
+    kin->params["column"] = Value::S("kinetic_E");
+    sTemp->params["kind"] = Value::S("scatter");
+    sPot->params["kind"] = Value::S("line");
+    sKin->params["kind"] = Value::S("line");
+    sHist->params["kind"] = Value::S("histogram");
+    sHist->params["bins"] = Value::I(25);
+    sHist->params["label"] = Value::S("T samples");
+    pTemp->params["name"] = Value::S("Temperature");
+    pTemp->params["xlabel"] = Value::S("time (ps)");
+    pTemp->params["ylabel"] = Value::S("T (K)");
+    pEnergy->params["name"] = Value::S("Energies");
+    pEnergy->params["xlabel"] = Value::S("time (ps)");
+    pEnergy->params["ylabel"] = Value::S("E (kcal/mol)");
+    pHist->params["name"] = Value::S("Temperature histogram");
+    pHist->params["xlabel"] = Value::S("T (K)");
+    pHist->params["ylabel"] = Value::S("count");
+
+    auto linkByName = [&](Node& from, const char* out, Node& to, const char* in) -> std::string {
+        const int o = FindOutputPin(from, out), i = FindInputPin(to, in);
+        if (o < 0 || i < 0) return fmt::format("missing pin {} -> {}", out, in);
+        std::string err;
+        if (!gs.graph.AddLink(from.id, o, to.id, i, &err)) return err;
+        return "";
+    };
+    for (const std::string& err :
+         {linkByName(*load, "table", *time, "table"), linkByName(*load, "table", *temp, "table"),
+          linkByName(*load, "table", *pot, "table"), linkByName(*load, "table", *kin, "table"),
+          linkByName(*time, "values", *sTemp, "x"), linkByName(*temp, "values", *sTemp, "y"),
+          linkByName(*temp, "name", *sTemp, "label"),
+          linkByName(*time, "values", *sPot, "x"), linkByName(*pot, "values", *sPot, "y"),
+          linkByName(*pot, "name", *sPot, "label"),
+          linkByName(*time, "values", *sKin, "x"), linkByName(*kin, "values", *sKin, "y"),
+          linkByName(*kin, "name", *sKin, "label"),
+          linkByName(*temp, "values", *sHist, "y"),
+          linkByName(*sTemp, "series", *pTemp, "s1"),
+          linkByName(*sPot, "series", *pEnergy, "s1"), linkByName(*sKin, "series", *pEnergy, "s2"),
+          linkByName(*sHist, "series", *pHist, "s1")})
+        if (!err.empty()) return CommandResult::Error("demo wiring failed: " + err);
+
+    // Show it in the Plot Lab UI (2D plot over the node graph) and run once so
+    // the plots exist immediately.
+    for (int i = 0; i < (int)s.uis.size(); ++i)
+        if (s.uis[i].name == "Plot Lab") {
+            s.activeUI = i;
+            s.resetLayoutRequested = true;
+        }
+    s.PanelOpen("node_graph") = true;
+    s.PanelOpen("plot_2d") = true;
+    gs.Run(s);
+    s.SelectPlot("Temperature");
+    std::string msg = "Plots demo created: Load Table (md_demo.csv) -> Column x4 -> Series -> Plot 2D x3. "
+                      "Pick a plot from the dropdown in the 2D Plot pane, or `plot list`.";
+    if (!gs.lastRunOk) msg += "\nFirst run reported: " + gs.lastRunSummary;
+    return CommandResult::Ok(msg);
+}
+
 }  // namespace
 
 void RegisterGraphCommands(CommandRegistry& r) {
@@ -133,11 +216,13 @@ void RegisterGraphCommands(CommandRegistry& r) {
                         const std::string which = a.size() > 1 ? a[1] : "distance";
                         if (which == "distance") return BuildDistanceDemo(s);
                         if (which == "highlight") return BuildHighlightDemo(s);
-                        return CommandResult::Error("unknown demo (distance, highlight)");
+                        if (which == "plots") return BuildPlotsDemo(s);
+                        return CommandResult::Error("unknown demo (distance, highlight, plots)");
                     }
                     if (a[0] == "clear") {
                         gs.graph.Clear();
                         gs.store.Clear();
+                        s.ClearPlots();
                         return CommandResult::Ok("Node graph cleared");
                     }
                     if (a[0] == "add") {

@@ -403,12 +403,29 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
                         }
                     return CommandResult::Error(fmt::format("No UI named '{}' (try `ui list`)", a[0]));
                 }});
-    r.Register({"plot", "plot <energy|measurements>", "Choose the series shown in the 2D Plot panel (and show it).", "view",
-                [](AppState& s, const CommandArgs& a) {
-                    if (a.size() < 1) return CommandResult::Error("usage: plot <energy|measurements>");
-                    if (a[0] == "energy") s.twoDPlotIndex = 0;
-                    else if (a[0] == "measurements") s.twoDPlotIndex = 1;
-                    else return CommandResult::Error("Expected energy or measurements");
+    r.Register({"plot", "plot <energy|measurements|name> | plot list | plot remove <name> | plot clear",
+                "Choose the plot shown in the 2D Plot panel (built-in or published by name), or manage published plots.",
+                "view", [](AppState& s, const CommandArgs& a) {
+                    if (a.size() < 1 || a[0] == "list") {
+                        std::string out = "Plots:";
+                        for (const char* b : {"energy", "measurements"})
+                            out += fmt::format("\n  {}{}", b, s.SelectedPlotName() == b ? "  (shown)" : "");
+                        for (const auto& p : s.plots)
+                            out += fmt::format("\n  {}  [{} series]{}", p.name, p.spec.series.size(),
+                                               s.SelectedPlotName() == p.name ? "  (shown)" : "");
+                        return CommandResult::Ok(out);
+                    }
+                    if (a[0] == "remove") {
+                        if (a.size() < 2) return CommandResult::Error("usage: plot remove <name>");
+                        if (!s.RemovePlot(a[1])) return CommandResult::Error(fmt::format("No plot named '{}'", a[1]));
+                        return CommandResult::Ok("Removed plot " + a[1]);
+                    }
+                    if (a[0] == "clear") {
+                        s.ClearPlots();
+                        return CommandResult::Ok("Published plots cleared");
+                    }
+                    if (!s.SelectPlot(a[0]))
+                        return CommandResult::Error(fmt::format("No plot named '{}' (try `plot list`)", a[0]));
                     s.PanelOpen("plot_2d") = true;
                     return CommandResult::Ok("Plot: " + a[0]);
                 }});

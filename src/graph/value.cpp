@@ -17,6 +17,8 @@ ValueType Value::Type() const {
         case 6: return ValueType::Labels;
         case 7: return ValueType::IntVec;
         case 8: return ValueType::Chem;
+        case 9: return ValueType::Table;
+        case 10: return ValueType::Series;
         default: return ValueType::Any;   // monostate
     }
 }
@@ -39,6 +41,14 @@ const Positions* Value::AsPositions() const { return std::get_if<Positions>(&v);
 const Labels* Value::AsLabels() const { return std::get_if<Labels>(&v); }
 const std::vector<int64_t>* Value::AsIntVec() const { return std::get_if<std::vector<int64_t>>(&v); }
 const ChemicalData* Value::AsChem() const { return std::get_if<ChemicalData>(&v); }
+const Table* Value::AsTable() const { return std::get_if<Table>(&v); }
+const Series* Value::AsSeries() const { return std::get_if<Series>(&v); }
+
+int Table::FindColumn(const std::string& name) const {
+    for (size_t c = 0; c < columns.size(); ++c)
+        if (columns[c] == name) return (int)c;
+    return -1;
+}
 
 std::string Value::Preview(size_t maxItems) const {
     switch (Type()) {
@@ -70,6 +80,17 @@ std::string Value::Preview(size_t maxItems) const {
             return fmt::format("chemdata[{} atoms, {} topolog{}]", c.natoms, c.topologies.size(),
                                c.topologies.size() == 1 ? "y" : "ies");
         }
+        case ValueType::Table: {
+            const auto& t = std::get<Table>(v);
+            std::string s = fmt::format("table[{} rows x {} cols: ", t.Rows(), t.Cols());
+            for (size_t c = 0; c < t.columns.size() && c < maxItems; ++c) s += fmt::format("{}{}", c ? ", " : "", t.columns[c]);
+            if (t.columns.size() > maxItems) s += ", ...";
+            return s + "]";
+        }
+        case ValueType::Series: {
+            const auto& sr = std::get<Series>(v);
+            return fmt::format("{} series '{}' [{} points]", plot::SeriesKindName(sr.kind), sr.label, sr.Count());
+        }
         default: return "-";
     }
 }
@@ -84,6 +105,8 @@ const char* TypeName(ValueType t) {
         case ValueType::Labels: return "labels";
         case ValueType::IntVec: return "intvec";
         case ValueType::Chem: return "chemdata";
+        case ValueType::Table: return "table";
+        case ValueType::Series: return "series";
         default: return "any";
     }
 }
@@ -97,6 +120,8 @@ bool TypeFromName(const std::string& name, ValueType& out) {
     else if (name == "labels") out = ValueType::Labels;
     else if (name == "intvec" || name == "ints" || name == "indices") out = ValueType::IntVec;
     else if (name == "chemdata" || name == "chem") out = ValueType::Chem;
+    else if (name == "table") out = ValueType::Table;
+    else if (name == "series") out = ValueType::Series;
     else if (name == "any") out = ValueType::Any;
     else return false;
     return true;
@@ -117,6 +142,15 @@ json ValueToJson(const Value& val) {
         case ValueType::Labels: return std::get<Labels>(val.v);
         case ValueType::IntVec: return std::get<std::vector<int64_t>>(val.v);
         case ValueType::Chem: return ChemicalDataToJson(std::get<ChemicalData>(val.v));
+        case ValueType::Table: {
+            const Table& t = std::get<Table>(val.v);
+            return json{{"columns", t.columns}, {"data", t.data}};
+        }
+        case ValueType::Series: {
+            const Series& sr = std::get<Series>(val.v);
+            return json{{"kind", plot::SeriesKindName(sr.kind)}, {"label", sr.label}, {"x", sr.x}, {"y", sr.y},
+                        {"markers", sr.markers}, {"bins", sr.bins}};
+        }
         case ValueType::Positions: {
             const Positions& p = std::get<Positions>(val.v);
             json rows = json::array();
@@ -216,6 +250,47 @@ bool ValueFromJson(const json& j, ValueType expected, Value& out, std::string& e
             ChemicalData c;
             if (!ChemicalDataFromJson(j, c, err)) return false;
             out.v = std::move(c);
+            return true;
+        }
+        case ValueType::Table: {
+            // {columns: [...names], data: [[col0...], [col1...]]} (column-major).
+            if (!j.is_object() || !j.contains("columns") || !j.contains("data")) {
+                err = "expected {columns, data}";
+                return false;
+            }
+            Table t;
+            for (const auto& c : j["columns"]) {
+                if (!c.is_string()) { err = "table columns must be strings"; return false; }
+                t.columns.push_back(c.get<std::string>());
+            }
+            for (const auto& col : j["data"]) {
+                std::vector<double> a;
+                for (const auto& e : col) {
+                    if (!e.is_number()) { err = "table data must be numbers"; return false; }
+                    a.push_back(e.get<double>());
+                }
+                t.data.push_back(std::move(a));
+            }
+            if (t.data.size() != t.columns.size()) { err = "table columns/data length mismatch"; return false; }
+            for (const auto& col : t.data)
+                if (col.size() != t.Rows()) { err = "table columns differ in length"; return false; }
+            out.v = std::move(t);
+            return true;
+        }
+        case ValueType::Series: {
+            if (!j.is_object() || !j.contains("y")) { err = "expected {kind, label, x, y}"; return false; }
+            Series sr;
+            if (j.contains("kind") && !plot::SeriesKindFromName(j["kind"].get<std::string>(), sr.kind)) {
+                err = "unknown series kind";
+                return false;
+            }
+            if (j.contains("label")) sr.label = j["label"].get<std::string>();
+            if (j.contains("markers")) sr.markers = j["markers"].get<bool>();
+            if (j.contains("bins")) sr.bins = j["bins"].get<int>();
+            for (const auto& e : j["y"]) sr.y.push_back(e.get<double>());
+            if (j.contains("x")) for (const auto& e : j["x"]) sr.x.push_back(e.get<double>());
+            if (sr.x.empty()) for (size_t i = 0; i < sr.y.size(); ++i) sr.x.push_back((double)i);
+            out.v = std::move(sr);
             return true;
         }
         case ValueType::Labels: {

@@ -76,6 +76,24 @@ on the command line:
 `--snap out.png` renders a few frames, saves the whole window and exits
 (used for headless smoke tests), and `--exit` just quits after a few frames.
 
+### Node graph and plots
+
+The Node Graph panel wires data sources, scripts and analyses together
+(`graph demo distance|highlight|plots` builds an example, right-click the
+canvas to add nodes). The *Data* and *Plot* nodes turn tabular data into
+plots without leaving the app:
+
+```
+Load Table (csv/tsv/whitespace) -> Column -> Series (line, scatter, bars,
+    stairs, stems, histogram) -> Plot 2D (a *named* plot)
+```
+
+Every `Plot 2D` node publishes its plot under a name; the dropdown floating
+in the 2D Plot panel (or `plot <name>`, `plot list`) switches between the
+built-in per-frame plots and the published ones. The built-in **Plot Lab** UI
+(`ui "Plot Lab"`, or `graph demo plots`, which also loads `assets/data/md_demo.csv`)
+shows the live plot on top and the graph that feeds it below.
+
 ## Projects
 
 A project is a folder with a `chemlab.toml` at its root; everything it
@@ -119,6 +137,8 @@ commands = ["plot measurements", "rotate on 15"]
 src/core     molecule data, xyz IO, geometry, element tables (no rendering)
 src/render   lighting shader, GPU molecular model, orbit camera, off-screen viewport
 src/app      AppState, actions (every state change), the command registry, projects (chemlab.toml)
+src/graph    node graph: values, node types (built-in, data/plot, python), evaluation, script protocol
+src/plot     UI-free description of a 2D plot (series, axes); named plots live in AppState::plots
 src/ui       ImGui: theme, dock layout, panels, command bar
 ```
 

@@ -60,7 +60,7 @@ struct UIDefinition {
 // ---- catalogs -------------------------------------------------------------
 const std::vector<LayoutDef>& BuiltinLayouts();
 const LayoutDef* FindLayout(const std::string& id);
-// The built-in UIs (currently just "Default", the classic arrangement).
+// The built-in UIs: "Default" (the classic arrangement) and "Plot Lab" (2D plot over node graph).
 std::vector<UIDefinition> BuiltinUIs();
 
 // ---- geometry helper (thumbnails / previews) ------------------------------
