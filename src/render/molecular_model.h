@@ -72,4 +72,5 @@ private:
     mutable std::vector<SphereInstanceGPU> sphOpaque, sphTransp;
     mutable std::vector<CylinderInstanceGPU> cylOpaque, cylTransp;
     mutable std::vector<SphereInstanceGPU> highlightScratch;
+    mutable std::vector<float> sphDepthScratch, cylDepthScratch;   // transparent-pass sort keys
 };

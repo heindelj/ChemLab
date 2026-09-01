@@ -100,7 +100,25 @@ void MolecularModel::Draw(const RenderSettings& settings) const {
             Color c = settings.colorBonds ? atomColors[hb.atom] : settings.bondColor;
             c.a = atomColors[hb.atom].a;
             if (c.a == 0) continue;
-            const CylinderInstanceGPU inst{hb.from.x, hb.from.y, hb.from.z, settings.stickRadius,
+            // Trim the cylinder so it starts on the sphere surface (offset
+            // sqrt(rBall^2 - rStick^2), where the cylinder pierces the ball)
+            // instead of at the atom centre. With the stick buried in the
+            // ball, the opaque path hid it via the depth test but the blended
+            // path (no depth writes) did not, so crossing alpha 1.0 visibly
+            // changed the geometry being composited. Trimmed, both paths draw
+            // the same geometry and alpha -> 1 converges to the opaque image.
+            // rBall <= rStick (sticks style: the sphere is the round cap)
+            // needs no trim: the cylinder wall never enters the sphere.
+            Vector3 from = hb.from;
+            const float rBall = atomRadii[hb.atom];
+            if (rBall > settings.stickRadius) {
+                const Vector3 d = hb.to - hb.from;
+                const float len = norm(d);
+                const float trim = sqrtf(rBall * rBall - settings.stickRadius * settings.stickRadius);
+                if (len <= trim) continue;   // half-bond fully buried in the ball
+                from = hb.from + d * (trim / len);
+            }
+            const CylinderInstanceGPU inst{from.x, from.y, from.z, settings.stickRadius,
                                            hb.to.x, hb.to.y, hb.to.z,
                                            {c.r, c.g, c.b, c.a}};
             (c.a == 255 ? cylOpaque : cylTransp).push_back(inst);
@@ -122,10 +140,35 @@ void MolecularModel::Draw(const RenderSettings& settings) const {
             return ViewDepth(view, {0.5f * (a.ax + a.bx), 0.5f * (a.ay + a.by), 0.5f * (a.az + a.bz)})
                  < ViewDepth(view, {0.5f * (b.ax + b.bx), 0.5f * (b.ay + b.by), 0.5f * (b.az + b.bz)});
         });
+        // Interleave the two sorted batches into one global back-to-front
+        // order. Drawing all cylinders and then all spheres let every ball
+        // blend over every stick it overlaps on screen even when the stick
+        // was in front, which visibly "popped" sticks the moment alpha
+        // dropped below 1. Runs of the same type stay one instanced call.
+        sphDepthScratch.resize(sphTransp.size());
+        for (size_t i = 0; i < sphTransp.size(); ++i)
+            sphDepthScratch[i] = ViewDepth(view, {sphTransp[i].x, sphTransp[i].y, sphTransp[i].z});
+        cylDepthScratch.resize(cylTransp.size());
+        for (size_t i = 0; i < cylTransp.size(); ++i)
+            cylDepthScratch[i] = ViewDepth(view, {0.5f * (cylTransp[i].ax + cylTransp[i].bx),
+                                                  0.5f * (cylTransp[i].ay + cylTransp[i].by),
+                                                  0.5f * (cylTransp[i].az + cylTransp[i].bz)});
         rlDrawRenderBatchActive();
         rlDisableDepthMask();
-        DrawCylinderImpostors(cylTransp.data(), (int)cylTransp.size(), true);
-        DrawSphereImpostors(sphTransp.data(), (int)sphTransp.size(), true);
+        size_t si = 0, ci = 0;
+        while (si < sphTransp.size() || ci < cylTransp.size()) {
+            if (ci == cylTransp.size() || (si < sphTransp.size() && sphDepthScratch[si] <= cylDepthScratch[ci])) {
+                const size_t start = si;
+                while (si < sphTransp.size() && (ci == cylTransp.size() || sphDepthScratch[si] <= cylDepthScratch[ci]))
+                    ++si;
+                DrawSphereImpostors(&sphTransp[start], (int)(si - start), true);
+            } else {
+                const size_t start = ci;
+                while (ci < cylTransp.size() && (si == sphTransp.size() || cylDepthScratch[ci] <= sphDepthScratch[si]))
+                    ++ci;
+                DrawCylinderImpostors(&cylTransp[start], (int)(ci - start), true);
+            }
+        }
         rlEnableDepthMask();
     }
 }

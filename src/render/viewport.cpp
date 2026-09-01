@@ -69,11 +69,14 @@ void Viewport::UpdateLighting() {
 static void DrawScene(const ViewportScene& scene, const Camera3D& camera) {
     ClearBackground(scene.background);
     BeginMode3D(camera);
+    // Opaque helpers (the grid) must draw BEFORE the molecule: the model's
+    // transparent pass blends without writing depth, so anything drawn after
+    // it stomps straight over translucent atoms.
+    if (scene.drawGrid) DrawGrid(10, 1.0f);
     if (scene.model && scene.settings) {
         if (scene.highlighted) scene.model->DrawHighlighted(*scene.highlighted, *scene.settings);
         scene.model->Draw(*scene.settings);
     }
-    if (scene.drawGrid) DrawGrid(10, 1.0f);
     EndMode3D();
 }
 
