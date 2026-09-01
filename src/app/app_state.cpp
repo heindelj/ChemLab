@@ -1,5 +1,12 @@
 #include "app/app_state.h"
 
+#include "graph/graph_system.h"
+
+AppState::AppState() : graphSystem(std::make_unique<graph::GraphSystem>()) {}
+AppState::~AppState() = default;
+
+graph::GraphSystem& AppState::GraphSys() { return *graphSystem; }
+
 Structure* AppState::ActiveStructure() {
     if (activeStructure < 0 || activeStructure >= (int)structures.size()) return nullptr;
     return &structures[activeStructure];

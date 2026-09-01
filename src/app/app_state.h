@@ -5,6 +5,7 @@
 
 #include <array>
 #include <map>
+#include <memory>
 #include <optional>
 #include <deque>
 #include <set>
@@ -20,6 +21,10 @@
 #include "render/viewport.h"
 #include "ui/theme.h"
 #include "ui/ui_spec.h"
+
+namespace graph {
+struct GraphSystem;   // node graph + generated-data store (src/graph), pimpl-style
+}
 
 struct Structure {
     std::string name;
@@ -62,6 +67,11 @@ struct CalculationSettings {
 };
 
 struct AppState {
+    AppState();
+    ~AppState();
+    AppState(const AppState&) = delete;
+    AppState& operator=(const AppState&) = delete;
+
     // ---- project ----
     std::optional<Project> project;   // none = scratch session
     std::string iniFileName = "chemlab_imgui.ini";   // backing store for io.IniFilename
@@ -101,6 +111,13 @@ struct AppState {
     // ---- calculations / export ----
     CalculationSettings calc;
     ExportSettings exportSettings;
+
+    // ---- node graph ----
+    // Everything node-graph related (graph, evaluation, generated-data store)
+    // lives behind this pointer in src/graph so its internals can change
+    // without touching the rest of the app.
+    std::unique_ptr<graph::GraphSystem> graphSystem;
+    graph::GraphSystem& GraphSys();
 
     // ---- ui ----
     // Per-frame series for the measurements plot, rebuilt only when the

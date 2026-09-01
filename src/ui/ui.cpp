@@ -210,6 +210,7 @@ void UIInit(AppState& state) {
 }
 
 void UIShutdown(AppState&) {
+    NodeGraphShutdown();
     ImPlot3D::DestroyContext();
     ImPlot::DestroyContext();
     rlImGuiShutdown();

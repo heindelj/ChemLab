@@ -18,6 +18,8 @@ void DrawActiveStructurePanel(AppState& state);
 void DrawCalculatePanel(AppState& state);
 void DrawOutputPanel(AppState& state);
 void DrawExportPanel(AppState& state);
+void DrawNodeGraphPanel(AppState& state);
+void NodeGraphShutdown();   // destroys the node editor context (UIShutdown)
 
 // Bottom command bar and the optional console window.
 float CommandBarHeight();
@@ -43,4 +45,5 @@ inline constexpr const char* Calculate = "Calculate";
 inline constexpr const char* Output = "Calculation Output";
 inline constexpr const char* Export = "Export";
 inline constexpr const char* Console = "Console";
+inline constexpr const char* NodeGraph = "Node Graph";
 }  // namespace PanelName

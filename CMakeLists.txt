@@ -95,13 +95,29 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
     SOURCE_SUBDIR _header_only_   # header-only; we only need its include dir
 )
+# ---------------------------------------------------------------------------
+# imgui-node-editor (node graph canvas), pthom fork pinned at the commit used
+# by imgui_bundle v1.92.900 (branch imgui_bundle), matching the imgui pin above.
+# nlohmann/json (release include.zip, header-only): JSON layer for the node
+# graph's external-script protocol (crude_json stays internal to the editor).
+# ---------------------------------------------------------------------------
+FetchContent_Declare(
+    imgui_node_editor
+    GIT_REPOSITORY https://github.com/pthom/imgui-node-editor.git
+    GIT_TAG 1d3736d8ca68fd63cfbc3a19d1ad9bed74fce62c   # imgui_bundle v1.92.900
+    GIT_SHALLOW TRUE
+)
+FetchContent_Declare(
+    nlohmann_json
+    URL https://github.com/nlohmann/json/releases/download/v3.12.0/include.zip
+)
 FetchContent_Declare(
     rlimgui
     GIT_REPOSITORY https://github.com/raylib-extras/rlImGui.git
     GIT_TAG 1550009359ad975927f7f0e4a3f47e3f27123ea9   # 2026-08-24, ImGui 1.92 texture API
     GIT_SHALLOW TRUE
 )
-FetchContent_MakeAvailable(imgui implot implot3d portable_file_dialogs tomlplusplus rlimgui)
+FetchContent_MakeAvailable(imgui implot implot3d portable_file_dialogs tomlplusplus rlimgui imgui_node_editor nlohmann_json)
 
 add_library(chemlab_imgui STATIC
     ${imgui_SOURCE_DIR}/imgui.cpp
@@ -118,6 +134,10 @@ add_library(chemlab_imgui STATIC
     ${implot3d_SOURCE_DIR}/implot3d_items.cpp
     ${implot3d_SOURCE_DIR}/implot3d_meshes.cpp
     ${rlimgui_SOURCE_DIR}/rlImGui.cpp
+    ${imgui_node_editor_SOURCE_DIR}/imgui_node_editor.cpp
+    ${imgui_node_editor_SOURCE_DIR}/imgui_node_editor_api.cpp
+    ${imgui_node_editor_SOURCE_DIR}/imgui_canvas.cpp
+    ${imgui_node_editor_SOURCE_DIR}/crude_json.cpp
 )
 target_include_directories(chemlab_imgui PUBLIC
     ${imgui_SOURCE_DIR}
@@ -126,6 +146,7 @@ target_include_directories(chemlab_imgui PUBLIC
     ${implot3d_SOURCE_DIR}
     ${rlimgui_SOURCE_DIR}
     ${portable_file_dialogs_SOURCE_DIR}
+    ${imgui_node_editor_SOURCE_DIR}
 )
 target_compile_definitions(chemlab_imgui PUBLIC
     IMGUI_DEFINE_MATH_OPERATORS
@@ -184,6 +205,13 @@ add_executable(${PROJECT_NAME}
     src/app/actions.cpp
     src/app/commands.cpp
     src/app/project.cpp
+    src/graph/value.cpp
+    src/graph/graph.cpp
+    src/graph/node_registry.cpp
+    src/graph/nodes_builtin.cpp
+    src/graph/node_python.cpp
+    src/graph/py_runner.cpp
+    src/graph/graph_commands.cpp
     src/ui/theme.cpp
     src/ui/ui.cpp
     src/ui/ui_spec.cpp
@@ -197,12 +225,14 @@ add_executable(${PROJECT_NAME}
     src/ui/panel_calculate.cpp
     src/ui/panel_output.cpp
     src/ui/panel_export.cpp
+    src/ui/panel_node_graph.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${tomlplusplus_SOURCE_DIR}/include
+        ${nlohmann_json_SOURCE_DIR}/include
         ${raylib_SOURCE_DIR}/src
         ${raylib_SOURCE_DIR}/examples/shaders   # rlights.h
 )

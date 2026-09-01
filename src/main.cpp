@@ -175,7 +175,12 @@ int main(int argc, char** argv) {
         const std::string sample = std::string(ASSETS_PATH) + "caffeine.xyz";
         if (FileExists(sample.c_str())) LoadStructureFile(state, sample, true);
     }
-    if (!startupScript.empty()) RunCommandLine(state, startupScript);
+    if (!startupScript.empty()) {
+        RunCommandLine(state, startupScript);
+        // Echo the result so --run is usable headlessly (smoke tests, CI).
+        if (!state.lastCommandResult.empty())
+            printf("%s%s\n", state.lastCommandOk ? "" : "error: ", state.lastCommandResult.c_str());
+    }
 
 #if defined(__EMSCRIPTEN__)
     // 0 fps = requestAnimationFrame; 1 = never return (the browser owns the loop).

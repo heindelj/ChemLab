@@ -1,5 +1,7 @@
 #include "app/commands.h"
 
+#include "graph/graph_system.h"
+
 #include <algorithm>
 #include <sstream>
 
@@ -347,7 +349,7 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
                     LookDownAxis(s, axis - 'x', flip);
                     return CommandResult::Ok(fmt::format("Looking down {}", w));
                 }});
-    r.Register({"panel", "panel <name> [show|hide|toggle]", "Show or hide a panel (controls, structure, plot, calculate, output, export, active, console).",
+    r.Register({"panel", "panel <name> [show|hide|toggle]", "Show or hide a panel (controls, structure, plot, calculate, output, export, active, console, graph).",
                 "view", [](AppState& s, const CommandArgs& a) {
                     if (a.size() < 1) return CommandResult::Error("usage: panel <name> [show|hide|toggle]");
                     bool* flag = nullptr;
@@ -361,6 +363,7 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
                     else if (n == "export") flag = &s.PanelOpen("export");
                     else if (n == "active" || n == "active_structure") flag = &s.PanelOpen("active_structure");
                     else if (n == "console") flag = &s.PanelOpen("console");
+                    else if (n == "graph" || n == "nodes" || n == "node_graph") flag = &s.PanelOpen("node_graph");
                     if (!flag) return CommandResult::Error("Unknown panel '" + n + "'");
                     if (a.size() < 2 || a[1] == "toggle") *flag = !*flag;
                     else if (a[1] == "show") *flag = true;
@@ -459,4 +462,6 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
                     if (a.size() >= 1) s.calc.bondTolerance = ParseFloat(a[0]);
                     return RecomputeBonds(s);
                 }});
+
+    graph::RegisterGraphCommands(r);
 }

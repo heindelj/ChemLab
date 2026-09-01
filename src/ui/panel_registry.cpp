@@ -13,6 +13,7 @@ const std::vector<PanelInfo>& PanelCatalog() {
         {"output", PanelName::Output, "Output from calculations.", &DrawOutputPanel},
         {"export", PanelName::Export, "Screenshots and xyz export.", &DrawExportPanel},
         {"console", PanelName::Console, "Command log and console.", &DrawConsolePanel},
+        {"node_graph", PanelName::NodeGraph, "Node graph: chain data sources, scripts and analyses.", &DrawNodeGraphPanel},
     };
     return catalog;
 }

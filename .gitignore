@@ -12,3 +12,5 @@ chemlab_imgui.ini
 imgui.ini
 CMakeFiles/
 _chemlab_*.tgz
+_sync/
+chemlab_nodes.json
