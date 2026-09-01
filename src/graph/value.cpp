@@ -15,6 +15,8 @@ ValueType Value::Type() const {
         case 4: return ValueType::FloatVec;
         case 5: return ValueType::Positions;
         case 6: return ValueType::Labels;
+        case 7: return ValueType::IntVec;
+        case 8: return ValueType::Chem;
         default: return ValueType::Any;   // monostate
     }
 }
@@ -35,6 +37,8 @@ const std::string* Value::AsText() const { return std::get_if<std::string>(&v); 
 const std::vector<double>* Value::AsFloatVec() const { return std::get_if<std::vector<double>>(&v); }
 const Positions* Value::AsPositions() const { return std::get_if<Positions>(&v); }
 const Labels* Value::AsLabels() const { return std::get_if<Labels>(&v); }
+const std::vector<int64_t>* Value::AsIntVec() const { return std::get_if<std::vector<int64_t>>(&v); }
+const ChemicalData* Value::AsChem() const { return std::get_if<ChemicalData>(&v); }
 
 std::string Value::Preview(size_t maxItems) const {
     switch (Type()) {
@@ -54,6 +58,18 @@ std::string Value::Preview(size_t maxItems) const {
         }
         case ValueType::Positions: return fmt::format("positions[{} atoms]", std::get<Positions>(v).Count());
         case ValueType::Labels: return fmt::format("labels[{}]", std::get<Labels>(v).size());
+        case ValueType::IntVec: {
+            const auto& a = std::get<std::vector<int64_t>>(v);
+            std::string s = "[";
+            for (size_t i = 0; i < a.size() && i < maxItems; ++i) s += fmt::format("{}{}", i ? ", " : "", a[i]);
+            if (a.size() > maxItems) s += fmt::format(", ... ({} values)", a.size());
+            return s + "]";
+        }
+        case ValueType::Chem: {
+            const auto& c = std::get<ChemicalData>(v);
+            return fmt::format("chemdata[{} atoms, {} topolog{}]", c.natoms, c.topologies.size(),
+                               c.topologies.size() == 1 ? "y" : "ies");
+        }
         default: return "-";
     }
 }
@@ -66,6 +82,8 @@ const char* TypeName(ValueType t) {
         case ValueType::FloatVec: return "floatvec";
         case ValueType::Positions: return "positions";
         case ValueType::Labels: return "labels";
+        case ValueType::IntVec: return "intvec";
+        case ValueType::Chem: return "chemdata";
         default: return "any";
     }
 }
@@ -77,6 +95,8 @@ bool TypeFromName(const std::string& name, ValueType& out) {
     else if (name == "floatvec" || name == "floats" || name == "array") out = ValueType::FloatVec;
     else if (name == "positions" || name == "coords") out = ValueType::Positions;
     else if (name == "labels") out = ValueType::Labels;
+    else if (name == "intvec" || name == "ints" || name == "indices") out = ValueType::IntVec;
+    else if (name == "chemdata" || name == "chem") out = ValueType::Chem;
     else if (name == "any") out = ValueType::Any;
     else return false;
     return true;
@@ -95,6 +115,8 @@ json ValueToJson(const Value& val) {
         case ValueType::Text: return std::get<std::string>(val.v);
         case ValueType::FloatVec: return std::get<std::vector<double>>(val.v);
         case ValueType::Labels: return std::get<Labels>(val.v);
+        case ValueType::IntVec: return std::get<std::vector<int64_t>>(val.v);
+        case ValueType::Chem: return ChemicalDataToJson(std::get<ChemicalData>(val.v));
         case ValueType::Positions: {
             const Positions& p = std::get<Positions>(val.v);
             json rows = json::array();
@@ -177,6 +199,23 @@ bool ValueFromJson(const json& j, ValueType expected, Value& out, std::string& e
                 for (int k = 0; k < 3; ++k) p.xyz.push_back(row[k].get<double>());
             }
             out.v = std::move(p);
+            return true;
+        }
+        case ValueType::IntVec: {
+            if (!j.is_array()) { err = "expected an array of integers"; return false; }
+            std::vector<int64_t> a;
+            a.reserve(j.size());
+            for (const auto& e : j) {
+                if (!e.is_number_integer()) { err = "expected an array of integers"; return false; }
+                a.push_back(e.get<int64_t>());
+            }
+            out.v = std::move(a);
+            return true;
+        }
+        case ValueType::Chem: {
+            ChemicalData c;
+            if (!ChemicalDataFromJson(j, c, err)) return false;
+            out.v = std::move(c);
             return true;
         }
         case ValueType::Labels: {

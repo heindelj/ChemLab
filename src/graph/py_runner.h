@@ -8,7 +8,10 @@
 //              stdin:  {"inputs": {"positions": [[x,y,z], ...], "i": 0, ...}}
 //              stdout: {"outputs": {"distance": 1.23, ...}}   or   {"error": "message"}
 //
-// Types: float, int, text, floatvec, positions (N x [x,y,z]), labels, any.
+// Types: float, int, text, floatvec, positions (N x [x,y,z]), labels, intvec,
+// chemdata, any. chemdata is ChemicalData (see chemical_data.h) as JSON:
+//   {"natoms", "R": [flat 3N], "Z": [N ints], "topologies": [{"name", "pairs": [[i,j], ...]}],
+//    "cell": [9 numbers]|null, "fields": [{"name","dtype","offset","count"}], "bytes": "<base64>"}
 // ChemLab only sees the JSON on stdout -- the script can do whatever it wants
 // (numpy, ASE, a subprocess of its own, another language entirely).
 

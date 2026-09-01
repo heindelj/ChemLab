@@ -5,7 +5,7 @@ ChemLab node scripts speak JSON over stdio (protocol v0):
 
   * `script.py --describe` must print a JSON spec of the node's pins:
         {"name": ..., "inputs": [{"name", "type"}, ...], "outputs": [...]}
-    Types: float, int, text, floatvec, positions (N x [x,y,z]), labels, any.
+    Types: float, int, text, floatvec, positions (N x [x,y,z]), labels, intvec, chemdata, any.
   * A normal run receives {"inputs": {...}} on stdin and must print
     {"outputs": {...}} (or {"error": "message"}) on stdout.
 

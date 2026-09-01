@@ -167,6 +167,14 @@ void DrawNodeGraphPanel(AppState& state) {
     // ---- toolbar ----
     if (ImGui::Button("Run graph")) gs.Run(state);
     ImGui::SameLine();
+    ImGui::Checkbox("Auto", &gs.autoRun);   // off = run on click only
+    if (gs.autoRun) {
+        ImGui::SameLine();
+        ImGui::PushItemWidth(70.0f);
+        ImGui::DragFloat("fps", &gs.autoRunFps, 0.5f, 0.1f, 120.0f, "%.1f");
+        ImGui::PopItemWidth();
+    }
+    ImGui::SameLine();
     ImGui::TextDisabled("%zu nodes | right-click the canvas to add | `graph demo` builds an example",
                         gs.graph.nodes.size());
     if (gs.runCount > 0) {

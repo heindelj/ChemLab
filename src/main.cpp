@@ -30,6 +30,7 @@
 
 #include "app/actions.h"
 #include "app/app_state.h"
+#include "graph/graph_system.h"
 #include "ui/ui.h"
 
 namespace {
@@ -70,6 +71,7 @@ void RunFrame(void* userData) {
 
     UpdateFileWatch(state);
     UpdatePlayback(state);
+    graph::UpdateGraphAutoRun(state);
     {
         static std::string lastTitle;
         const std::string title = state.project ? fmt::format("ChemLab - {}{}", state.project->config.name, state.projectDirty ? " *" : "")

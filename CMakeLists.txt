@@ -206,6 +206,7 @@ add_executable(${PROJECT_NAME}
     src/app/commands.cpp
     src/app/project.cpp
     src/graph/value.cpp
+    src/graph/chemical_data.cpp
     src/graph/graph.cpp
     src/graph/node_registry.cpp
     src/graph/nodes_builtin.cpp

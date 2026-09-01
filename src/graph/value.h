@@ -13,9 +13,11 @@
 
 #include <nlohmann/json_fwd.hpp>
 
+#include "graph/chemical_data.h"
+
 namespace graph {
 
-enum class ValueType { Any, Float, Int, Text, FloatVec, Positions, Labels };
+enum class ValueType { Any, Float, Int, Text, FloatVec, Positions, Labels, IntVec, Chem };
 
 // N x 3 cartesian coordinates, flat xyzxyz... (angstrom).
 struct Positions {
@@ -26,7 +28,9 @@ struct Positions {
 using Labels = std::vector<std::string>;
 
 struct Value {
-    std::variant<std::monostate, double, int64_t, std::string, std::vector<double>, Positions, Labels> v;
+    std::variant<std::monostate, double, int64_t, std::string, std::vector<double>, Positions, Labels,
+                 std::vector<int64_t>, ChemicalData>
+        v;
 
     Value() = default;
     static Value F(double x) { Value r; r.v = x; return r; }
@@ -43,6 +47,8 @@ struct Value {
     const std::vector<double>* AsFloatVec() const;
     const Positions* AsPositions() const;
     const Labels* AsLabels() const;
+    const std::vector<int64_t>* AsIntVec() const;
+    const ChemicalData* AsChem() const;
 
     // Short human-readable form for node bodies / the console.
     std::string Preview(size_t maxItems = 4) const;
