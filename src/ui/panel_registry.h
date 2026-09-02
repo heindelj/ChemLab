@@ -20,3 +20,8 @@ struct PanelInfo {
 
 const std::vector<PanelInfo>& PanelCatalog();
 const PanelInfo* FindPanel(const std::string& id);
+
+// Register one "panel.<id>" node type per panel (category "Panels"): the
+// default graph of a panel that has not been decomposed into real nodes yet
+// is that single wrapper node. Call once at startup (UIInit).
+void RegisterPanelNodes();

@@ -163,6 +163,7 @@ struct AppState {
     std::vector<UIDefinition> uis;           // built-in + user-defined UIs
     int activeUI = 0;                        // index into `uis`
     std::map<std::string, bool> panelOpen;   // panel id -> window currently shown
+    std::map<std::string, bool> graphViewOpen;   // panel id -> its "Graph: <panel>" window is shown
     UIBuilderState uiBuilder;
     bool& PanelOpen(const char* id);
 

@@ -47,6 +47,7 @@ Node* Graph::AddNode(const std::string& typeId, float x, float y) {
     n.posY = y;
     n.posDirty = true;
     nodes.push_back(std::move(n));
+    Touch();
     return &nodes.back();
 }
 
@@ -56,6 +57,7 @@ void Graph::RemoveNode(uint32_t nodeId) {
                 links.end());
     nodes.erase(std::remove_if(nodes.begin(), nodes.end(), [&](const Node& n) { return n.id == nodeId; }),
                 nodes.end());
+    Touch();
 }
 
 bool Graph::WouldCycle(uint32_t fromNode, uint32_t toNode) const {
@@ -93,12 +95,14 @@ bool Graph::AddLink(uint32_t fromNode, int fromPin, uint32_t toNode, int toPin, 
                                [&](const Link& l) { return l.toNode == toNode && l.toPin == toPin; }),
                 links.end());
     links.push_back({nextLinkId++, fromNode, fromPin, toNode, toPin});
+    Touch();
     return true;
 }
 
 void Graph::RemoveLink(uint32_t linkId) {
     links.erase(std::remove_if(links.begin(), links.end(), [&](const Link& l) { return l.id == linkId; }),
                 links.end());
+    Touch();
 }
 
 void Graph::PruneLinks() {
@@ -111,6 +115,7 @@ void Graph::PruneLinks() {
                                           !Compatible(from->outputs[l.fromPin].type, to->inputs[l.toPin].type);
                                }),
                 links.end());
+    Touch();
 }
 
 const Link* Graph::LinkInto(uint32_t nodeId, int pin) const {
@@ -124,9 +129,10 @@ void Graph::Clear() {
     links.clear();
     nextNodeId = 1;
     nextLinkId = 1;
+    Touch();
 }
 
-std::string Graph::Evaluate(AppState& state, DataStore& store) {
+std::string Graph::Evaluate(AppState& state, DataStore& store, const std::string& keyPrefix) {
     // Kahn's algorithm over the link dependencies.
     std::map<uint32_t, int> indegree;
     for (const Node& n : nodes) indegree[n.id] = 0;
@@ -165,7 +171,7 @@ std::string Graph::Evaluate(AppState& state, DataStore& store) {
         }
         if (node.error.empty()) {
             for (size_t k = 0; k < node.outputs.size(); ++k)
-                store.Set(fmt::format("{}.{}", node.title, node.outputs[k].name), node.outValues[k]);
+                store.Set(fmt::format("{}{}.{}", keyPrefix, node.title, node.outputs[k].name), node.outValues[k]);
         } else if (firstError.empty()) {
             firstError = fmt::format("{}: {}", node.title, node.error);
         }

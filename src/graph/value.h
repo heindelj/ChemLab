@@ -18,7 +18,7 @@
 
 namespace graph {
 
-enum class ValueType { Any, Float, Int, Text, FloatVec, Positions, Labels, IntVec, Chem, Table, Series };
+enum class ValueType { Any, Float, Int, Text, FloatVec, Positions, Labels, IntVec, Chem, Table, Series, Structure };
 
 // N x 3 cartesian coordinates, flat xyzxyz... (angstrom).
 struct Positions {
@@ -41,9 +41,21 @@ struct Table {
 // One plot series (see plot/plot_spec.h); flows from Series nodes into Plot nodes.
 using Series = plot::Series;
 
+// A handle to one of the loaded structures (AppState::structures): a whole
+// trajectory, not a frame. Deliberately light -- the frames stay owned by the
+// app; nodes that need coordinates go through a Select Frame node, which
+// yields a ChemicalData. `index` is resolved at evaluation time and may be
+// stale after structures are removed; `path`/`name` identify it durably.
+struct StructureHandle {
+    std::string name;
+    std::string path;
+    int index = -1;
+    int frames = 0;
+};
+
 struct Value {
     std::variant<std::monostate, double, int64_t, std::string, std::vector<double>, Positions, Labels,
-                 std::vector<int64_t>, ChemicalData, Table, Series>
+                 std::vector<int64_t>, ChemicalData, Table, Series, StructureHandle>
         v;
 
     Value() = default;
@@ -65,6 +77,7 @@ struct Value {
     const ChemicalData* AsChem() const;
     const Table* AsTable() const;
     const Series* AsSeries() const;
+    const StructureHandle* AsStructure() const;
 
     // Short human-readable form for node bodies / the console.
     std::string Preview(size_t maxItems = 4) const;

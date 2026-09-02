@@ -7,6 +7,7 @@
 #include "imgui_stdlib.h"
 
 #include "app/actions.h"
+#include "graph/graph_system.h"
 #include "ui/ui.h"
 
 namespace {
@@ -15,6 +16,11 @@ std::string gRenameBuffer;
 }  // namespace
 
 void DrawActiveStructurePanel(AppState& state) {
+    // Underneath: Load Structure x N -> Structure List. Loading here (or via
+    // File > Open, drag and drop, `load`) adds a Load Structure node; a Load
+    // Structure node added in the graph loads its file when the graph runs.
+    graph::GraphSystem& gs = state.GraphSys();
+    const std::string graphError = gs.RunPanel(state, "active_structure");
     if (ImGui::Button("Open xyz...")) {
         std::vector<std::string> paths;
         if (OpenFileDialog("Open geometry", paths, true))
@@ -51,6 +57,11 @@ void DrawActiveStructurePanel(AppState& state) {
         ImGui::PopID();
     }
     if (state.structures.empty()) ImGui::TextDisabled("Nothing loaded yet.");
+    if (!graphError.empty()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.45f, 0.4f, 1));
+        ImGui::TextWrapped("graph: %s", graphError.c_str());
+        ImGui::PopStyleColor();
+    }
 
     if (pendingDelete >= 0) RemoveStructure(state, pendingDelete);
 

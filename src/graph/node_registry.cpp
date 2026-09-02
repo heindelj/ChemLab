@@ -19,6 +19,7 @@ NodeTypeRegistry& NodeTypes() {
     static bool initialized = [] {
         RegisterBuiltinNodes(r);
         RegisterPlotNodes(r);
+        RegisterViewNodes(r);
         RegisterPythonNode(r);
         return true;
     }();

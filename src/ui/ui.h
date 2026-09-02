@@ -19,7 +19,9 @@ void DrawCalculatePanel(AppState& state);
 void DrawOutputPanel(AppState& state);
 void DrawExportPanel(AppState& state);
 void DrawNodeGraphPanel(AppState& state);
-void NodeGraphShutdown();   // destroys the node editor context (UIShutdown)
+// The "Graph: <panel>" windows (state.graphViewOpen), one per panel graph.
+void DrawPanelGraphWindows(AppState& state);
+void NodeGraphShutdown();   // destroys the node editor contexts (UIShutdown)
 
 // Bottom command bar and the optional console window.
 float CommandBarHeight();

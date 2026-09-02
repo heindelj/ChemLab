@@ -10,6 +10,7 @@
 
 #include "core/math_utils.h"
 #include "core/xyz_io.h"
+#include "graph/graph_system.h"
 
 // ---------------------------------------------------------------------------
 // Logging
@@ -32,6 +33,10 @@ static void ClearSession(AppState& state) {
     CancelPendingMeasurement(state);
     state.model.Unload();
     state.modelDirty = true;
+    // The Active Structure graph mirrors the structure list: rebuild it empty
+    // (otherwise its Load Structure nodes would reload the files).
+    if (state.GraphSys().HasPanel("active_structure")) state.GraphSys().ResetPanel(state, "active_structure");
+    state.GraphSys().view3d.valid = false;
 }
 
 // Push the project's config onto the live session.
@@ -201,6 +206,7 @@ CommandResult LoadStructureFile(AppState& state, const std::string& path, bool m
     const std::string msg = fmt::format("Loaded {} ({} frame{}, {} atoms)", loaded.name, loaded.frames.nframes,
                                         loaded.frames.nframes == 1 ? "" : "s", loaded.frames.atoms[0].natoms);
     LogInfo(state, msg);
+    graph::OnStructureLoaded(state, index);   // mirror it in the Active Structure graph
     if (makeActive) {
         SetActiveStructure(state, index);
         ResetCamera(state);
@@ -222,6 +228,7 @@ CommandResult RemoveStructure(AppState& state, int index) {
     if (index < 0 || index >= (int)state.structures.size())
         return CommandResult::Error(fmt::format("No structure with index {}", index + 1));
     const std::string name = state.structures[index].name;
+    graph::OnStructureRemoved(state, state.structures[index].path);
     state.structures.erase(state.structures.begin() + index);
     state.projectDirty = true;
     if (state.structures.empty()) {
@@ -311,7 +318,10 @@ void UpdateFileWatch(AppState& state) {
 
 void RebuildModel(AppState& state) {
     state.modelDirty = false;
-    Atoms* atoms = state.ActiveAtoms();
+    // The Structure View's graph decides what is drawn (its Render 3D node);
+    // without one, the active frame is drawn directly.
+    const Atoms* atoms = graph::ViewAtoms(state);
+    if (!atoms) atoms = state.ActiveAtoms();
     if (!atoms) { state.model.Unload(); return; }
     // Preserve custom colours when the atom count is unchanged (trajectory).
     if (state.model.IsLoaded() && state.model.AtomCount() == atoms->natoms) {

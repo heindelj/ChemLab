@@ -58,6 +58,7 @@ NodeTypeRegistry& NodeTypes();
 // Implemented in nodes_builtin.cpp / node_python.cpp:
 void RegisterBuiltinNodes(NodeTypeRegistry& r);
 void RegisterPlotNodes(NodeTypeRegistry& r);   // nodes_plot.cpp: tables, series, named plots
+void RegisterViewNodes(NodeTypeRegistry& r);   // nodes_view.cpp: the nodes behind the panels
 void RegisterPythonNode(NodeTypeRegistry& r);
 // Re-run `script --describe` for a python node and rebuild its pins
 // (also used by `graph demo`). Returns "" or an error.

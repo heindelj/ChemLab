@@ -19,6 +19,7 @@ ValueType Value::Type() const {
         case 8: return ValueType::Chem;
         case 9: return ValueType::Table;
         case 10: return ValueType::Series;
+        case 11: return ValueType::Structure;
         default: return ValueType::Any;   // monostate
     }
 }
@@ -43,6 +44,7 @@ const std::vector<int64_t>* Value::AsIntVec() const { return std::get_if<std::ve
 const ChemicalData* Value::AsChem() const { return std::get_if<ChemicalData>(&v); }
 const Table* Value::AsTable() const { return std::get_if<Table>(&v); }
 const Series* Value::AsSeries() const { return std::get_if<Series>(&v); }
+const StructureHandle* Value::AsStructure() const { return std::get_if<StructureHandle>(&v); }
 
 int Table::FindColumn(const std::string& name) const {
     for (size_t c = 0; c < columns.size(); ++c)
@@ -91,6 +93,10 @@ std::string Value::Preview(size_t maxItems) const {
             const auto& sr = std::get<Series>(v);
             return fmt::format("{} series '{}' [{} points]", plot::SeriesKindName(sr.kind), sr.label, sr.Count());
         }
+        case ValueType::Structure: {
+            const auto& h = std::get<StructureHandle>(v);
+            return fmt::format("structure '{}' [{} frame{}]", h.name, h.frames, h.frames == 1 ? "" : "s");
+        }
         default: return "-";
     }
 }
@@ -107,6 +113,7 @@ const char* TypeName(ValueType t) {
         case ValueType::Chem: return "chemdata";
         case ValueType::Table: return "table";
         case ValueType::Series: return "series";
+        case ValueType::Structure: return "structure";
         default: return "any";
     }
 }
@@ -122,6 +129,7 @@ bool TypeFromName(const std::string& name, ValueType& out) {
     else if (name == "chemdata" || name == "chem") out = ValueType::Chem;
     else if (name == "table") out = ValueType::Table;
     else if (name == "series") out = ValueType::Series;
+    else if (name == "structure") out = ValueType::Structure;
     else if (name == "any") out = ValueType::Any;
     else return false;
     return true;
@@ -150,6 +158,10 @@ json ValueToJson(const Value& val) {
             const Series& sr = std::get<Series>(val.v);
             return json{{"kind", plot::SeriesKindName(sr.kind)}, {"label", sr.label}, {"x", sr.x}, {"y", sr.y},
                         {"markers", sr.markers}, {"bins", sr.bins}};
+        }
+        case ValueType::Structure: {
+            const StructureHandle& h = std::get<StructureHandle>(val.v);
+            return json{{"name", h.name}, {"path", h.path}, {"index", h.index}, {"frames", h.frames}};
         }
         case ValueType::Positions: {
             const Positions& p = std::get<Positions>(val.v);
@@ -291,6 +303,16 @@ bool ValueFromJson(const json& j, ValueType expected, Value& out, std::string& e
             if (j.contains("x")) for (const auto& e : j["x"]) sr.x.push_back(e.get<double>());
             if (sr.x.empty()) for (size_t i = 0; i < sr.y.size(); ++i) sr.x.push_back((double)i);
             out.v = std::move(sr);
+            return true;
+        }
+        case ValueType::Structure: {
+            if (!j.is_object() || !j.contains("name")) { err = "expected {name, path, index, frames}"; return false; }
+            StructureHandle h;
+            h.name = j["name"].get<std::string>();
+            if (j.contains("path")) h.path = j["path"].get<std::string>();
+            if (j.contains("index")) h.index = j["index"].get<int>();
+            if (j.contains("frames")) h.frames = j["frames"].get<int>();
+            out.v = std::move(h);
             return true;
         }
         case ValueType::Labels: {

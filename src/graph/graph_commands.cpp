@@ -203,14 +203,41 @@ CommandResult BuildPlotsDemo(AppState& s) {
 }  // namespace
 
 void RegisterGraphCommands(CommandRegistry& r) {
-    r.Register({"graph", "graph <run|auto|demo|add|link|set|clear|python> ...",
-                "Node graph: run it, build a demo graph, clear it, or set the python interpreter.",
+    r.Register({"graph", "graph <run|auto|demo|add|link|set|clear|python|show|hide|reset|panels> ...",
+                "Node graph: run it, build a demo graph, clear it, set the python interpreter, "
+                "or open/reset a panel's graph (`graph show structure_view`).",
                 "calculate", [](AppState& s, const CommandArgs& a) {
                     GraphSystem& gs = s.GraphSys();
-                    if (a.size() < 1) return CommandResult::Error("usage: graph <run|auto|demo|add|link|set|clear|python> ...");
+                    const char* usage = "usage: graph <run|auto|demo|add|link|set|clear|python|show|hide|reset|panels> ...";
+                    if (a.size() < 1) return CommandResult::Error(usage);
                     if (a[0] == "run") {
+                        if (a.size() > 1) {   // graph run <panel-id>: force one panel graph
+                            const std::string err = gs.RunPanel(s, a[1], true);
+                            return err.empty() ? CommandResult::Ok(fmt::format("{} graph evaluated", a[1]))
+                                               : CommandResult::Error(fmt::format("{} graph: {}", a[1], err));
+                        }
                         const std::string summary = gs.Run(s);
                         return gs.lastRunOk ? CommandResult::Ok(summary) : CommandResult::Error(summary);
+                    }
+                    if (a[0] == "show" || a[0] == "hide") {
+                        if (a.size() < 2) return CommandResult::Error(fmt::format("usage: graph {} <panel-id>", a[0]));
+                        s.graphViewOpen[a[1]] = a[0] == "show";
+                        return CommandResult::Ok(fmt::format("{} graph {}", a[1], a[0] == "show" ? "shown" : "hidden"));
+                    }
+                    if (a[0] == "reset") {
+                        if (a.size() < 2) return CommandResult::Error("usage: graph reset <panel-id>");
+                        gs.ResetPanel(s, a[1]);
+                        return CommandResult::Ok(fmt::format("{} graph reset to its default", a[1]));
+                    }
+                    if (a[0] == "panels") {
+                        std::string out;
+                        for (const auto& [id, pg] : gs.panelGraphs)
+                            out += fmt::format("{}: {} node{}, {} link{}{}\n", id, pg.graph.nodes.size(),
+                                               pg.graph.nodes.size() == 1 ? "" : "s", pg.graph.links.size(),
+                                               pg.graph.links.size() == 1 ? "" : "s",
+                                               pg.lastError.empty() ? "" : " -- error: " + pg.lastError);
+                        if (!out.empty()) out.pop_back();
+                        return CommandResult::Ok(out.empty() ? "no panel graphs yet" : out);
                     }
                     if (a[0] == "demo") {
                         const std::string which = a.size() > 1 ? a[1] : "distance";
@@ -252,6 +279,7 @@ void RegisterGraphCommands(CommandRegistry& r) {
                         char* end = nullptr;
                         const double num = std::strtod(a[3].c_str(), &end);
                         n->params[a[2]] = (end && *end == 0 && end != a[3].c_str()) ? Value::F(num) : Value::S(a[3]);
+                        gs.graph.Touch();
                         if (a[2] == "script" && n->typeId == "script.python") {
                             if (std::string derr = DescribePythonNode(s, *n); !derr.empty())
                                 return CommandResult::Error("set, but describe failed: " + derr);
@@ -279,7 +307,7 @@ void RegisterGraphCommands(CommandRegistry& r) {
                         return CommandResult::Ok(fmt::format("Python interpreter: {}{}", gs.pythonExe,
                                                              ScriptingAvailable() ? "" : " (unavailable on web)"));
                     }
-                    return CommandResult::Error("usage: graph <run|auto|demo|add|link|set|clear|python> ...");
+                    return CommandResult::Error(usage);
                 }});
 }
 

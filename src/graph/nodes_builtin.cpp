@@ -11,6 +11,7 @@
 
 #include "app/actions.h"
 #include "app/app_state.h"
+#include "graph/chem_convert.h"
 #include "graph/chemical_data.h"
 #include "graph/graph.h"
 #include "graph/node_registry.h"
@@ -92,27 +93,8 @@ std::string EvalChemicalData(AppState& s, Node&, const std::vector<const Value*>
     const Atoms* a = s.ActiveAtoms();
     if (!a) return "no structure loaded";
     ChemicalData c;
-    c.natoms = a->natoms;
-    c.R.reserve((size_t)a->natoms * 3);
-    for (const Vector3& r : a->xyz) {
-        c.R.push_back(r.x);
-        c.R.push_back(r.y);
-        c.R.push_back(r.z);
-    }
-    c.Z.reserve(a->natoms);
-    for (const std::string& label : a->labels) {
-        const int32_t z = SymbolToZ(label);
-        if (z == 0) return fmt::format("unknown element label '{}'", label);
-        c.Z.push_back(z);
-    }
-    // Distance-based bond perception (done at load / `bonds`) auto-populates
-    // the "bonds" topology.
-    Topology bonds;
-    bonds.name = "bonds";
-    bonds.pairs.reserve(a->covalentBondList.pairs.size());
-    for (const auto& [i, j] : a->covalentBondList.pairs) bonds.pairs.emplace_back((int32_t)i, (int32_t)j);
-    c.topologies.push_back(std::move(bonds));
-    // c.cell stays empty: plain xyz files carry no lattice.
+    std::string err;
+    if (!AtomsToChemicalData(*a, c, err)) return err;
     out[0].v = std::move(c);
     return "";
 }

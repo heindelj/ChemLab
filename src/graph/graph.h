@@ -60,6 +60,10 @@ struct Graph {
     std::vector<Link> links;
     uint32_t nextNodeId = 1;
     uint32_t nextLinkId = 1;
+    // Bumped on every structural or parameter change (see Touch); panel
+    // graphs re-evaluate when this, or the app state they read, changes.
+    uint64_t version = 0;
+    void Touch() { ++version; }
 
     Node* FindNode(uint32_t id);
     const Node* FindNode(uint32_t id) const;
@@ -76,8 +80,8 @@ struct Graph {
     void Clear();
 
     // Evaluate every node in dependency order and publish outputs into `store`
-    // as "<title>.<pin>". Returns "" or a description of the first error.
-    std::string Evaluate(AppState& state, DataStore& store);
+    // as "<keyPrefix><title>.<pin>". Returns "" or a description of the first error.
+    std::string Evaluate(AppState& state, DataStore& store, const std::string& keyPrefix = "");
 };
 
 }  // namespace graph

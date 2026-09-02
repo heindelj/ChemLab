@@ -1,5 +1,10 @@
 #include "ui/panel_registry.h"
 
+#include <string>
+
+#include "imgui.h"
+
+#include "graph/node_registry.h"
 #include "ui/ui.h"
 
 const std::vector<PanelInfo>& PanelCatalog() {
@@ -22,4 +27,24 @@ const PanelInfo* FindPanel(const std::string& id) {
     for (const auto& p : PanelCatalog())
         if (id == p.id) return &p;
     return nullptr;
+}
+
+void RegisterPanelNodes() {
+    for (const PanelInfo& p : PanelCatalog()) {
+        if (std::string(p.id) == "node_graph") continue;   // the free-form graph is not a panel graph
+        graph::NodeTypeSpec spec;
+        spec.id = std::string("panel.") + p.id;
+        spec.name = p.title;
+        spec.category = "Panels";
+        spec.description = std::string(p.description) + " (the whole panel as one node)";
+        spec.evaluate = [](AppState&, graph::Node&, const std::vector<const graph::Value*>&, std::vector<graph::Value>&) {
+            return std::string{};
+        };
+        const std::string note = std::string("built-in ") + p.title + " panel;\nnot decomposed into nodes yet";
+        spec.drawBody = [note](AppState&, graph::Node&) {
+            ImGui::TextDisabled("%s", note.c_str());
+            return false;
+        };
+        graph::NodeTypes().Register(std::move(spec));
+    }
 }

@@ -15,6 +15,7 @@
 #include "rlImGui.h"
 
 #include "app/actions.h"
+#include "graph/graph_system.h"
 #include "ui/panel_registry.h"
 #include "ui/theme.h"
 #include "ui/ui_builder.h"
@@ -124,6 +125,13 @@ void DrawMenuBar(AppState& state) {
             if (ImGui::MenuItem("UI Builder...")) state.uiBuilder.open = true;
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("Panel graphs")) {
+            for (const PanelInfo& p : PanelCatalog()) {
+                if (std::string(p.id) == "node_graph") continue;
+                ImGui::MenuItem(p.title, nullptr, &state.graphViewOpen[p.id]);
+            }
+            ImGui::EndMenu();
+        }
         ImGui::Separator();
         ImGui::MenuItem("Grid", "G", &state.drawGrid);
         ImGui::MenuItem("Atom numbers", "N", &state.drawAtomNumbers);
@@ -155,6 +163,42 @@ void DrawMenuBar(AppState& state) {
     ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(fps.c_str()).x - 12.0f);
     ImGui::TextDisabled("%s", fps.c_str());
     ImGui::EndMainMenuBar();
+}
+
+// Right-clicking a panel's tab (or, when floating, its title bar) opens a
+// small menu with "View graph": every panel is backed by a node graph (see
+// graph_system.h) and this is how it is reached. Call right after
+// ImGui::Begin() of the panel window, while it is the current window.
+void PanelTitleContextMenu(AppState& state, const PanelInfo& p, bool& open) {
+    ImGuiWindow* w = ImGui::GetCurrentWindow();
+    ImRect rect;
+    bool haveRect = false;
+    if (w->DockIsActive && w->DockNode && w->DockNode->TabBar) {
+        ImGuiTabBar* tb = w->DockNode->TabBar;
+        if (ImGuiTabItem* tab = ImGui::TabBarFindTabByID(tb, w->TabId)) {
+            const float x0 = tb->BarRect.Min.x + tab->Offset - tb->ScrollingAnim;
+            rect = ImRect(ImVec2(x0, tb->BarRect.Min.y), ImVec2(x0 + tab->Width, tb->BarRect.Max.y));
+            rect.ClipWith(tb->BarRect);
+            haveRect = true;
+        }
+    } else if (!w->DockIsActive && !(w->Flags & ImGuiWindowFlags_NoTitleBar)) {
+        rect = w->TitleBarRect();
+        haveRect = true;
+    }
+    const std::string popupId = fmt::format("##panel_ctx_{}", p.id);
+    if (haveRect && ImGui::IsMouseClicked(ImGuiMouseButton_Right) && rect.Contains(ImGui::GetMousePos()) &&
+        !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId))
+        ImGui::OpenPopup(popupId.c_str());
+    if (ImGui::BeginPopup(popupId.c_str())) {
+        ImGui::TextDisabled("%s", p.title);
+        ImGui::Separator();
+        const bool hasGraph = std::string(p.id) != "node_graph";
+        if (ImGui::MenuItem("View graph", nullptr, false, hasGraph)) state.graphViewOpen[p.id] = true;
+        if (ImGui::MenuItem("Reset graph to default", nullptr, false, hasGraph)) state.GraphSys().ResetPanel(state, p.id);
+        ImGui::Separator();
+        if (ImGui::MenuItem("Close panel")) open = false;
+        ImGui::EndPopup();
+    }
 }
 
 void HandleGlobalShortcuts(AppState& state) {
@@ -202,6 +246,7 @@ void UIInit(AppState& state) {
     ImPlot3D::CreateContext();
     ApplyChemLabTheme(state.theme);
     RegisterBuiltinCommands(state.commands);
+    RegisterPanelNodes();   // "panel.<id>" wrapper node types, before any panel graph is seeded
     state.uis = BuiltinUIs();
     LoadUserUIsIntoState(state);
     if (state.activeUI < 0 || state.activeUI >= (int)state.uis.size()) state.activeUI = 0;
@@ -287,11 +332,15 @@ void UIFrame(AppState& state) {
             bool& open = state.PanelOpen(p.id);
             if (!open) continue;
             if (p.tightPadding) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
-            if (ImGui::Begin(p.title, &open, panelFlags)) p.draw(state);
+            if (ImGui::Begin(p.title, &open, panelFlags)) {
+                PanelTitleContextMenu(state, p, open);
+                p.draw(state);
+            }
             ImGui::End();
             if (p.tightPadding) ImGui::PopStyleVar();
         }
     }
+    DrawPanelGraphWindows(state);
     DrawUIBuilder(state);
     if (state.showImGuiDemo) ImGui::ShowDemoWindow(&state.showImGuiDemo);
     if (state.showImPlotDemo) ImPlot::ShowDemoWindow(&state.showImPlotDemo);

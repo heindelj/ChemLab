@@ -1,7 +1,10 @@
 // Node Graph panel: draws graph::Graph with imgui-node-editor and lets the
 // user wire data sources, scripts and analyses together. All graph/data logic
-// lives in src/graph -- this file is only the canvas.
+// lives in src/graph -- this file is only the canvas. The same canvas draws
+// the per-panel graphs in their "Graph: <panel>" windows
+// (DrawPanelGraphWindows), one editor context per graph.
 
+#include <map>
 #include <string>
 
 #include <fmt/format.h>
@@ -12,21 +15,27 @@
 #include "app/app_state.h"
 #include "graph/graph_system.h"
 #include "graph/py_runner.h"
+#include "ui/panel_registry.h"
 #include "ui/ui.h"
 
 namespace ed = ax::NodeEditor;
 
 namespace {
 
-ed::EditorContext* gEditor = nullptr;
+// One editor context per graph: node ids restart at 1 in every graph, and
+// each context keeps its own view/selection. Only the free-form graph
+// persists its node positions to disk; panel graphs are laid out by their
+// seed (Node::posX/posY) and kept in memory for the session.
+std::map<std::string, ed::EditorContext*> gEditors;
 
-ed::EditorContext* Editor() {
-    if (!gEditor) {
-        ed::Config config;
-        config.SettingsFile = "chemlab_nodes.json";   // node positions etc.
-        gEditor = ed::CreateEditor(&config);
-    }
-    return gEditor;
+ed::EditorContext* Editor(const std::string& key, const char* settingsFile) {
+    auto it = gEditors.find(key);
+    if (it != gEditors.end()) return it->second;
+    ed::Config config;
+    config.SettingsFile = settingsFile ? settingsFile : "";   // "" = no persistence
+    ed::EditorContext* ctx = ed::CreateEditor(&config);
+    gEditors[key] = ctx;
+    return ctx;
 }
 
 ImVec4 TypeColor(graph::ValueType t) {
@@ -40,11 +49,13 @@ ImVec4 TypeColor(graph::ValueType t) {
         case VT::Labels: return {1.0f, 1.0f, 0.6f, 1.0f};
         case VT::Table: return {0.6f, 0.9f, 0.85f, 1.0f};
         case VT::Series: return {1.0f, 0.7f, 0.85f, 1.0f};
+        case VT::Chem: return {0.75f, 0.95f, 0.65f, 1.0f};
+        case VT::Structure: return {0.95f, 0.8f, 0.6f, 1.0f};
         default: return {0.75f, 0.75f, 0.75f, 1.0f};
     }
 }
 
-void DrawNode(AppState& state, graph::Node& node) {
+void DrawNode(AppState& state, graph::Graph& g, graph::Node& node) {
     const graph::NodeTypeSpec* spec = graph::NodeTypes().Find(node.typeId);
     if (node.posDirty) {
         ed::SetNodePosition(node.id, ImVec2(node.posX, node.posY));
@@ -75,7 +86,7 @@ void DrawNode(AppState& state, graph::Node& node) {
 
     if (spec && spec->drawBody) {
         ImGui::Spacing();
-        spec->drawBody(state, node);
+        if (spec->drawBody(state, node)) g.Touch();   // a parameter changed: re-evaluate
     }
     if (!node.error.empty()) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.45f, 0.4f, 1.0f));
@@ -161,6 +172,27 @@ void AddNodePopup(graph::Graph& g, const ImVec2& canvasPos) {
     }
 }
 
+// The editor canvas for one graph. `key` names the editor context.
+void DrawGraphCanvas(AppState& state, graph::Graph& g, const std::string& key, const char* settingsFile) {
+    ed::SetCurrentEditor(Editor(key, settingsFile));
+    ed::Begin(key.c_str(), ImVec2(0, 0));
+    const ImVec2 mouseCanvas = ed::ScreenToCanvas(ImGui::GetMousePos());
+
+    for (auto& node : g.nodes) DrawNode(state, g, node);
+    for (const auto& link : g.links)
+        ed::Link(link.id, graph::OutPinId(link.fromNode, link.fromPin), graph::InPinId(link.toNode, link.toPin));
+
+    HandleLinkCreation(g);
+    HandleDeletion(g);
+
+    ed::Suspend();
+    AddNodePopup(g, mouseCanvas);
+    ed::Resume();
+
+    ed::End();
+    ed::SetCurrentEditor(nullptr);
+}
+
 }  // namespace
 
 void DrawNodeGraphPanel(AppState& state) {
@@ -188,28 +220,47 @@ void DrawNodeGraphPanel(AppState& state) {
     ImGui::Separator();
 
     // ---- canvas ----
-    ed::SetCurrentEditor(Editor());
-    ed::Begin("chemlab_node_graph", ImVec2(0, 0));
-    const ImVec2 mouseCanvas = ed::ScreenToCanvas(ImGui::GetMousePos());
+    DrawGraphCanvas(state, gs.graph, "chemlab_node_graph", "chemlab_nodes.json");
+}
 
-    for (auto& node : gs.graph.nodes) DrawNode(state, node);
-    for (const auto& link : gs.graph.links)
-        ed::Link(link.id, graph::OutPinId(link.fromNode, link.fromPin), graph::InPinId(link.toNode, link.toPin));
-
-    HandleLinkCreation(gs.graph);
-    HandleDeletion(gs.graph);
-
-    ed::Suspend();
-    AddNodePopup(gs.graph, mouseCanvas);
-    ed::Resume();
-
-    ed::End();
-    ed::SetCurrentEditor(nullptr);
+// One "Graph: <panel>" window per panel whose graph the user opened
+// (right-click a panel tab > View graph, View > Panel graphs, or
+// `graph show <panel-id>`). The panel keeps evaluating its graph as usual;
+// this window is a live view of it that can be edited in place.
+void DrawPanelGraphWindows(AppState& state) {
+    graph::GraphSystem& gs = state.GraphSys();
+    int cascade = 0;
+    for (auto& [panelId, open] : state.graphViewOpen) {
+        if (!open) continue;
+        const PanelInfo* info = FindPanel(panelId);
+        const std::string title = fmt::format("Graph: {}###graph_{}", info ? info->title : panelId.c_str(), panelId);
+        const ImVec2 origin = ImGui::GetMainViewport()->WorkPos;
+        ImGui::SetNextWindowPos(ImVec2(origin.x + 80.0f + 40.0f * (float)cascade, origin.y + 60.0f + 40.0f * (float)cascade),
+                                ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(760, 460), ImGuiCond_FirstUseEver);
+        ++cascade;
+        if (ImGui::Begin(title.c_str(), &open, ImGuiWindowFlags_NoCollapse)) {
+            graph::PanelGraph& pg = gs.Panel(state, panelId);
+            if (ImGui::Button("Run")) gs.RunPanel(state, panelId, true);
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Panel graphs re-run by themselves whenever their inputs change; this forces one.");
+            ImGui::SameLine();
+            if (ImGui::Button("Reset to default")) gs.ResetPanel(state, panelId);
+            ImGui::SameLine();
+            ImGui::TextDisabled("%zu nodes | right-click the canvas to add | evaluated %llu times",
+                                pg.graph.nodes.size(), (unsigned long long)pg.runCount);
+            if (!pg.lastError.empty()) {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.45f, 0.4f, 1));
+                ImGui::TextWrapped("%s", pg.lastError.c_str());
+                ImGui::PopStyleColor();
+            }
+            ImGui::Separator();
+            DrawGraphCanvas(state, pg.graph, "panel_graph_" + panelId, nullptr);
+        }
+        ImGui::End();
+    }
 }
 
 void NodeGraphShutdown() {
-    if (gEditor) {
-        ed::DestroyEditor(gEditor);
-        gEditor = nullptr;
-    }
+    for (auto& [key, ctx] : gEditors) ed::DestroyEditor(ctx);
+    gEditors.clear();
 }

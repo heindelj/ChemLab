@@ -94,6 +94,29 @@ built-in per-frame plots and the published ones. The built-in **Plot Lab** UI
 (`ui "Plot Lab"`, or `graph demo plots`, which also loads `assets/data/md_demo.csv`)
 shows the live plot on top and the graph that feeds it below.
 
+### Every panel is a graph
+
+Each panel is backed by a small node graph of its own (`GraphSystem::panelGraphs`,
+one per panel id) that it evaluates before drawing -- cheaply, only when the
+graph or the app state it reads has changed. Right-click a panel's tab (or its
+title bar when floating) and choose *View graph*, use *View > Panel graphs*, or
+type `graph show <panel-id>` to open the live, editable graph:
+
+```
+Structure View     Structure -> Select Frame -> Render 3D
+Active Structure   Load Structure (one per file) -> Structure List
+2D Plot            Plot View  (picks among built-in and published plots)
+other panels       one "panel.<id>" wrapper node, until they are decomposed
+```
+
+Anything that produces `chemdata` can be wired into *Render 3D*, so the 3D
+view draws whatever the graph hands it (a fixed frame, the output of a
+script, ...) and falls back to the active frame when no node does. Loading a
+file anywhere (File > Open, drag and drop, `load`) adds a *Load Structure* node
+to the Active Structure graph; adding one by hand loads its file when the graph
+runs. `graph reset <panel-id>` (or *Reset to default* in the graph window)
+rebuilds a panel's default graph; `graph panels` lists them.
+
 ## Projects
 
 A project is a folder with a `chemlab.toml` at its root; everything it
