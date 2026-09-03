@@ -334,7 +334,13 @@ void DrawBatch(ImpostorBatch& b, const void* data, int count, bool lit) {
 
 }  // namespace
 
+// Reference-counted: every Viewport calls Init/Shutdown, and there is now one
+// Viewport per 3D window (the Structure View plus each Render 3D node window),
+// all sharing these batches.
+static int gRefs = 0;
+
 void InitImpostorRenderer() {
+    ++gRefs;
     if (gReady) return;
 
     // Sphere billboard: two CCW triangles facing the camera.
@@ -379,6 +385,7 @@ void InitImpostorRenderer() {
 }
 
 void ShutdownImpostorRenderer() {
+    if (gRefs > 0 && --gRefs > 0) return;
     if (!gReady) return;
     UnloadBatch(gSpheres);
     UnloadBatch(gCylinders);

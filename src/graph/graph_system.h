@@ -62,12 +62,35 @@ struct CanvasGraph {
     bool lastIoOk = true;
 };
 
+// A window owned by one visualize node. A Render 3D or Plot 2D node placed
+// in a free-form graph (rather than in the panel graph it normally drives)
+// gets its own floating, dockable window showing what arrived at the node:
+// creating the node creates the window, deleting the node removes it, and
+// the window can be closed and reopened from the node body. Evaluation only
+// fills in the data here; the UI (ui/node_views.cpp) owns the render
+// textures and GPU models, one set per window, keyed by the node's uid.
+enum class NodeViewKind { View3D, Plot };
+
+struct NodeView {
+    NodeViewKind kind = NodeViewKind::View3D;
+    uint64_t uid = 0;          // Node::uid of the owning node
+    std::string title;         // window title (the node's title)
+    bool open = true;          // the window is shown
+    uint64_t version = 0;      // bumped whenever the data below changes
+    // View3D
+    Atoms atoms;
+    std::string label;         // badge: "<structure> | frame i/n"
+    // Plot
+    plot::NamedPlot plot;
+};
+
 struct GraphSystem {
     Graph graph;
     CanvasGraph canvas;
     DataStore store;
     std::map<std::string, PanelGraph> panelGraphs;   // panel id -> its graph
     View3DRequest view3d;
+    std::map<uint64_t, NodeView> nodeViews;          // node uid -> its window (see NodeView)
     std::string pythonExe = "python3";   // interpreter used by script nodes
     bool autoRun = false;                // re-run `graph` continuously...
     float autoRunFps = 10.0f;            // ...at this rate (see UpdateGraphAutoRun)
@@ -97,7 +120,22 @@ struct GraphSystem {
     std::string RunPanel(AppState& state, const std::string& panelId, bool force = false);
     // Throw the panel graph away and rebuild the default one.
     void ResetPanel(AppState& state, const std::string& panelId);
+
+    // The node with this uid in any graph (null when it was deleted).
+    Node* FindNodeByUid(uint64_t uid);
+    // The window of a visualize node (null when it has none / was never run).
+    NodeView* FindView(uint64_t uid);
+    // The window for `n`, created (open) on first use with the given kind.
+    NodeView& ViewFor(const Node& n, NodeViewKind kind);
+    // Drop views whose node no longer exists. The UI calls this every frame
+    // and releases the GPU side of anything that went away.
+    void PruneViews();
 };
+
+// The graph a node lives in (nodes are stable in their deque, so this
+// compares addresses): the Node Graph, the Graph Canvas or a panel graph.
+const Graph* OwningGraph(const GraphSystem& gs, const Node& n);
+Graph* OwningGraph(GraphSystem& gs, const Node& n);
 
 // Build the default graph for a panel (nodes_view.cpp). Panels without a
 // dedicated decomposition get one "panel.<id>" wrapper node when that node

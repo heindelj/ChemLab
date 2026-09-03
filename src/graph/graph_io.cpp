@@ -83,6 +83,7 @@ bool GraphFromJson(const json& j, Graph& g, std::string& err) {
     for (const auto& jn : j["nodes"]) {
         Node n;
         n.id = jn.value("id", 0u);
+        n.uid = NextNodeUid();
         n.typeId = jn.value("type", "");
         if (n.id == 0 || n.typeId.empty()) { err = "node without an id or type"; g.Clear(); return false; }
         if (g.FindNode(n.id)) { err = fmt::format("duplicate node id {}", n.id); g.Clear(); return false; }

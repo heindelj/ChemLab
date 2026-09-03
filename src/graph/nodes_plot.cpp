@@ -20,6 +20,7 @@
 
 #include "app/app_state.h"
 #include "graph/graph.h"
+#include "graph/graph_system.h"
 #include "graph/node_registry.h"
 #include "plot/plot_spec.h"
 
@@ -322,7 +323,21 @@ std::string EvalPlot2D(AppState& s, Node& n, const std::vector<const Value*>& in
     // Renamed since the last run: retire the old entry so the picker stays tidy.
     const std::string previous = TextParam(n, "_published");
     if (!previous.empty() && previous != name) s.RemovePlot(previous);
-    s.PublishPlot(name, std::move(spec));
+    GraphSystem& gs = s.GraphSys();
+    const Graph* owner = OwningGraph(gs, n);
+    if (owner && !owner->ownerPanel.empty()) {
+        // Inside a panel graph: publish for the 2D Plot panel's picker.
+        s.PublishPlot(name, std::move(spec));
+    } else {
+        // Free-standing (a canvas): the plot shows in this node's own window,
+        // and is published as well so the 2D Plot panel can pick it.
+        s.PublishPlot(name, spec, false);
+        NodeView& view = gs.ViewFor(n, NodeViewKind::Plot);
+        view.plot.name = name;
+        view.plot.spec = std::move(spec);
+        ++view.plot.version;
+        ++view.version;
+    }
     n.params["_published"] = Value::S(name);
     return "";
 }
@@ -336,7 +351,15 @@ bool BodyPlot2D(AppState& s, Node& n) {
     }
     ImGui::PopItemWidth();
     const std::string published = TextParam(n, "_published");
-    if (!published.empty() && s.FindPlot(published)) {
+    if (NodeView* view = s.GraphSys().FindView(n.uid); view && !published.empty()) {
+        if (view->open) ImGui::TextDisabled("shown in its own plot window");
+        else if (ImGui::SmallButton("Show plot window")) view->open = true;
+        ImGui::SameLine();
+        if (ImGui::SmallButton("In 2D Plot")) {
+            s.SelectPlot(published);
+            s.PanelOpen("plot_2d") = true;
+        }
+    } else if (!published.empty() && s.FindPlot(published)) {
         const bool shown = s.SelectedPlotName() == published;
         if (shown) ImGui::TextDisabled("shown in 2D Plot");
         else if (ImGui::SmallButton("Show")) {

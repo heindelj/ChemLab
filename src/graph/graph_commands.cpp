@@ -48,6 +48,59 @@ std::string GraphSystem::Run(AppState& state) {
     return lastRunSummary;
 }
 
+const Graph* OwningGraph(const GraphSystem& gs, const Node& n) {
+    auto contains = [&](const Graph& g) {
+        for (const Node& m : g.nodes)
+            if (&m == &n) return true;
+        return false;
+    };
+    if (contains(gs.graph)) return &gs.graph;
+    if (contains(gs.canvas.graph)) return &gs.canvas.graph;
+    for (const auto& [id, pg] : gs.panelGraphs)
+        if (contains(pg.graph)) return &pg.graph;
+    return nullptr;
+}
+
+Graph* OwningGraph(GraphSystem& gs, const Node& n) {
+    return const_cast<Graph*>(OwningGraph(static_cast<const GraphSystem&>(gs), n));
+}
+
+Node* GraphSystem::FindNodeByUid(uint64_t uid) {
+    auto find = [&](Graph& g) -> Node* {
+        for (Node& m : g.nodes)
+            if (m.uid == uid) return &m;
+        return nullptr;
+    };
+    if (Node* n = find(graph)) return n;
+    if (Node* n = find(canvas.graph)) return n;
+    for (auto& [id, pg] : panelGraphs)
+        if (Node* n = find(pg.graph)) return n;
+    return nullptr;
+}
+
+NodeView* GraphSystem::FindView(uint64_t uid) {
+    auto it = nodeViews.find(uid);
+    return it == nodeViews.end() ? nullptr : &it->second;
+}
+
+NodeView& GraphSystem::ViewFor(const Node& n, NodeViewKind kind) {
+    auto it = nodeViews.find(n.uid);
+    if (it == nodeViews.end()) {
+        NodeView v;
+        v.kind = kind;
+        v.uid = n.uid;
+        v.open = true;
+        it = nodeViews.emplace(n.uid, std::move(v)).first;
+    }
+    it->second.title = n.title;
+    return it->second;
+}
+
+void GraphSystem::PruneViews() {
+    for (auto it = nodeViews.begin(); it != nodeViews.end();)
+        it = FindNodeByUid(it->first) ? std::next(it) : nodeViews.erase(it);
+}
+
 std::string GraphSystem::RunCanvas(AppState& state) {
     ++canvas.runCount;
     canvas.lastRunSummary = RunGraph(state, canvas.graph, store, "canvas/", canvas.lastRunOk);

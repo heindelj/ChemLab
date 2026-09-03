@@ -251,6 +251,8 @@ void DrawNode(AppState& state, graph::Graph& g, graph::Node& node, const std::se
 }
 
 void HandleLinkCreation(graph::Graph& g) {
+    // EndCreate() may only follow a successful BeginCreate() (the editor
+    // asserts otherwise -- silently corrupting state in a -DNDEBUG build).
     if (ed::BeginCreate()) {
         ed::PinId a, b;
         if (ed::QueryNewLink(&a, &b) && a && b) {
@@ -280,8 +282,25 @@ void HandleLinkCreation(graph::Graph& g) {
                 }
             }
         }
+        ed::EndCreate();
     }
-    ed::EndCreate();
+}
+
+// Backspace (as well as the editor's own Delete) removes the selection. Only
+// while the pointer is over the canvas and no text field has the keyboard,
+// so backspacing in a node's text box never eats the node.
+void HandleBackspace() {
+    if (ImGui::GetIO().WantTextInput || !ImGui::IsKeyPressed(ImGuiKey_Backspace, false)) return;
+    if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
+        return;
+    std::vector<ed::NodeId> nodes((size_t)std::max(ed::GetSelectedObjectCount(), 0));
+    std::vector<ed::LinkId> links(nodes.size());
+    const int nn = ed::GetSelectedNodes(nodes.data(), (int)nodes.size());
+    const int nl = ed::GetSelectedLinks(links.data(), (int)links.size());
+    for (int i = 0; i < nn; ++i) ed::DeleteNode(nodes[(size_t)i]);
+    for (int i = 0; i < nl; ++i) ed::DeleteLink(links[(size_t)i]);
+    // The editor queues these; HandleDeletion picks them up through
+    // BeginDelete/QueryDeleted* on this or the next frame.
 }
 
 void HandleDeletion(graph::Graph& g) {
@@ -381,6 +400,7 @@ void DrawGraphCanvas(AppState& state, graph::Graph& g, const std::string& key, c
             }
 
             HandleLinkCreation(g);
+            HandleBackspace();
             HandleDeletion(g);
 
             density.Restore();   // popups are drawn in screen space

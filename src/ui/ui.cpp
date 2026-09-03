@@ -255,6 +255,7 @@ void UIInit(AppState& state) {
 }
 
 void UIShutdown(AppState&) {
+    NodeViewsShutdown();
     NodeGraphShutdown();
     ImPlot3D::DestroyContext();
     ImPlot::DestroyContext();
@@ -341,6 +342,7 @@ void UIFrame(AppState& state) {
         }
     }
     DrawPanelGraphWindows(state);
+    DrawNodeViewWindows(state);
     DrawUIBuilder(state);
     if (state.showImGuiDemo) ImGui::ShowDemoWindow(&state.showImGuiDemo);
     if (state.showImPlotDemo) ImPlot::ShowDemoWindow(&state.showImPlotDemo);

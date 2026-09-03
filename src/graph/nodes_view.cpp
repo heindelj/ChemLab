@@ -86,17 +86,11 @@ int FindStructureByPath(const AppState& s, const std::string& absPath) {
     return -1;
 }
 
-// The graph a node lives in (nodes are stable in their deque, so compare addresses).
-const Graph* OwningGraph(const GraphSystem& gs, const Node& n) {
-    auto contains = [&](const Graph& g) {
-        for (const Node& m : g.nodes)
-            if (&m == &n) return true;
-        return false;
-    };
-    if (contains(gs.graph)) return &gs.graph;
-    for (const auto& [id, pg] : gs.panelGraphs)
-        if (contains(pg.graph)) return &pg.graph;
-    return nullptr;
+// Does this node drive the panel it was designed for (its graph *is* that
+// panel's graph)? Otherwise it is free-standing and gets a window of its own.
+bool DrivesPanel(const GraphSystem& gs, const Node& n, const char* panelId) {
+    const Graph* g = OwningGraph(gs, n);
+    return g && g->ownerPanel == panelId;
 }
 
 // ---- Structure: a handle to the active (or an indexed) loaded structure ----
@@ -174,31 +168,53 @@ bool BodySelectFrame(AppState&, Node& n) {
 // ---- Render 3D: hand ChemicalData to the Structure View ----
 
 std::string EvalRender3D(AppState& s, Node& n, const std::vector<const Value*>& in, std::vector<Value>&) {
+    GraphSystem& gs = s.GraphSys();
     if (!in[0]) return "input 'chem' not connected";
     const ChemicalData* chem = in[0]->AsChem();
     if (!chem) return "wrong input type on 'chem'";
-    View3DRequest& req = s.GraphSys().view3d;
     std::string err;
     Atoms atoms;
     if (!ChemicalDataToAtoms(*chem, atoms, err, s.calc.bondTolerance)) return err;
-    req.atoms = std::move(atoms);
-    req.valid = true;
     // The label travels out-of-band: the Select Frame node upstream knows
     // which structure/frame this is, the ChemicalData does not.
-    req.label.clear();
-    if (const Graph* g = OwningGraph(s.GraphSys(), n))
+    std::string label;
+    if (const Graph* g = OwningGraph(gs, n))
         if (const Link* l = g->LinkInto(n.id, 0))
-            if (const Node* up = g->FindNode(l->fromNode)) req.label = TextParam(*up, "_label");
-    if (req.label.empty()) req.label = fmt::format("{} atoms", req.atoms.natoms);
-    s.modelDirty = true;
+            if (const Node* up = g->FindNode(l->fromNode)) label = TextParam(*up, "_label");
+    if (label.empty()) label = fmt::format("{} atoms", atoms.natoms);
+
+    if (DrivesPanel(gs, n, kStructureViewPanel)) {
+        // The Structure View's own graph: feed the main 3D view.
+        View3DRequest& req = gs.view3d;
+        req.atoms = std::move(atoms);
+        req.label = std::move(label);
+        req.valid = true;
+        s.modelDirty = true;
+    } else {
+        // Free-standing (a canvas): this node has a 3D window of its own.
+        NodeView& view = gs.ViewFor(n, NodeViewKind::View3D);
+        view.atoms = std::move(atoms);
+        view.label = std::move(label);
+        ++view.version;
+    }
     return "";
 }
 
-bool BodyRender3D(AppState& s, Node&) {
+bool BodyRender3D(AppState& s, Node& n) {
     // The render settings are shared app state (the Controls panel, the view
     // toolbar and the `style`/`set` commands edit the same values), so the
     // node edits them directly rather than keeping a copy in its params.
     bool changed = false;
+    if (!DrivesPanel(s.GraphSys(), n, kStructureViewPanel)) {
+        NodeView* view = s.GraphSys().FindView(n.uid);
+        if (!view) {
+            ImGui::TextDisabled("(run the graph to open its 3D window)");
+        } else if (view->open) {
+            ImGui::TextDisabled("shown in its own 3D window");
+        } else if (ImGui::SmallButton("Show 3D window")) {
+            view->open = true;
+        }
+    }
     const char* names[] = {"ball-and-stick", "spheres", "sticks"};
     for (int i = 0; i < 3; ++i) {
         if (i) ImGui::SameLine();
@@ -413,6 +429,7 @@ void GraphSystem::ResetPanel(AppState& state, const std::string& panelId) {
 }
 
 void SeedPanelGraph(AppState& state, const std::string& panelId, Graph& g) {
+    g.ownerPanel = panelId;
     if (panelId == kStructureViewPanel) {
         Node* src = g.AddNode("view.structure", 40, 60);
         Node* frame = g.AddNode("view.select_frame", 320, 60);

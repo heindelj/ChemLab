@@ -23,6 +23,12 @@ void DrawGraphCanvasPanel(AppState& state);   // the Graph Canvas: sketch, run, 
 // The "Graph: <panel>" windows (state.graphViewOpen), one per panel graph.
 void DrawPanelGraphWindows(AppState& state);
 void NodeGraphShutdown();   // destroys the node editor contexts (UIShutdown)
+// The windows owned by visualize nodes (GraphSystem::nodeViews): a floating,
+// dockable 3D view per free-standing Render 3D node, a plot per Plot 2D node.
+void DrawNodeViewWindows(AppState& state);
+void NodeViewsShutdown();   // releases their render textures / models (UIShutdown)
+// Draws one published plot filling the current window (ImPlot).
+void DrawNamedPlot(plot::NamedPlot& p);   // plot::NamedPlot comes via app_state.h
 
 // Bottom command bar and the optional console window.
 float CommandBarHeight();

@@ -19,7 +19,9 @@ namespace graph {
 class DataStore;
 
 struct Node {
-    uint32_t id = 0;
+    uint32_t id = 0;                      // unique within its graph (ids restart at 1 per graph)
+    uint64_t uid = 0;                     // unique across every graph in the process (never saved);
+                                          // keys per-node UI such as a Render 3D node's own window
     std::string typeId;
     std::string title;                    // display name; also the DataStore key prefix
     std::vector<PinSpec> inputs;          // per-node copy (script nodes rebuild them)
@@ -53,7 +55,15 @@ inline void DecodePin(uint64_t pinId, uint32_t& nodeId, int& pin, bool& isOutput
 int FindInputPin(const Node& n, const std::string& name);   // -1 when absent
 int FindOutputPin(const Node& n, const std::string& name);
 
+// Process-wide counter behind Node::uid.
+uint64_t NextNodeUid();
+
 struct Graph {
+    // The panel this graph belongs to ("structure_view", ...), "" for the
+    // free-form graphs (Node Graph, Graph Canvas). Nodes that drive a panel
+    // (Render 3D, Plot 2D) use it to decide whether to feed that panel or to
+    // open a window of their own (see GraphSystem::nodeViews).
+    std::string ownerPanel;
     // deque: references to nodes stay valid while nodes are appended, so
     // callers (the demo builder, the panel) may hold Node* across AddNode.
     std::deque<Node> nodes;

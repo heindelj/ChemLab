@@ -3,8 +3,23 @@ project(ChemLab LANGUAGES C CXX)
 
 include(FetchContent)
 
+# Default to RelWithDebInfo: optimised, but with symbols for a usable
+# backtrace. CMake's RelWithDebInfo also defines NDEBUG, which silences every
+# IM_ASSERT in ImGui / the node editor / ImPlot -- exactly the checks that
+# turn a mystery EXC_BAD_ACCESS into a readable message -- so strip it.
+# Use -DCMAKE_BUILD_TYPE=Release for a no-asserts build.
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type" FORCE)
+endif()
+foreach(lang C CXX)
+    string(REPLACE "-DNDEBUG" "" CMAKE_${lang}_FLAGS_RELWITHDEBINFO "${CMAKE_${lang}_FLAGS_RELWITHDEBINFO}")
+endforeach()
+# -DCHEMLAB_ASAN=ON: AddressSanitizer for the whole build (used by the
+# headless smoke tests, see CLAUDE.md).
+option(CHEMLAB_ASAN "Build with AddressSanitizer" OFF)
+if(CHEMLAB_ASAN)
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
@@ -223,6 +238,7 @@ add_executable(${PROJECT_NAME}
     src/ui/ui_spec.cpp
     src/ui/ui_builder.cpp
     src/ui/panel_registry.cpp
+    src/ui/node_views.cpp
     src/ui/command_bar.cpp
     src/ui/panel_controls.cpp
     src/ui/panel_structure_view.cpp

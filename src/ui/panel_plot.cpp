@@ -159,7 +159,9 @@ void DrawSeries(const plot::Series& sr) {
     }
 }
 
-void PlotNamed(plot::NamedPlot& p) {
+}  // namespace
+
+void DrawNamedPlot(plot::NamedPlot& p) {
     const plot::PlotSpec& spec = p.spec;
     // Re-fit only when the data changed: keeps the user's pan/zoom between
     // auto-run ticks that publish identical data... and follows real changes.
@@ -180,8 +182,6 @@ void PlotNamed(plot::NamedPlot& p) {
     }
 }
 
-}  // namespace
-
 void DrawPlotPanel(AppState& state) {
     // Underneath: a Plot View node choosing among the built-in and published plots.
     state.GraphSys().RunPanel(state, "plot_2d");
@@ -193,7 +193,7 @@ void DrawPlotPanel(AppState& state) {
     const ImVec2 origin = ImGui::GetCursorScreenPos();
     const float paneWidth = ImGui::GetContentRegionAvail().x;
     if (state.twoDPlotIndex >= AppState::kBuiltinPlotCount) {
-        PlotNamed(state.plots[(size_t)named]);
+        DrawNamedPlot(state.plots[(size_t)named]);
     } else if (!s) {
         ImGui::TextDisabled("No structure loaded.");
         ImGui::TextDisabled("Open an xyz file (File > Open, drag & drop, or `load path.xyz`),");

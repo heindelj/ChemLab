@@ -21,6 +21,11 @@ int FindOutputPin(const Node& n, const std::string& name) {
     return -1;
 }
 
+uint64_t NextNodeUid() {
+    static uint64_t next = 1;
+    return next++;
+}
+
 Node* Graph::FindNode(uint32_t id) {
     for (auto& n : nodes)
         if (n.id == id) return &n;
@@ -38,6 +43,7 @@ Node* Graph::AddNode(const std::string& typeId, float x, float y) {
     if (!spec) return nullptr;
     Node n;
     n.id = nextNodeId++;
+    n.uid = NextNodeUid();
     n.typeId = typeId;
     n.title = fmt::format("{} {}", spec->name, n.id);
     n.inputs = spec->inputs;
