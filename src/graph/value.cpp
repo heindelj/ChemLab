@@ -20,6 +20,7 @@ ValueType Value::Type() const {
         case 9: return ValueType::Table;
         case 10: return ValueType::Series;
         case 11: return ValueType::Structure;
+        case 12: return ValueType::Panel;
         default: return ValueType::Any;   // monostate
     }
 }
@@ -45,6 +46,7 @@ const ChemicalData* Value::AsChem() const { return std::get_if<ChemicalData>(&v)
 const Table* Value::AsTable() const { return std::get_if<Table>(&v); }
 const Series* Value::AsSeries() const { return std::get_if<Series>(&v); }
 const StructureHandle* Value::AsStructure() const { return std::get_if<StructureHandle>(&v); }
+const PanelList* Value::AsPanels() const { return std::get_if<PanelList>(&v); }
 
 int Table::FindColumn(const std::string& name) const {
     for (size_t c = 0; c < columns.size(); ++c)
@@ -93,6 +95,12 @@ std::string Value::Preview(size_t maxItems) const {
             const auto& sr = std::get<Series>(v);
             return fmt::format("{} series '{}' [{} points]", plot::SeriesKindName(sr.kind), sr.label, sr.Count());
         }
+        case ValueType::Panel: {
+            const PanelList& p = std::get<PanelList>(v);
+            std::string out;
+            for (const PanelRef& r : p) out += (out.empty() ? "" : ", ") + r.panel + (r.visible ? "" : " (hidden)");
+            return out.empty() ? "no panels" : out;
+        }
         case ValueType::Structure: {
             const auto& h = std::get<StructureHandle>(v);
             return fmt::format("structure '{}' [{} frame{}]", h.name, h.frames, h.frames == 1 ? "" : "s");
@@ -114,6 +122,7 @@ const char* TypeName(ValueType t) {
         case ValueType::Table: return "table";
         case ValueType::Series: return "series";
         case ValueType::Structure: return "structure";
+        case ValueType::Panel: return "panel";
         default: return "any";
     }
 }
@@ -130,6 +139,7 @@ bool TypeFromName(const std::string& name, ValueType& out) {
     else if (name == "table") out = ValueType::Table;
     else if (name == "series") out = ValueType::Series;
     else if (name == "structure") out = ValueType::Structure;
+    else if (name == "panel" || name == "panels") out = ValueType::Panel;
     else if (name == "any") out = ValueType::Any;
     else return false;
     return true;
@@ -162,6 +172,11 @@ json ValueToJson(const Value& val) {
         case ValueType::Structure: {
             const StructureHandle& h = std::get<StructureHandle>(val.v);
             return json{{"name", h.name}, {"path", h.path}, {"index", h.index}, {"frames", h.frames}};
+        }
+        case ValueType::Panel: {
+            json arr = json::array();
+            for (const PanelRef& r : std::get<PanelList>(val.v)) arr.push_back({{"panel", r.panel}, {"visible", r.visible}});
+            return arr;
         }
         case ValueType::Positions: {
             const Positions& p = std::get<Positions>(val.v);
@@ -303,6 +318,21 @@ bool ValueFromJson(const json& j, ValueType expected, Value& out, std::string& e
             if (j.contains("x")) for (const auto& e : j["x"]) sr.x.push_back(e.get<double>());
             if (sr.x.empty()) for (size_t i = 0; i < sr.y.size(); ++i) sr.x.push_back((double)i);
             out.v = std::move(sr);
+            return true;
+        }
+        case ValueType::Panel: {
+            if (!j.is_array()) { err = "expected an array of {panel, visible}"; return false; }
+            PanelList p;
+            for (const auto& e : j) {
+                PanelRef r;
+                if (e.is_string()) r.panel = e.get<std::string>();
+                else if (e.is_object() && e.contains("panel")) {
+                    r.panel = e["panel"].get<std::string>();
+                    if (e.contains("visible")) r.visible = e["visible"].get<bool>();
+                } else { err = "expected {panel, visible}"; return false; }
+                p.push_back(std::move(r));
+            }
+            out.v = std::move(p);
             return true;
         }
         case ValueType::Structure: {

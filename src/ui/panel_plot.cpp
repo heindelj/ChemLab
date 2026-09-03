@@ -183,8 +183,6 @@ void DrawNamedPlot(plot::NamedPlot& p) {
 }
 
 void DrawPlotPanel(AppState& state) {
-    // Underneath: a Plot View node choosing among the built-in and published plots.
-    state.GraphSys().RunPanel(state, "plot_2d");
     const Structure* s = state.ActiveStructure();
     const int named = state.twoDPlotIndex - AppState::kBuiltinPlotCount;
     if (state.twoDPlotIndex >= AppState::kBuiltinPlotCount && named >= (int)state.plots.size())

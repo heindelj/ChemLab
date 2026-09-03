@@ -1,14 +1,7 @@
-// The nodes behind the panels, plus the panel-graph plumbing: every panel
-// owns a small graph (GraphSystem::panelGraphs) that it evaluates before
-// drawing. This file has the node types those graphs are made of, the
-// default graph for each panel (SeedPanelGraph), the hooks that keep the
-// Active Structure graph in step with files loaded elsewhere, and the
-// change-detection that makes evaluating panel graphs every frame cheap.
-//
-//   Structure View     Structure -> Select Frame -> Render 3D
-//   Active Structure   Load Structure x N -> Structure List
-//   2D Plot            Plot View (picks among the published plots)
-//   everything else    one "panel.<id>" wrapper node (registered by the UI)
+// Nodes that talk to the loaded structures and the panels: Structure /
+// Select Frame / Load Structure / Structure List, Render 3D (a 3D window of
+// its own for whatever ChemicalData arrives) and Plot View (the 2D Plot
+// panel's picker). Usable in any graph, including a scene graph.
 
 #include <algorithm>
 #include <filesystem>
@@ -31,9 +24,6 @@ namespace graph {
 
 namespace {
 
-constexpr const char* kStructureViewPanel = "structure_view";
-constexpr const char* kActiveStructurePanel = "active_structure";
-constexpr const char* kPlotPanel = "plot_2d";
 constexpr int kStructureListPins = 6;
 
 int64_t IntParam(const Node& n, const std::string& key, int64_t fallback) {
@@ -84,13 +74,6 @@ int FindStructureByPath(const AppState& s, const std::string& absPath) {
     for (size_t i = 0; i < s.structures.size(); ++i)
         if (!s.structures[i].path.empty() && AbsolutePath(s.structures[i].path) == absPath) return (int)i;
     return -1;
-}
-
-// Does this node drive the panel it was designed for (its graph *is* that
-// panel's graph)? Otherwise it is free-standing and gets a window of its own.
-bool DrivesPanel(const GraphSystem& gs, const Node& n, const char* panelId) {
-    const Graph* g = OwningGraph(gs, n);
-    return g && g->ownerPanel == panelId;
 }
 
 // ---- Structure: a handle to the active (or an indexed) loaded structure ----
@@ -165,7 +148,7 @@ bool BodySelectFrame(AppState&, Node& n) {
     return changed;
 }
 
-// ---- Render 3D: hand ChemicalData to the Structure View ----
+// ---- Render 3D: draw ChemicalData in a 3D window of the node's own ----
 
 std::string EvalRender3D(AppState& s, Node& n, const std::vector<const Value*>& in, std::vector<Value>&) {
     GraphSystem& gs = s.GraphSys();
@@ -183,20 +166,10 @@ std::string EvalRender3D(AppState& s, Node& n, const std::vector<const Value*>& 
             if (const Node* up = g->FindNode(l->fromNode)) label = TextParam(*up, "_label");
     if (label.empty()) label = fmt::format("{} atoms", atoms.natoms);
 
-    if (DrivesPanel(gs, n, kStructureViewPanel)) {
-        // The Structure View's own graph: feed the main 3D view.
-        View3DRequest& req = gs.view3d;
-        req.atoms = std::move(atoms);
-        req.label = std::move(label);
-        req.valid = true;
-        s.modelDirty = true;
-    } else {
-        // Free-standing (a canvas): this node has a 3D window of its own.
-        NodeView& view = gs.ViewFor(n, NodeViewKind::View3D);
-        view.atoms = std::move(atoms);
-        view.label = std::move(label);
-        ++view.version;
-    }
+    NodeView& view = gs.ViewFor(n, NodeViewKind::View3D);
+    view.atoms = std::move(atoms);
+    view.label = std::move(label);
+    ++view.version;
     return "";
 }
 
@@ -205,15 +178,13 @@ bool BodyRender3D(AppState& s, Node& n) {
     // toolbar and the `style`/`set` commands edit the same values), so the
     // node edits them directly rather than keeping a copy in its params.
     bool changed = false;
-    if (!DrivesPanel(s.GraphSys(), n, kStructureViewPanel)) {
-        NodeView* view = s.GraphSys().FindView(n.uid);
-        if (!view) {
-            ImGui::TextDisabled("(run the graph to open its 3D window)");
-        } else if (view->open) {
-            ImGui::TextDisabled("shown in its own 3D window");
-        } else if (ImGui::SmallButton("Show 3D window")) {
-            view->open = true;
-        }
+    NodeView* view = s.GraphSys().FindView(n.uid);
+    if (!view) {
+        ImGui::TextDisabled("(run the graph to open its 3D window)");
+    } else if (view->open) {
+        ImGui::TextDisabled("shown in its own 3D window");
+    } else if (ImGui::SmallButton("Show 3D window")) {
+        view->open = true;
     }
     const char* names[] = {"ball-and-stick", "spheres", "sticks"};
     for (int i = 0; i < 3; ++i) {
@@ -236,8 +207,7 @@ bool BodyRender3D(AppState& s, Node& n) {
     if (ImGui::Checkbox("grid", &s.drawGrid)) changed = true;
     ImGui::SameLine();
     if (ImGui::Checkbox("atom numbers", &s.drawAtomNumbers)) changed = true;
-    const View3DRequest& req = s.GraphSys().view3d;
-    if (req.valid) ImGui::TextDisabled("drawing %u atoms, %zu bonds", req.atoms.natoms, req.atoms.covalentBondList.pairs.size());
+    if (view) ImGui::TextDisabled("drawing %u atoms, %zu bonds", view->atoms.natoms, view->atoms.covalentBondList.pairs.size());
     else ImGui::TextDisabled("(nothing to draw)");
     return changed;
 }
@@ -250,9 +220,7 @@ std::string EvalLoadStructure(AppState& s, Node& n, const std::vector<const Valu
     const std::string abs = AbsolutePath(path);
     int index = FindStructureByPath(s, abs);
     if (index < 0) {
-        // Not loaded yet (a node the user added by hand): load it. This calls
-        // back into OnStructureLoaded, which finds this node by path and adds
-        // nothing.
+        // Not loaded yet: load it.
         CommandResult r = LoadStructureFile(s, path, s.structures.empty());
         if (!r.ok) return r.message;
         index = FindStructureByPath(s, abs);
@@ -328,152 +296,7 @@ bool BodyPlotView(AppState& s, Node&) {
     return false;
 }
 
-// ---- panel graph helpers ----
-
-std::string LinkByName(Graph& g, Node& from, const char* out, Node& to, const char* in) {
-    const int o = FindOutputPin(from, out), i = FindInputPin(to, in);
-    if (o < 0 || i < 0) return fmt::format("missing pin {} -> {}", out, in);
-    std::string err;
-    if (!g.AddLink(from.id, o, to.id, i, &err)) return err;
-    return "";
-}
-
-Node* FindNodeOfType(Graph& g, const std::string& typeId) {
-    for (Node& n : g.nodes)
-        if (n.typeId == typeId) return &n;
-    return nullptr;
-}
-
-Node* FindLoadNode(Graph& g, const std::string& absPath) {
-    for (Node& n : g.nodes)
-        if (n.typeId == "view.load_structure" && AbsolutePath(TextParam(n, "path")) == absPath) return &n;
-    return nullptr;
-}
-
-// Add a Load Structure node for structures[index] and wire it into the first
-// free pin of the Structure List node.
-void AddLoadNode(AppState& s, Graph& g, int index) {
-    const Structure& st = s.structures[(size_t)index];
-    if (st.path.empty()) return;   // created in-app: nothing to load from
-    int loads = 0;
-    for (const Node& n : g.nodes) loads += n.typeId == "view.load_structure";
-    Node* load = g.AddNode("view.load_structure", 40.0f, 60.0f + 175.0f * (float)loads);
-    if (!load) return;
-    load->params["path"] = Value::S(st.path);
-    if (Node* list = FindNodeOfType(g, "view.structure_list")) {
-        for (int k = 0; k < kStructureListPins; ++k) {
-            if (g.LinkInto(list->id, k)) continue;
-            std::string err;
-            g.AddLink(load->id, 0, list->id, k, &err);
-            break;
-        }
-    }
-}
-
-// Fingerprint of everything the panel graphs read from the app, so a graph
-// is only re-evaluated when something it could depend on changed.
-uint64_t PanelStamp(const AppState& s, const Graph& g) {
-    uint64_t h = 1469598103934665603ull;
-    auto mix = [&](uint64_t v) { h = (h ^ v) * 1099511628211ull; };
-    mix(g.version);
-    mix(s.structures.size());
-    mix((uint64_t)(int64_t)s.activeStructure);
-    for (const Structure& st : s.structures) {
-        mix((uint64_t)(int64_t)st.activeFrame);
-        mix(st.frames.dataVersion);
-        mix(st.frames.nframes);
-    }
-    mix(s.selected.size());
-    mix(s.measurementsVersion);
-    mix(s.plots.size());
-    return h;
-}
-
 }  // namespace
-
-// ---------------------------------------------------------------------------
-// GraphSystem: panel graphs
-// ---------------------------------------------------------------------------
-PanelGraph& GraphSystem::Panel(AppState& state, const std::string& panelId) {
-    auto it = panelGraphs.find(panelId);
-    if (it != panelGraphs.end()) return it->second;
-    PanelGraph& pg = panelGraphs[panelId];
-    SeedPanelGraph(state, panelId, pg.graph);
-    return pg;
-}
-
-std::string GraphSystem::RunPanel(AppState& state, const std::string& panelId, bool force) {
-    PanelGraph& pg = Panel(state, panelId);
-    const uint64_t stamp = PanelStamp(state, pg.graph);
-    if (!force && stamp == pg.lastStamp) return pg.lastError;
-    const bool hadView = view3d.valid;
-    // The Structure View's graph owns the 3D request: if its Render 3D node
-    // is gone, the view falls back to the active frame.
-    if (panelId == kStructureViewPanel) view3d.valid = false;
-    pg.lastError = pg.graph.Evaluate(state, store, panelId + "/");
-    // Evaluation may itself change the state it fingerprints (a Load
-    // Structure node loading a file); fingerprint afterwards so that does
-    // not trigger a second run.
-    pg.lastStamp = PanelStamp(state, pg.graph);
-    ++pg.runCount;
-    if (panelId == kStructureViewPanel && hadView != view3d.valid) state.modelDirty = true;
-    return pg.lastError;
-}
-
-void GraphSystem::ResetPanel(AppState& state, const std::string& panelId) {
-    PanelGraph& pg = panelGraphs[panelId];
-    pg.graph.Clear();
-    pg.lastStamp = ~0ull;
-    pg.lastError.clear();
-    SeedPanelGraph(state, panelId, pg.graph);
-}
-
-void SeedPanelGraph(AppState& state, const std::string& panelId, Graph& g) {
-    g.ownerPanel = panelId;
-    if (panelId == kStructureViewPanel) {
-        Node* src = g.AddNode("view.structure", 40, 60);
-        Node* frame = g.AddNode("view.select_frame", 320, 60);
-        Node* render = g.AddNode("view.render3d", 600, 60);
-        if (src && frame && render) {
-            LinkByName(g, *src, "structure", *frame, "structure");
-            LinkByName(g, *frame, "chem", *render, "chem");
-        }
-        return;
-    }
-    if (panelId == kActiveStructurePanel) {
-        g.AddNode("view.structure_list", 380, 60);
-        for (int i = 0; i < (int)state.structures.size(); ++i) AddLoadNode(state, g, i);
-        return;
-    }
-    if (panelId == kPlotPanel) {
-        g.AddNode("view.plot_view", 40, 60);
-        return;
-    }
-    // Not decomposed yet: the whole panel as one node, when the UI registered one.
-    g.AddNode("panel." + panelId, 40, 60);
-}
-
-void OnStructureLoaded(AppState& state, int index) {
-    GraphSystem& gs = state.GraphSys();
-    if (!gs.HasPanel(kActiveStructurePanel)) return;   // seeding later picks it up
-    if (index < 0 || index >= (int)state.structures.size()) return;
-    Graph& g = gs.panelGraphs[kActiveStructurePanel].graph;
-    const std::string& path = state.structures[(size_t)index].path;
-    if (path.empty() || FindLoadNode(g, AbsolutePath(path))) return;
-    AddLoadNode(state, g, index);
-}
-
-void OnStructureRemoved(AppState& state, const std::string& path) {
-    GraphSystem& gs = state.GraphSys();
-    if (!gs.HasPanel(kActiveStructurePanel) || path.empty()) return;
-    Graph& g = gs.panelGraphs[kActiveStructurePanel].graph;
-    while (Node* n = FindLoadNode(g, AbsolutePath(path))) g.RemoveNode(n->id);
-}
-
-const Atoms* ViewAtoms(AppState& state) {
-    const View3DRequest& req = state.GraphSys().view3d;
-    return req.valid ? &req.atoms : nullptr;
-}
 
 void RegisterViewNodes(NodeTypeRegistry& r) {
     r.Register({"view.structure", "Structure", NodeKind::Build, "View",
@@ -487,19 +310,19 @@ void RegisterViewNodes(NodeTypeRegistry& r) {
                 {{"chem", ValueType::Chem}, {"frame", ValueType::Int}},
                 &EvalSelectFrame, &BodySelectFrame});
     r.Register({"view.render3d", "Render 3D", NodeKind::Visualize, "View",
-                "Draws the incoming ChemicalData in the Structure View (style, grid, ...).",
+                "Draws the incoming ChemicalData in a 3D window of its own (style, grid, ...).",
                 {{"chem", ValueType::Chem}},
                 {},
                 &EvalRender3D, &BodyRender3D});
     r.Register({"view.load_structure", "Load Structure", NodeKind::Build, "View",
-                "Reads an xyz file into the structure list.",
+                "Reads an xyz file into the structure list (when the graph runs).",
                 {},
                 {{"structure", ValueType::Structure}},
                 &EvalLoadStructure, &BodyLoadStructure});
     std::vector<PinSpec> listPins;
     for (int k = 0; k < kStructureListPins; ++k) listPins.push_back({fmt::format("s{}", k + 1), ValueType::Structure});
     r.Register({"view.structure_list", "Structure List", NodeKind::Other, "View",
-                "The loaded structures; pick the active one. Feeds the Active Structure panel.",
+                "The loaded structures; pick the active one.",
                 listPins,
                 {{"active", ValueType::Structure}},
                 &EvalStructureList, &BodyStructureList});

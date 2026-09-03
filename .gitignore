@@ -14,4 +14,6 @@ CMakeFiles/
 _chemlab_*.tgz
 _sync/
 chemlab_nodes.json
-_sync
+_sync/
+chemlab_scene.toml
+chemlab_uis.toml.migrated

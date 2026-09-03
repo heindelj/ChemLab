@@ -324,20 +324,14 @@ std::string EvalPlot2D(AppState& s, Node& n, const std::vector<const Value*>& in
     const std::string previous = TextParam(n, "_published");
     if (!previous.empty() && previous != name) s.RemovePlot(previous);
     GraphSystem& gs = s.GraphSys();
-    const Graph* owner = OwningGraph(gs, n);
-    if (owner && !owner->ownerPanel.empty()) {
-        // Inside a panel graph: publish for the 2D Plot panel's picker.
-        s.PublishPlot(name, std::move(spec));
-    } else {
-        // Free-standing (a canvas): the plot shows in this node's own window,
-        // and is published as well so the 2D Plot panel can pick it.
-        s.PublishPlot(name, spec, false);
-        NodeView& view = gs.ViewFor(n, NodeViewKind::Plot);
-        view.plot.name = name;
-        view.plot.spec = std::move(spec);
-        ++view.plot.version;
-        ++view.version;
-    }
+    // The plot shows in this node's own window, and is published as well so
+    // the 2D Plot panel can pick it.
+    s.PublishPlot(name, spec, false);
+    NodeView& view = gs.ViewFor(n, NodeViewKind::Plot);
+    view.plot.name = name;
+    view.plot.spec = std::move(spec);
+    ++view.plot.version;
+    ++view.version;
     n.params["_published"] = Value::S(name);
     return "";
 }

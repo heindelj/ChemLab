@@ -1,5 +1,7 @@
 #include "graph/node_registry.h"
 
+#include "graph/scene.h"
+
 namespace graph {
 
 const char* KindName(NodeKind k) {
@@ -46,6 +48,7 @@ NodeTypeRegistry& NodeTypes() {
         RegisterBuiltinNodes(r);
         RegisterPlotNodes(r);
         RegisterViewNodes(r);
+        RegisterSceneNodes(r);
         RegisterPythonNode(r);
         return true;
     }();

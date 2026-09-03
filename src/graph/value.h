@@ -18,7 +18,7 @@
 
 namespace graph {
 
-enum class ValueType { Any, Float, Int, Text, FloatVec, Positions, Labels, IntVec, Chem, Table, Series, Structure };
+enum class ValueType { Any, Float, Int, Text, FloatVec, Positions, Labels, IntVec, Chem, Table, Series, Structure, Panel };
 
 // N x 3 cartesian coordinates, flat xyzxyz... (angstrom).
 struct Positions {
@@ -53,9 +53,19 @@ struct StructureHandle {
     int frames = 0;
 };
 
+// Panels placed in a scene layout (scene.h): a Panel node yields one, a Tabs
+// node several (they become tabs, in order), a Layout node's slot pins take
+// them. `visible` = shown at startup (the classic layout docks the Console
+// but keeps it closed).
+struct PanelRef {
+    std::string panel;   // panel id from the panel registry ("structure_view")
+    bool visible = true;
+};
+using PanelList = std::vector<PanelRef>;
+
 struct Value {
     std::variant<std::monostate, double, int64_t, std::string, std::vector<double>, Positions, Labels,
-                 std::vector<int64_t>, ChemicalData, Table, Series, StructureHandle>
+                 std::vector<int64_t>, ChemicalData, Table, Series, StructureHandle, PanelList>
         v;
 
     Value() = default;
@@ -78,6 +88,7 @@ struct Value {
     const Table* AsTable() const;
     const Series* AsSeries() const;
     const StructureHandle* AsStructure() const;
+    const PanelList* AsPanels() const;
 
     // Short human-readable form for node bodies / the console.
     std::string Preview(size_t maxItems = 4) const;

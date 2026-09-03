@@ -1,0 +1,36 @@
+{
+  "format": "chemlab-graph",
+  "links": [],
+  "nodes": [
+    {
+      "id": 1,
+      "inputs": [],
+      "outputs": [],
+      "params": {
+        "layout": {
+          "type": "text",
+          "value": "sidebar-left"
+        },
+        "name": {
+          "type": "text",
+          "value": "test"
+        },
+        "slot0": {
+          "type": "text",
+          "value": "structure_view"
+        },
+        "slot1": {
+          "type": "text",
+          "value": "active_structure"
+        }
+      },
+      "pos": [
+        40.0,
+        60.0
+      ],
+      "title": "test",
+      "type": "scene.layout"
+    }
+  ],
+  "version": 1
+}

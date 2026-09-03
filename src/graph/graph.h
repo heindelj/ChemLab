@@ -59,11 +59,6 @@ int FindOutputPin(const Node& n, const std::string& name);
 uint64_t NextNodeUid();
 
 struct Graph {
-    // The panel this graph belongs to ("structure_view", ...), "" for the
-    // free-form graphs (Node Graph, Graph Canvas). Nodes that drive a panel
-    // (Render 3D, Plot 2D) use it to decide whether to feed that panel or to
-    // open a window of their own (see GraphSystem::nodeViews).
-    std::string ownerPanel;
     // deque: references to nodes stay valid while nodes are appended, so
     // callers (the demo builder, the panel) may hold Node* across AddNode.
     std::deque<Node> nodes;

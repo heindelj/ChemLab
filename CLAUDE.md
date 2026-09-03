@@ -38,7 +38,7 @@ asserts, ASan reports and to take screenshots of the UI. Loop:
    ```
    export LIBGL_ALWAYS_SOFTWARE=1 ASAN_OPTIONS=detect_leaks=0
    xvfb-run -s "-screen 0 1600x1000x24" ./build/ChemLab assets/caffeine.xyz \
-       --run "graph demo; graph run; graph new t; canvas add core.text 100 100" --exit
+       --run "graph demo; graph run; scene list; scene classic graph" --exit
    ```
    `--run "a; b; c"` executes command-bar commands at startup and echoes each
    result to stdout — everything in the UI is reachable this way (`help` lists
@@ -56,11 +56,20 @@ Mac. `lldb -- ./build/ChemLab` then `bt` gives a usable backtrace there.
 
 ## Conventions worth knowing
 
-- Every panel is a graph underneath (`GraphSystem::panelGraphs`); the Node
-  Graph and Graph Canvas panels are free-form graphs. Nodes have a `kind`
-  (build / simulate / analyze / visualize / other) that colours them.
-- Visualize nodes (Render 3D, Plot 2D) feed their panel when they sit in that
-  panel's graph, and open their own dockable window otherwise
+- The screen arrangement is a *scene* (`graph/scene.h`, `GraphSystem::scenes`):
+  a graph with Layout nodes (`scene.layout`, one input pin per slot of its
+  layout) fed by Panel nodes (`panel.<id>`, output type `panel`) directly or
+  via a Tabs node (`scene.tabs`). `LayoutUI()` reads the arrangement
+  statically from the links, `SetLayoutUI()` rewires it (the UI Builder uses
+  these, so builder and graph editor are the same thing). A scene may have
+  several Layout nodes (its layouts, `Scene::activeLayout`); the scene is
+  named after the first. `scene <name>` switches, `scene <name> graph` / the
+  Graph button open the scene graph. Built-in scenes: `classic`, `plot-lab`;
+  user scenes are `scenes/<graph>.json`, the active
+  one is remembered in `chemlab_scene.toml`. Panels have no graphs of their own.
+- The Node Graph and Graph Canvas panels are free-form graphs. Nodes have a
+  `kind` (build / simulate / analyze / visualize / other) that colours them.
+- Visualize nodes (Render 3D, Plot 2D) open their own dockable window
   (`GraphSystem::nodeViews`, drawn by `ui/node_views.cpp`).
 - Named graphs from the Graph Canvas are saved as `graphs/<name>.json`
   (`graph new/save/load/list`); `graph_io.cpp` is the format.

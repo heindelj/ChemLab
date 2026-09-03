@@ -9,11 +9,10 @@
 //
 // A *UIDefinition* is a layout plus an assignment of panels (by id, see
 // panel_registry.h) to slots. Several panels in one slot become tabs, in
-// order. The current ChemLab arrangement is expressed as the built-in
-// "Default" UI on the "chemlab-classic" layout.
-//
-// User-made UIs are persisted to a small TOML file (uis.toml in the project
-// root, or chemlab_uis.toml next to the executable when no project is open).
+// order. It is what a scene's Layout node describes (graph/scene.h): the
+// node stores it as parameters and the scene graph is what gets saved. The
+// classic ChemLab arrangement is the built-in "classic" scene on the
+// "chemlab-classic" layout.
 
 #include <string>
 #include <vector>
@@ -60,29 +59,24 @@ struct UIDefinition {
 // ---- catalogs -------------------------------------------------------------
 const std::vector<LayoutDef>& BuiltinLayouts();
 const LayoutDef* FindLayout(const std::string& id);
-// The built-in UIs: "Default" (the classic arrangement) and "Plot Lab" (2D plot over node graph).
+// The built-in arrangements: "classic" and "plot-lab" (2D plot over node graph); BuiltinScenes wraps them.
 std::vector<UIDefinition> BuiltinUIs();
 
 // ---- geometry helper (thumbnails / previews) ------------------------------
 struct SlotRect { float x = 0, y = 0, w = 1, h = 1; };   // in [0,1] space
 std::vector<SlotRect> LayoutSlotRects(const LayoutDef& layout);
 
-// ---- persistence of user (non-builtin) UIs --------------------------------
-// The file also records which UI was active (`active = "..."`), so that on
-// the next launch the restored dock layout (ImGui's ini file) is interpreted
-// against the same UI it was saved under.
-std::string SerialiseUIs(const std::vector<UIDefinition>& uis, const std::string& activeName);
+// ---- the pre-scene TOML format (read only, for migrating old files) --------
 bool ParseUIs(const std::string& text, std::vector<UIDefinition>& out, std::string& activeName, std::string& error);
-bool SaveUserUIs(const std::string& path, const std::vector<UIDefinition>& uis, const std::string& activeName,
-                 std::string& error);
 bool LoadUserUIs(const std::string& path, std::vector<UIDefinition>& out, std::string& activeName, std::string& error);
 
 // ---- UI builder (interactive editor) state --------------------------------
 struct UIBuilderState {
     bool open = false;        // the "UI Builder" window is shown
     bool editing = false;     // drag-and-drop edit mode is active
-    UIDefinition draft;       // the UI being edited
-    int editIndex = -1;       // index into AppState::uis, -1 = brand new
+    UIDefinition draft;       // the arrangement being edited
+    int editIndex = -1;       // index into GraphSystem::scenes, -1 = brand new scene
+    unsigned editLayout = 0;  // node id of the Layout node being edited (0 = the scene's active one)
     std::string newName;      // "New UI" form fields
     int newLayoutIndex = 0;
     bool relayout = false;    // dock nodes must be rebuilt for the draft

@@ -90,7 +90,7 @@ const LayoutDef* FindLayout(const std::string& id) {
 // ---------------------------------------------------------------------------
 std::vector<UIDefinition> BuiltinUIs() {
     UIDefinition def;
-    def.name = "Default";
+    def.name = "classic";
     def.layoutId = "chemlab-classic";
     def.builtin = true;
     def.slots = {
@@ -103,7 +103,7 @@ std::vector<UIDefinition> BuiltinUIs() {
     };
     // Plot Lab: the live 2D plot on top, the node graph that feeds it below.
     UIDefinition lab;
-    lab.name = "Plot Lab";
+    lab.name = "plot-lab";
     lab.layoutId = "two-row";
     lab.builtin = true;
     lab.slots = {
@@ -139,28 +139,9 @@ std::vector<SlotRect> LayoutSlotRects(const LayoutDef& layout) {
 }
 
 // ---------------------------------------------------------------------------
-// Persistence
+// Persistence (reading only: chemlab_uis.toml from older builds is migrated
+// into scene files by MigrateUserUIsToScenes, ui_builder.cpp)
 // ---------------------------------------------------------------------------
-std::string SerialiseUIs(const std::vector<UIDefinition>& uis, const std::string& activeName) {
-    std::string out = "# ChemLab user interfaces. Edit by hand or via View > UI Builder.\n";
-    out += fmt::format("active = \"{}\"\n", activeName);
-    for (const auto& ui : uis) {
-        if (ui.builtin) continue;
-        out += "\n[[ui]]\n";
-        out += fmt::format("name = \"{}\"\n", ui.name);
-        out += fmt::format("layout = \"{}\"\n", ui.layoutId);
-        for (size_t s = 0; s < ui.slots.size(); ++s) {
-            std::string items;
-            for (const auto& ref : ui.slots[s]) {
-                if (!items.empty()) items += ", ";
-                items += fmt::format("\"{}{}\"", ref.visible ? "" : "~", ref.panel);
-            }
-            out += fmt::format("slot{} = [{}]\n", s, items);
-        }
-    }
-    return out;
-}
-
 bool ParseUIs(const std::string& text, std::vector<UIDefinition>& out, std::string& activeName, std::string& error) {
     toml::table root;
     try {
@@ -196,14 +177,6 @@ bool ParseUIs(const std::string& text, std::vector<UIDefinition>& out, std::stri
             out.push_back(std::move(ui));
         }
     }
-    return true;
-}
-
-bool SaveUserUIs(const std::string& path, const std::vector<UIDefinition>& uis, const std::string& activeName,
-                 std::string& error) {
-    std::ofstream f(path, std::ios::trunc);
-    if (!f) { error = fmt::format("Cannot write {}", path); return false; }
-    f << SerialiseUIs(uis, activeName);
     return true;
 }
 

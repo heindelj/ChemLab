@@ -12,7 +12,6 @@
 
 #include "app/actions.h"
 #include "core/math_utils.h"
-#include "graph/graph_system.h"
 #include "ui/ui.h"
 
 namespace {
@@ -94,11 +93,8 @@ void DrawOverlays(AppState& state, const Atoms& atoms) {
 
     // Small frame/structure badge in the top-left of the view.
     const Structure* s = state.ActiveStructure();
-    const graph::View3DRequest& req = state.GraphSys().view3d;
-    if (s || req.valid) {
-        const std::string badge = req.valid && !req.label.empty()
-            ? fmt::format("{}  |  {} atoms", req.label, atoms.natoms)
-            : s->frames.nframes > 1
+    if (s) {
+        const std::string badge = s->frames.nframes > 1
             ? fmt::format("{}  |  frame {}/{}  |  {} atoms", s->name, s->activeFrame + 1, s->frames.nframes, atoms.natoms)
             : fmt::format("{}  |  {} atoms", s->name, atoms.natoms);
         DrawLabel(dl, ImVec2(gView.imageMin.x + 8, gView.imageMin.y + 8), badge, IM_COL32(220, 220, 220, 230));
@@ -205,13 +201,8 @@ void DrawToolbar(AppState& state) {
 }  // namespace
 
 void DrawStructureViewPanel(AppState& state) {
-    // The panel is a graph underneath: Structure -> Select Frame -> Render 3D.
-    // Evaluating it (cheap: only when its inputs changed) decides what is drawn.
-    graph::GraphSystem& gs = state.GraphSys();
-    const std::string graphError = gs.RunPanel(state, "structure_view");
     if (state.modelDirty) RebuildModel(state);
-    const Atoms* atoms = graph::ViewAtoms(state);
-    if (!atoms) atoms = state.ActiveAtoms();
+    const Atoms* atoms = state.ActiveAtoms();
 
     DrawToolbar(state);
 
@@ -243,9 +234,7 @@ void DrawStructureViewPanel(AppState& state) {
         DrawOverlays(state, *atoms);
     } else {
         ImDrawList* dl = ImGui::GetWindowDrawList();
-        const std::string msg = state.structures.empty() || graphError.empty()
-                                    ? "Open an xyz file (File > Open, drag & drop, or `load path.xyz`)"
-                                    : "Structure View graph: " + graphError;
+        const std::string msg = "Open an xyz file (File > Open, drag & drop, or `load path.xyz`)";
         const ImVec2 ts = ImGui::CalcTextSize(msg.c_str());
         dl->AddText(ImVec2(gView.imageMin.x + (size.x - ts.x) * 0.5f, gView.imageMin.y + (size.y - ts.y) * 0.5f), IM_COL32(180, 180, 180, 255), msg.c_str());
     }

@@ -1,8 +1,8 @@
 // Node Graph panel: draws graph::Graph with imgui-node-editor and lets the
 // user wire data sources, scripts and analyses together. All graph/data logic
 // lives in src/graph -- this file is only the canvas. The same canvas draws
-// the Graph Canvas panel (DrawGraphCanvasPanel) and the per-panel graphs in their
-// "Graph: <panel>" windows (DrawPanelGraphWindows), one editor context per
+// the Graph Canvas panel (DrawGraphCanvasPanel) and the scene graphs in their
+// "Scene graph: <name>" windows (DrawSceneGraphWindows), one editor context per
 // graph. Nodes are coloured by their kind (graph::NodeKind): build orange,
 // simulate purple, analyze green, visualize cyan, other grey.
 
@@ -33,8 +33,8 @@ namespace {
 
 // One editor context per graph: node ids restart at 1 in every graph, and
 // each context keeps its own view/selection. Only the free-form graph
-// persists its node positions to disk; panel graphs are laid out by their
-// seed (Node::posX/posY) and kept in memory for the session.
+// persists its node positions to disk; canvas and scene graphs keep theirs
+// in the graph itself (Node::posX/posY, saved with the graph).
 std::map<std::string, ed::EditorContext*> gEditors;
 
 ed::EditorContext* Editor(const std::string& key, const char* settingsFile) {
@@ -60,6 +60,7 @@ ImVec4 TypeColor(graph::ValueType t) {
         case VT::Series: return {1.0f, 0.7f, 0.85f, 1.0f};
         case VT::Chem: return {0.75f, 0.95f, 0.65f, 1.0f};
         case VT::Structure: return {0.95f, 0.8f, 0.6f, 1.0f};
+        case VT::Panel: return {0.5f, 0.9f, 0.95f, 1.0f};
         default: return {0.75f, 0.75f, 0.75f, 1.0f};
     }
 }
@@ -520,38 +521,88 @@ void DrawGraphCanvasPanel(AppState& state) {
     DrawGraphCanvas(state, cv.graph, "chemlab_graph_canvas", nullptr);
 }
 
-// One "Graph: <panel>" window per panel whose graph the user opened
-// (right-click a panel tab > View graph, View > Panel graphs, or
-// `graph show <panel-id>`). The panel keeps evaluating its graph as usual;
-// this window is a live view of it that can be edited in place.
-void DrawPanelGraphWindows(AppState& state) {
+// One "Scene graph: <name>" window per scene whose graph is open (the Graph
+// button in the menu bar, View > Scene > Scene graph, or `scene <name>
+// graph`). What is wired into the active Layout node is what the screen
+// shows, and follows every edit; other nodes are run with the Run button.
+bool DrawLayoutPicker(AppState& state, int sceneIndex, float width) {
+    graph::GraphSystem& gs = state.GraphSys();
+    if (sceneIndex < 0 || sceneIndex >= (int)gs.scenes.size()) return false;
+    graph::Scene& sc = gs.scenes[(size_t)sceneIndex];
+    const std::vector<graph::Node*> layouts = graph::LayoutNodes(sc.graph);
+    if (layouts.size() <= 1) return false;
+    const graph::Node* active = graph::ActiveLayoutNode(sc);
+    const std::string current = active ? graph::LayoutName(*active) : "";
+    ImGui::PushItemWidth(width);
+    ImGui::PushID(&sc);
+    if (ImGui::BeginCombo("##layout_picker", current.c_str())) {
+        for (graph::Node* n : layouts)
+            if (ImGui::Selectable(graph::LayoutName(*n).c_str(), n == active)) {
+                sc.activeLayout = n->id;
+                gs.SwitchScene(state, sceneIndex);
+            }
+        ImGui::EndCombo();
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Which layout of scene '%s' is on screen", graph::SceneName(sc).c_str());
+    ImGui::PopID();
+    ImGui::PopItemWidth();
+    return true;
+}
+
+void DrawSceneGraphWindows(AppState& state) {
     graph::GraphSystem& gs = state.GraphSys();
     int cascade = 0;
-    for (auto& [panelId, open] : state.graphViewOpen) {
-        if (!open) continue;
-        const PanelInfo* info = FindPanel(panelId);
-        const std::string title = fmt::format("Graph: {}###graph_{}", info ? info->title : panelId.c_str(), panelId);
+    for (size_t i = 0; i < gs.scenes.size(); ++i) {
+        graph::Scene& sc = gs.scenes[i];
+        if (!sc.graphOpen) continue;
+        const std::string name = graph::SceneName(sc);
+        const std::string title = fmt::format("Scene graph: {}###scene_graph_{}", name, i);
         const ImVec2 origin = ImGui::GetMainViewport()->WorkPos;
         ImGui::SetNextWindowPos(ImVec2(origin.x + 80.0f + 40.0f * (float)cascade, origin.y + 60.0f + 40.0f * (float)cascade),
                                 ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(760, 460), ImGuiCond_FirstUseEver);
         ++cascade;
-        if (ImGui::Begin(title.c_str(), &open, ImGuiWindowFlags_NoCollapse)) {
-            graph::PanelGraph& pg = gs.Panel(state, panelId);
-            if (ImGui::Button("Run")) gs.RunPanel(state, panelId, true);
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Panel graphs re-run by themselves whenever their inputs change; this forces one.");
+        if (ImGui::Begin(title.c_str(), &sc.graphOpen, ImGuiWindowFlags_NoCollapse)) {
+            const bool active = (int)i == gs.activeScene;
+            if (ImGui::Button("Run")) gs.RunScene(state, sc);
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Evaluate the scene graph (the Layout node itself applies as soon as it is edited).");
             ImGui::SameLine();
-            if (ImGui::Button("Reset to default")) gs.ResetPanel(state, panelId);
+            if (ImGui::Button("Save")) {
+                std::string err;
+                sc.lastIoMessage = graph::SaveScene(sc, err) ? fmt::format("saved to {}", graph::ScenePath(sc.graphName)) : err;
+                if (err.empty()) sc.builtin = false;
+            }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Save as %s", graph::ScenePath(sc.graphName.empty() ? name : sc.graphName).c_str());
             ImGui::SameLine();
-            ImGui::TextDisabled("%zu nodes | right-click the canvas to add | evaluated %llu times",
-                                pg.graph.nodes.size(), (unsigned long long)pg.runCount);
-            if (!pg.lastError.empty()) {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.45f, 0.4f, 1));
-                ImGui::TextWrapped("%s", pg.lastError.c_str());
+            ImGui::BeginDisabled(active);
+            if (ImGui::Button("Show scene")) gs.SwitchScene(state, (int)i);
+            ImGui::EndDisabled();
+            ImGui::SameLine(0.0f, 16.0f);
+            ImGui::TextDisabled("layout");
+            ImGui::SameLine();
+            if (!DrawLayoutPicker(state, (int)i, 150.0f)) {
+                const graph::Node* layout = graph::ActiveLayoutNode(sc);
+                ImGui::TextUnformatted(layout ? graph::LayoutName(*layout).c_str() : "none");
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("The scene's only layout; add a second Layout node to switch between them.");
+            }
+            ImGui::SameLine(0.0f, 16.0f);
+            ImGui::TextDisabled("%s%zu nodes | graph '%s'%s | right-click the canvas to add", active ? "active | " : "",
+                                sc.graph.nodes.size(), sc.graphName.c_str(), sc.builtin ? " (built-in)" : "");
+            if (!sc.lastIoMessage.empty()) {
+                ImGui::SameLine();
+                ImGui::TextDisabled("%s", sc.lastIoMessage.c_str());
+            }
+            if (!graph::IsScene(sc.graph)) {
+                ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.4f, 1), "This graph has no Layout node any more, so it is not a scene.");
+            }
+            if (sc.runCount > 0) {
+                const ImVec4 col = sc.lastRunOk ? ImVec4(0.55f, 0.9f, 0.55f, 1) : ImVec4(1.0f, 0.45f, 0.4f, 1);
+                ImGui::PushStyleColor(ImGuiCol_Text, col);
+                ImGui::TextWrapped("%s", sc.lastRunSummary.c_str());
                 ImGui::PopStyleColor();
             }
             ImGui::Separator();
-            DrawGraphCanvas(state, pg.graph, "panel_graph_" + panelId, nullptr);
+            DrawGraphCanvas(state, sc.graph, fmt::format("scene_graph_{}", i), nullptr);
         }
         ImGui::End();
     }

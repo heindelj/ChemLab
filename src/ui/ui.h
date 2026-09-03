@@ -20,8 +20,11 @@ void DrawOutputPanel(AppState& state);
 void DrawExportPanel(AppState& state);
 void DrawNodeGraphPanel(AppState& state);
 void DrawGraphCanvasPanel(AppState& state);   // the Graph Canvas: sketch, run, save/load by name
-// The "Graph: <panel>" windows (state.graphViewOpen), one per panel graph.
-void DrawPanelGraphWindows(AppState& state);
+// The "Scene graph: <name>" windows (graph::Scene::graphOpen), one per scene.
+void DrawSceneGraphWindows(AppState& state);
+// A combo choosing which Layout node of scene `sceneIndex` is on screen.
+// Draws nothing (returns false) when the scene has a single layout.
+bool DrawLayoutPicker(AppState& state, int sceneIndex, float width);
 void NodeGraphShutdown();   // destroys the node editor contexts (UIShutdown)
 // The windows owned by visualize nodes (GraphSystem::nodeViews): a floating,
 // dockable 3D view per free-standing Render 3D node, a plot per Plot 2D node.

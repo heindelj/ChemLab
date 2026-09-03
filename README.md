@@ -35,7 +35,7 @@ The 3D view and the 2D plot are two independent panels, so the divider
 between them is an ordinary dock splitter: either can be resized, moved,
 tabbed with another panel, torn off or closed on its own. Panels can be
 dragged, tabbed and closed (View menu / `panel` command);
-`View > Reset layout` restores the default. A layout saved by an older
+`View > Reset layout` restores the scene's arrangement (see *Scenes* below). A layout saved by an older
 build gets the 2D Plot panel docked under the 3D view automatically.
 
 ### 3D view
@@ -91,31 +91,48 @@ Load Table (csv/tsv/whitespace) -> Column -> Series (line, scatter, bars,
 Every `Plot 2D` node publishes its plot under a name; the dropdown floating
 in the 2D Plot panel (or `plot <name>`, `plot list`) switches between the
 built-in per-frame plots and the published ones. The built-in **Plot Lab** UI
-(`ui "Plot Lab"`, or `graph demo plots`, which also loads `assets/data/md_demo.csv`)
+(`scene plot-lab`, or `graph demo plots`, which also loads `assets/data/md_demo.csv`)
 shows the live plot on top and the graph that feeds it below.
 
-### Every panel is a graph
+### Scenes
 
-Each panel is backed by a small node graph of its own (`GraphSystem::panelGraphs`,
-one per panel id) that it evaluates before drawing -- cheaply, only when the
-graph or the app state it reads has changed. Right-click a panel's tab (or its
-title bar when floating) and choose *View graph*, use *View > Panel graphs*, or
-type `graph show <panel-id>` to open the live, editable graph:
+The arrangement on screen is a *scene*: a graph containing a **Layout** node.
+A Layout node picks a layout (how the dockspace is carved into slots) and has
+one input pin per slot; **Panel** nodes (one per panel type) plug into those
+pins, directly or through a **Tabs** node (several panels in one slot become
+tabs, top input first). What is wired into the Layout node is what the screen
+shows, and it follows every edit. The UI Builder (`scene builder`,
+`View > Scene > UI Builder...`) edits exactly the same wiring by drag and
+drop, so building a scene visually and wiring nodes in the graph editor are
+one thing done two ways.
+
+Every scene is a graph, but a graph is only a scene while it has a Layout
+node; the scene is named after its first Layout node, and the graph itself
+can be called something else (the file name). A scene may hold several Layout
+nodes -- its *layouts* -- and switch between them; they can share Panel
+nodes, so a panel set up once appears in several arrangements. A Layout
+node's layout is locked while anything is wired into its slots (unplug the
+slots to change it). Two scenes are built in: `classic` (drawn above) and
+`plot-lab` (2D plot over the node graph), one layout each; a scene with
+several layouts gets a layout picker next to the Graph button and in its
+scene graph window.
 
 ```
-Structure View     Structure -> Select Frame -> Render 3D
-Active Structure   Load Structure (one per file) -> Structure List
-2D Plot            Plot View  (picks among built-in and published plots)
-other panels       one "panel.<id>" wrapper node, until they are decomposed
+scene                         list scenes and their layouts (* = on screen)
+scene classic                 show the classic scene (a layout name of any scene works too)
+scene layout wide             switch layouts within the current scene
+scene layout add rdf quad     add an empty "rdf" layout on the "quad" layout to the current scene
+scene classic graph           open its scene graph (the Graph button top right does the same for the current scene)
+scene new bench two-column    a new scene with one empty layout
+scene save                    write the current scene to scenes/<graph-name>.json
 ```
 
-Anything that produces `chemdata` can be wired into *Render 3D*, so the 3D
-view draws whatever the graph hands it (a fixed frame, the output of a
-script, ...) and falls back to the active frame when no node does. Loading a
-file anywhere (File > Open, drag and drop, `load`) adds a *Load Structure* node
-to the Active Structure graph; adding one by hand loads its file when the graph
-runs. `graph reset <panel-id>` (or *Reset to default* in the graph window)
-rebuilds a panel's default graph; `graph panels` lists them.
+`View > Scene` lists the same things (scenes with several layouts get a
+submenu), and each Layout node has *Show* and *UI Builder* buttons. Any other
+node can be added to a scene graph and run from its window; a Render 3D or
+Plot 2D node there opens a window of its own. User scenes in `scenes/` are
+loaded at startup and the scene/layout shown last is remembered in
+`chemlab_scene.toml`. `ui` is an alias of `scene`.
 
 ## Projects
 

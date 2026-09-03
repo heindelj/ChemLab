@@ -11,13 +11,14 @@
 
 #include "app/app_state.h"
 #include "app/actions.h"
+#include "graph/graph_system.h"
 #include "ui/panel_registry.h"
 #include "ui/ui.h"
 
 namespace {
 
 constexpr const char* kDragPayload = "CHEMLAB_PANEL";
-constexpr const char* kUserUIsFile = "chemlab_uis.toml";
+constexpr const char* kLegacyUIsFile = "chemlab_uis.toml";
 
 ImGuiDir ToImGuiDir(SplitDir d) {
     switch (d) {
@@ -193,17 +194,22 @@ void DrawEditControls(AppState& state) {
     const bool empty = std::all_of(b.draft.slots.begin(), b.draft.slots.end(), [](const auto& s) { return s.empty(); });
     ImGui::BeginDisabled(empty || b.draft.name.empty());
     if (ImGui::Button("Save & Apply")) {
-        if (b.editIndex >= 0 && b.editIndex < (int)state.uis.size())
-            state.uis[b.editIndex] = b.draft;
-        else {
-            state.uis.push_back(b.draft);
-            b.editIndex = (int)state.uis.size() - 1;
+        graph::GraphSystem& gs = state.GraphSys();
+        if (b.editIndex >= 0 && b.editIndex < (int)gs.scenes.size() && !gs.scenes[(size_t)b.editIndex].builtin) {
+            graph::Scene& scene = gs.scenes[(size_t)b.editIndex];
+            graph::Node* layout = b.editLayout ? scene.graph.FindNode(b.editLayout) : graph::ActiveLayoutNode(scene);
+            if (layout && layout->typeId != graph::kLayoutNodeType) layout = nullptr;
+            scene.activeLayout = graph::SetLayoutUI(scene.graph, layout, b.draft).id;
+        } else {
+            gs.scenes.push_back(graph::MakeScene(b.draft, false));
+            b.editIndex = (int)gs.scenes.size() - 1;
         }
-        state.activeUI = b.editIndex;
-        SaveUserUIsFromState(state);
+        graph::Scene& scene = gs.scenes[(size_t)b.editIndex];
+        std::string err;
+        if (!graph::SaveScene(scene, err)) LogError(state, "Could not save scene: " + err);
         b.editing = false;
         b.open = false;
-        state.resetLayoutRequested = true;   // re-dock with the real panels
+        gs.SwitchScene(state, b.editIndex);   // re-dock with the real panels
     }
     ImGui::EndDisabled();
     if (empty) ImGui::SetItemTooltip("Add at least one panel first.");
@@ -219,11 +225,12 @@ void DrawEditControls(AppState& state) {
 // ---------------------------------------------------------------------------
 // Home mode: pick, apply, edit or create UIs
 // ---------------------------------------------------------------------------
-void StartEditing(AppState& state, const UIDefinition& base, int editIndex) {
+void StartEditing(AppState& state, const UIDefinition& base, int editIndex, unsigned editLayout = 0) {
     UIBuilderState& b = state.uiBuilder;
     b.draft = base;
     b.draft.builtin = false;
     b.editIndex = editIndex;
+    b.editLayout = editLayout;
     if (const LayoutDef* layout = FindLayout(b.draft.layoutId)) b.draft.FitToLayout(*layout);
     b.editing = true;
     b.relayout = true;
@@ -231,46 +238,58 @@ void StartEditing(AppState& state, const UIDefinition& base, int editIndex) {
 
 void DrawBuilderHome(AppState& state) {
     UIBuilderState& b = state.uiBuilder;
+    graph::GraphSystem& gs = state.GraphSys();
     ImGui::SetNextWindowSize(ImVec2(560, 480), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("UI Builder", &b.open, ImGuiWindowFlags_NoCollapse)) {
         ImGui::End();
         return;
     }
 
-    ImGui::SeparatorText("Existing UIs");
+    ImGui::SeparatorText("Scenes");
     int deleteIndex = -1;
-    for (int i = 0; i < (int)state.uis.size(); ++i) {
-        UIDefinition& ui = state.uis[i];
+    for (int i = 0; i < (int)gs.scenes.size(); ++i) {
+        graph::Scene& scene = gs.scenes[(size_t)i];
+        const std::string name = graph::SceneName(scene);
         ImGui::PushID(i);
-        if (ImGui::RadioButton(ui.name.c_str(), state.activeUI == i)) {
-            state.activeUI = i;
-            state.resetLayoutRequested = true;
-        }
-        if (ui.builtin) {
+        if (ImGui::RadioButton(name.c_str(), gs.activeScene == i)) gs.SwitchScene(state, i);
+        if (scene.builtin) {
             ImGui::SameLine();
             ImGui::TextDisabled("(built-in)");
         }
-        ImGui::SameLine(ImGui::GetContentRegionAvail().x - 110);
-        if (ImGui::SmallButton(ui.builtin ? "Edit a copy" : "Edit")) {
-            UIDefinition base = ui;
-            if (ui.builtin) base.name += " Copy";
-            StartEditing(state, base, ui.builtin ? -1 : i);
-        }
-        if (!ui.builtin) {
+        ImGui::SameLine(ImGui::GetContentRegionAvail().x - 160);
+        if (ImGui::SmallButton("Graph")) scene.graphOpen = true;
+        ImGui::SameLine();
+        if (ImGui::SmallButton(scene.builtin ? "Edit a copy" : "Edit")) UIBuilderEditScene(state, i);
+        if (!scene.builtin) {
             ImGui::SameLine();
             if (ImGui::SmallButton("Delete")) deleteIndex = i;
+        }
+        // A scene with several layouts: one line per layout, indented.
+        const std::vector<graph::Node*> layouts = graph::LayoutNodes(scene.graph);
+        if (layouts.size() > 1) {
+            const graph::Node* active = graph::ActiveLayoutNode(scene);
+            for (graph::Node* n : layouts) {
+                ImGui::PushID((int)n->id);
+                ImGui::Indent();
+                if (ImGui::RadioButton(graph::LayoutName(*n).c_str(), gs.activeScene == i && n == active)) {
+                    scene.activeLayout = n->id;
+                    gs.SwitchScene(state, i);
+                }
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - 60);
+                if (ImGui::SmallButton(scene.builtin ? "Edit a copy" : "Edit")) UIBuilderEditLayout(state, i, n->id);
+                ImGui::Unindent();
+                ImGui::PopID();
+            }
         }
         ImGui::PopID();
     }
     if (deleteIndex >= 0) {
-        state.uis.erase(state.uis.begin() + deleteIndex);
-        if (state.activeUI >= (int)state.uis.size()) state.activeUI = 0;
-        if (state.activeUI == deleteIndex) state.resetLayoutRequested = true;
-        SaveUserUIsFromState(state);
+        std::string err;
+        if (!gs.RemoveScene(state, deleteIndex, err)) LogError(state, err);
     }
 
     ImGui::Spacing();
-    ImGui::SeparatorText("New UI");
+    ImGui::SeparatorText("New scene");
     ImGui::InputText("Name", &b.newName);
     ImGui::TextDisabled("Choose a layout:");
     const auto& layouts = BuiltinLayouts();
@@ -290,7 +309,7 @@ void DrawBuilderHome(AppState& state) {
         StartEditing(state, ui, -1);
     }
     ImGui::EndDisabled();
-    if (b.newName.empty()) ImGui::SetItemTooltip("Give the UI a name first.");
+    if (b.newName.empty()) ImGui::SetItemTooltip("Give the scene a name first.");
     ImGui::End();
 }
 
@@ -340,38 +359,43 @@ void DrawUIBuilder(AppState& state) {
     }
 }
 
-void LoadUserUIsIntoState(AppState& state) {
-    if (!std::filesystem::exists(kUserUIsFile)) return;
-    std::vector<UIDefinition> user;
-    std::string activeName, error;
-    if (!LoadUserUIs(kUserUIsFile, user, activeName, error)) {
-        LogError(state, fmt::format("Could not load {}: {}", kUserUIsFile, error));
-        return;
-    }
-    for (auto& ui : user) state.uis.push_back(std::move(ui));
-    // Restore the UI that was active last session. The ImGui ini file holds
-    // the dock arrangement of *that* UI, so the two must agree; if the named
-    // UI is gone, fall back to the default and force a clean re-dock so the
-    // stale saved arrangement is not shown under the wrong UI.
-    if (!activeName.empty()) {
-        bool found = false;
-        for (int i = 0; i < (int)state.uis.size(); ++i)
-            if (state.uis[i].name == activeName) {
-                state.activeUI = i;
-                found = true;
-                break;
-            }
-        if (!found) {
-            state.activeUI = 0;
-            state.resetLayoutRequested = true;
-        }
-    }
+void UIBuilderEditLayout(AppState& state, int sceneIndex, unsigned layoutNodeId) {
+    graph::GraphSystem& gs = state.GraphSys();
+    if (sceneIndex < 0 || sceneIndex >= (int)gs.scenes.size()) return;
+    graph::Scene& scene = gs.scenes[(size_t)sceneIndex];
+    graph::Node* layout = layoutNodeId ? scene.graph.FindNode(layoutNodeId) : graph::ActiveLayoutNode(scene);
+    if (!layout || layout->typeId != graph::kLayoutNodeType) return;
+    UIDefinition base = graph::LayoutUI(scene.graph, *layout);
+    if (scene.builtin) base.name += " copy";
+    StartEditing(state, base, scene.builtin ? -1 : sceneIndex, scene.builtin ? 0 : layout->id);
+    state.uiBuilder.open = true;
 }
 
-void SaveUserUIsFromState(AppState& state) {
-    const std::string activeName =
-        (state.activeUI >= 0 && state.activeUI < (int)state.uis.size()) ? state.uis[state.activeUI].name : "";
-    std::string error;
-    if (!SaveUserUIs(kUserUIsFile, state.uis, activeName, error))
-        LogError(state, fmt::format("Could not save UIs: {}", error));
+void MigrateUserUIsToScenes(AppState& state) {
+    if (!std::filesystem::exists(kLegacyUIsFile)) return;
+    std::vector<UIDefinition> user;
+    std::string activeName, error;
+    if (!LoadUserUIs(kLegacyUIsFile, user, activeName, error)) {
+        LogError(state, fmt::format("Could not read {}: {}", kLegacyUIsFile, error));
+        return;
+    }
+    int migrated = 0;
+    for (const UIDefinition& ui : user) {
+        graph::Scene scene = graph::MakeScene(ui, false);
+        std::string err;
+        if (std::filesystem::exists(graph::ScenePath(scene.graphName))) continue;   // already a scene
+        if (graph::SaveScene(scene, err)) ++migrated;
+        else LogError(state, fmt::format("Could not migrate UI '{}' to a scene: {}", ui.name, err));
+    }
+    // The old "Default" / "Plot Lab" names became the "classic" / "plot-lab" scenes.
+    if (activeName == "Default") activeName = "classic";
+    else if (activeName == "Plot Lab") activeName = "plot-lab";
+    std::string haveScene, haveLayout;
+    graph::ReadActiveScene(haveScene, haveLayout);
+    if (!activeName.empty() && haveScene.empty()) graph::WriteActiveScene(activeName, "");
+    std::error_code ec;
+    std::filesystem::rename(kLegacyUIsFile, std::string(kLegacyUIsFile) + ".migrated", ec);
+    if (migrated > 0)
+        LogInfo(state, fmt::format("Migrated {} user interface{} from {} into scenes/ (see `scene list`).", migrated,
+                                   migrated == 1 ? "" : "s", kLegacyUIsFile));
 }

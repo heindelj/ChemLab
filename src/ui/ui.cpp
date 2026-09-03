@@ -65,13 +65,10 @@ void MigrateSavedLayoutForPlotPanel(ImGuiID dockspaceId, ImVec2 dockSize) {
     ImGui::DockBuilderFinish(dockspaceId);
 }
 
-// The active UIDefinition is applied through ApplyUIDockLayout (ui_builder.h);
-// the old hard-coded dock layout is now the built-in "Default" UI in ui_spec.cpp.
-const UIDefinition& ActiveUI(AppState& state) {
-    if (state.uis.empty()) state.uis = BuiltinUIs();
-    if (state.activeUI < 0 || state.activeUI >= (int)state.uis.size()) state.activeUI = 0;
-    return state.uis[state.activeUI];
-}
+// The arrangement on screen is the active scene's Layout node, read as a
+// UIDefinition and applied through ApplyUIDockLayout (ui_builder.h); the
+// old hard-coded dock layout is the built-in "classic" scene (ui_spec.cpp).
+UIDefinition ActiveUI(AppState& state) { return graph::SceneUI(state.GraphSys().ActiveScene()); }
 
 void DrawMenuBar(AppState& state) {
     if (!ImGui::BeginMainMenuBar()) return;
@@ -115,21 +112,29 @@ void DrawMenuBar(AppState& state) {
         for (const PanelInfo& p : PanelCatalog())
             ImGui::MenuItem(p.title, std::string(p.id) == "console" ? "Ctrl+`" : nullptr, &state.PanelOpen(p.id));
         ImGui::Separator();
-        if (ImGui::BeginMenu("Interface")) {
-            for (int i = 0; i < (int)state.uis.size(); ++i)
-                if (ImGui::MenuItem(state.uis[i].name.c_str(), nullptr, state.activeUI == i)) {
-                    state.activeUI = i;
-                    state.resetLayoutRequested = true;
+        if (ImGui::BeginMenu("Scene")) {
+            graph::GraphSystem& gs = state.GraphSys();
+            for (int i = 0; i < (int)gs.scenes.size(); ++i) {
+                graph::Scene& sc = gs.scenes[(size_t)i];
+                const std::vector<graph::Node*> layouts = graph::LayoutNodes(sc.graph);
+                if (layouts.size() <= 1) {
+                    if (ImGui::MenuItem(graph::SceneName(sc).c_str(), nullptr, gs.activeScene == i)) gs.SwitchScene(state, i);
+                    continue;
                 }
-            ImGui::Separator();
-            if (ImGui::MenuItem("UI Builder...")) state.uiBuilder.open = true;
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Panel graphs")) {
-            for (const PanelInfo& p : PanelCatalog()) {
-                if (IsFreeGraphPanel(p.id)) continue;
-                ImGui::MenuItem(p.title, nullptr, &state.graphViewOpen[p.id]);
+                // A scene with several layouts: pick one from a submenu.
+                const graph::Node* active = graph::ActiveLayoutNode(sc);
+                if (ImGui::BeginMenu(graph::SceneName(sc).c_str())) {
+                    for (graph::Node* n : layouts)
+                        if (ImGui::MenuItem(graph::LayoutName(*n).c_str(), nullptr, gs.activeScene == i && n == active)) {
+                            sc.activeLayout = n->id;
+                            gs.SwitchScene(state, i);
+                        }
+                    ImGui::EndMenu();
+                }
             }
+            ImGui::Separator();
+            ImGui::MenuItem("Scene graph", nullptr, &gs.ActiveScene().graphOpen);
+            if (ImGui::MenuItem("UI Builder...")) state.uiBuilder.open = true;
             ImGui::EndMenu();
         }
         ImGui::Separator();
@@ -158,17 +163,40 @@ void DrawMenuBar(AppState& state) {
         ImGui::MenuItem("Metrics", nullptr, &state.showMetrics);
         ImGui::EndMenu();
     }
-    // Right-aligned frame rate
+    // Right-aligned: the layout picker (scenes with several layouts), the
+    // Graph button (the active scene's graph) and the frame rate.
     const std::string fps = fmt::format("{:.0f} fps", ImGui::GetIO().Framerate);
-    ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(fps.c_str()).x - 12.0f);
+    const float fpsWidth = ImGui::CalcTextSize(fps.c_str()).x;
+    const float buttonWidth = ImGui::CalcTextSize("Graph").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    {
+        graph::GraphSystem& gs = state.GraphSys();
+        graph::Scene& scene = gs.ActiveScene();
+        const bool multi = graph::LayoutNodes(scene.graph).size() > 1;
+        const float pickerWidth = multi ? 150.0f : 0.0f;
+        // Explicit x positions: the menu bar's horizontal layout does not
+        // advance past a combo the way it does past a menu item.
+        const float buttonX = ImGui::GetWindowWidth() - fpsWidth - buttonWidth - 24.0f;
+        if (multi) {
+            ImGui::SameLine(buttonX - pickerWidth - 8.0f);
+            DrawLayoutPicker(state, gs.activeScene, pickerWidth);
+        }
+        ImGui::SameLine(buttonX);
+        const bool lit = scene.graphOpen;   // read once: the click below flips it between push and pop
+        if (lit) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+        if (ImGui::SmallButton("Graph")) scene.graphOpen = !scene.graphOpen;
+        if (lit) ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Scene graph of '%s' (also `scene %s graph`)", graph::SceneName(scene).c_str(), graph::SceneName(scene).c_str());
+    }
+    ImGui::SameLine(ImGui::GetWindowWidth() - fpsWidth - 12.0f);
     ImGui::TextDisabled("%s", fps.c_str());
     ImGui::EndMainMenuBar();
 }
 
 // Right-clicking a panel's tab (or, when floating, its title bar) opens a
-// small menu with "View graph": every panel is backed by a node graph (see
-// graph_system.h) and this is how it is reached. Call right after
-// ImGui::Begin() of the panel window, while it is the current window.
+// small menu (close the panel, open the scene graph it is arranged by).
+// Call right after ImGui::Begin() of the panel window, while it is the
+// current window.
 void PanelTitleContextMenu(AppState& state, const PanelInfo& p, bool& open) {
     ImGuiWindow* w = ImGui::GetCurrentWindow();
     ImRect rect;
@@ -192,10 +220,7 @@ void PanelTitleContextMenu(AppState& state, const PanelInfo& p, bool& open) {
     if (ImGui::BeginPopup(popupId.c_str())) {
         ImGui::TextDisabled("%s", p.title);
         ImGui::Separator();
-        const bool hasGraph = !IsFreeGraphPanel(p.id);
-        if (ImGui::MenuItem("View graph", nullptr, false, hasGraph)) state.graphViewOpen[p.id] = true;
-        if (ImGui::MenuItem("Reset graph to default", nullptr, false, hasGraph)) state.GraphSys().ResetPanel(state, p.id);
-        ImGui::Separator();
+        if (ImGui::MenuItem("View scene graph")) state.GraphSys().ActiveScene().graphOpen = true;
         if (ImGui::MenuItem("Close panel")) open = false;
         ImGui::EndPopup();
     }
@@ -246,11 +271,9 @@ void UIInit(AppState& state) {
     ImPlot3D::CreateContext();
     ApplyChemLabTheme(state.theme);
     RegisterBuiltinCommands(state.commands);
-    RegisterPanelNodes();   // "panel.<id>" wrapper node types, before any panel graph is seeded
-    state.uis = BuiltinUIs();
-    LoadUserUIsIntoState(state);
-    if (state.activeUI < 0 || state.activeUI >= (int)state.uis.size()) state.activeUI = 0;
-    ApplyUIVisibility(state, state.uis[state.activeUI]);
+    MigrateUserUIsToScenes(state);   // chemlab_uis.toml from older builds -> scenes/*.json
+    state.GraphSys().LoadScenes(state);
+    ApplyUIVisibility(state, ActiveUI(state));
     LogInfo(state, "ChemLab ready. Type `help` in the command bar (Ctrl+K) for the command list.");
 }
 
@@ -304,18 +327,28 @@ void UIFrame(AppState& state) {
     ImGui::PopStyleVar(3);
     gDockspaceId = ImGui::GetID("ChemLabDockSpace");
     const ImVec2 dockSize = ImGui::GetContentRegionAvail();
+    // The Layout node of the active scene was edited (name, layout, slots):
+    // re-dock so the screen follows the graph.
+    graph::Scene& scene = state.GraphSys().ActiveScene();
+    const uint64_t layoutStamp = graph::LayoutStamp(scene);
+    if (scene.appliedLayout != layoutStamp && !state.uiBuilder.editing) {
+        if (scene.appliedLayout != ~0ull) state.resetLayoutRequested = true;
+        scene.appliedLayout = layoutStamp;
+    }
     if (!gLayoutInitialised || state.resetLayoutRequested) {
         // Only build the layout ourselves if there is no saved one (or on request).
-        const UIDefinition& ui = ActiveUI(state);
+        const UIDefinition ui = ActiveUI(state);
         if (state.resetLayoutRequested || ImGui::DockBuilderGetNode(gDockspaceId) == nullptr) {
             ApplyUIDockLayout(state, ui, gDockspaceId, dockSize);
             gPlotPanelMigrated = true;   // a freshly built layout already has the 2D Plot panel
         }
         if (state.resetLayoutRequested) {
             ApplyUIVisibility(state, ui);
-            // Remember which UI the saved dock arrangement belongs to.
-            SaveUserUIsFromState(state);
+            // Remember which scene/layout the saved dock arrangement belongs to.
+            const graph::Node* layout = graph::ActiveLayoutNode(scene);
+            graph::WriteActiveScene(graph::SceneName(scene), layout ? graph::LayoutName(*layout) : "");
         }
+        scene.appliedLayout = layoutStamp;
         gLayoutInitialised = true;
         state.resetLayoutRequested = false;
     }
@@ -341,7 +374,7 @@ void UIFrame(AppState& state) {
             if (p.tightPadding) ImGui::PopStyleVar();
         }
     }
-    DrawPanelGraphWindows(state);
+    DrawSceneGraphWindows(state);
     DrawNodeViewWindows(state);
     DrawUIBuilder(state);
     if (state.showImGuiDemo) ImGui::ShowDemoWindow(&state.showImGuiDemo);

@@ -384,25 +384,11 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
                     s.resetLayoutRequested = true;
                     return CommandResult::Ok("Layout reset");
                 }});
-    r.Register({"ui", "ui [list|builder|<name>]", "List, apply or build user interfaces.", "view",
+    r.Register({"ui", "ui [list|builder|<name>]", "Alias of `scene`: list, show or build scenes.", "view",
                 [](AppState& s, const CommandArgs& a) {
-                    if (a.size() < 1 || a[0] == "list") {
-                        std::string out = "UIs:";
-                        for (int i = 0; i < (int)s.uis.size(); ++i)
-                            out += fmt::format("\n  {}{}", s.uis[i].name, s.activeUI == i ? "  (active)" : "");
-                        return CommandResult::Ok(out);
-                    }
-                    if (a[0] == "builder") {
-                        s.uiBuilder.open = true;
-                        return CommandResult::Ok("UI Builder opened");
-                    }
-                    for (int i = 0; i < (int)s.uis.size(); ++i)
-                        if (s.uis[i].name == a[0]) {
-                            s.activeUI = i;
-                            s.resetLayoutRequested = true;
-                            return CommandResult::Ok(fmt::format("UI: {}", a[0]));
-                        }
-                    return CommandResult::Error(fmt::format("No UI named '{}' (try `ui list`)", a[0]));
+                    std::string line = "scene";
+                    for (size_t i = 0; i < a.size(); ++i) line += " \"" + a[i] + "\"";
+                    return s.commands.Execute(s, line);
                 }});
     r.Register({"plot", "plot <energy|measurements|name> | plot list | plot remove <name> | plot clear",
                 "Choose the plot shown in the 2D Plot panel (built-in or published by name), or manage published plots.",

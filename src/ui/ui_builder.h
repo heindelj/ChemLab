@@ -1,7 +1,8 @@
 #pragma once
-// The interactive UI builder: pick or create a UI (name + layout), then
-// drag panels from a floating palette onto the empty slots. Also the code
-// that applies a UIDefinition to the ImGui dockspace.
+// The interactive UI builder: pick or create a scene (name + layout), then
+// drag panels from a floating palette onto the empty slots; the result is
+// written into the scene's Layout node. Also the code that applies a
+// UIDefinition (what a Layout node describes) to the ImGui dockspace.
 
 #include "imgui.h"
 
@@ -25,6 +26,14 @@ void UIBuilderPreDockspace(AppState& state, ImGuiID dockspaceId, ImVec2 size);
 //    "Panels" palette that panels are dragged out of.
 void DrawUIBuilder(AppState& state);
 
-// User-defined UIs are stored in chemlab_uis.toml (working directory).
-void LoadUserUIsIntoState(AppState& state);
-void SaveUserUIsFromState(AppState& state);
+// Open the builder in edit mode on a Layout node of scene `sceneIndex`
+// (`layoutNodeId` 0 = the scene's active layout); what is wired into the
+// node becomes the draft and Save & Apply rewires it. A built-in scene is
+// edited as a copy (a new scene).
+void UIBuilderEditLayout(AppState& state, int sceneIndex, unsigned layoutNodeId);
+inline void UIBuilderEditScene(AppState& state, int sceneIndex) { UIBuilderEditLayout(state, sceneIndex, 0); }
+
+// Older builds kept user UIs in chemlab_uis.toml; turn each into a scene
+// file under scenes/ (once: the toml is renamed afterwards). Call before
+// GraphSystem::LoadScenes.
+void MigrateUserUIsToScenes(AppState& state);

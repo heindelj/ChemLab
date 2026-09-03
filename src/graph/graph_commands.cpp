@@ -10,6 +10,7 @@
 
 #include "raylib.h"   // GetTime, for the auto-run clock
 
+#include "app/actions.h"
 #include "app/app_state.h"
 #include "app/commands.h"
 #include "core/molecule.h"
@@ -20,6 +21,13 @@
 namespace graph {
 
 namespace {
+
+std::string TextParamOr(const Node& n, const std::string& key, const std::string& fallback) {
+    auto it = n.params.find(key);
+    if (it == n.params.end()) return fallback;
+    const std::string* t = it->second.AsText();
+    return t ? *t : fallback;
+}
 
 // Evaluate `g` into `store` and describe the outcome, one line per output
 // (or per failing node). `ok` reports whether every node evaluated.
@@ -56,8 +64,8 @@ const Graph* OwningGraph(const GraphSystem& gs, const Node& n) {
     };
     if (contains(gs.graph)) return &gs.graph;
     if (contains(gs.canvas.graph)) return &gs.canvas.graph;
-    for (const auto& [id, pg] : gs.panelGraphs)
-        if (contains(pg.graph)) return &pg.graph;
+    for (const Scene& sc : gs.scenes)
+        if (contains(sc.graph)) return &sc.graph;
     return nullptr;
 }
 
@@ -73,8 +81,8 @@ Node* GraphSystem::FindNodeByUid(uint64_t uid) {
     };
     if (Node* n = find(graph)) return n;
     if (Node* n = find(canvas.graph)) return n;
-    for (auto& [id, pg] : panelGraphs)
-        if (Node* n = find(pg.graph)) return n;
+    for (Scene& sc : scenes)
+        if (Node* n = find(sc.graph)) return n;
     return nullptr;
 }
 
@@ -177,6 +185,82 @@ bool GraphSystem::LoadCanvas(AppState& state, const std::string& nameIn) {
     return canvas.lastIoOk;
 }
 
+// ---------------------------------------------------------------------------
+// Scenes
+// ---------------------------------------------------------------------------
+void GraphSystem::LoadScenes(AppState& state) {
+    scenes = BuiltinScenes();
+    std::vector<std::string> errors;
+    for (Scene& s : LoadUserScenes(errors)) {
+        // A user scene shadows a built-in of the same name.
+        const int existing = FindScene(SceneName(s));
+        if (existing >= 0) scenes[(size_t)existing] = std::move(s);
+        else scenes.push_back(std::move(s));
+    }
+    for (const std::string& e : errors) Log(state, LogLevel::Warning, "scenes/: " + e);
+    activeScene = 0;
+    std::string wantedScene, wantedLayout;
+    ReadActiveScene(wantedScene, wantedLayout);
+    if (!wantedScene.empty()) {
+        const int i = FindScene(wantedScene);
+        if (i >= 0) {
+            activeScene = i;
+            if (Node* n = FindLayoutNode(scenes[(size_t)i].graph, wantedLayout)) scenes[(size_t)i].activeLayout = n->id;
+        } else {
+            state.resetLayoutRequested = true;   // the saved dock arrangement belongs to a scene that is gone
+        }
+    }
+}
+
+Scene& GraphSystem::ActiveScene() {
+    if (scenes.empty()) scenes = BuiltinScenes();
+    if (activeScene < 0 || activeScene >= (int)scenes.size()) activeScene = 0;
+    return scenes[(size_t)activeScene];
+}
+
+int GraphSystem::FindScene(const std::string& name) const {
+    for (size_t i = 0; i < scenes.size(); ++i)
+        if (SceneName(scenes[i]) == name) return (int)i;
+    return -1;
+}
+
+bool GraphSystem::SwitchScene(AppState& state, int index) {
+    if (index < 0 || index >= (int)scenes.size()) return false;
+    activeScene = index;
+    state.resetLayoutRequested = true;
+    Scene& sc = scenes[(size_t)index];
+    const Node* layout = ActiveLayoutNode(sc);
+    WriteActiveScene(SceneName(sc), layout ? LayoutName(*layout) : "");
+    return true;
+}
+
+bool GraphSystem::ShowLayout(AppState& state, const std::string& name) {
+    if (const int i = FindScene(name); i >= 0) return SwitchScene(state, i);
+    for (size_t i = 0; i < scenes.size(); ++i)
+        if (Node* n = FindLayoutNode(scenes[i].graph, name)) {
+            scenes[i].activeLayout = n->id;
+            return SwitchScene(state, (int)i);
+        }
+    return false;
+}
+
+std::string GraphSystem::RunScene(AppState& state, Scene& scene) {
+    ++scene.runCount;
+    scene.lastRunSummary = RunGraph(state, scene.graph, store, "scene/", scene.lastRunOk);
+    return scene.lastRunSummary;
+}
+
+bool GraphSystem::RemoveScene(AppState& state, int index, std::string& err) {
+    if (index < 0 || index >= (int)scenes.size()) { err = "no such scene"; return false; }
+    if (scenes[(size_t)index].builtin) { err = "built-in scenes cannot be removed"; return false; }
+    std::error_code ec;
+    if (!scenes[(size_t)index].graphName.empty()) std::filesystem::remove(ScenePath(scenes[(size_t)index].graphName), ec);
+    scenes.erase(scenes.begin() + index);
+    if (activeScene >= (int)scenes.size()) activeScene = 0;
+    if (activeScene == index || activeScene == 0) SwitchScene(state, activeScene);
+    return true;
+}
+
 void UpdateGraphAutoRun(AppState& state) {
     GraphSystem& gs = state.GraphSys();
     const double now = GetTime();
@@ -265,7 +349,7 @@ CommandResult BuildHighlightDemo(AppState& s) {
 }
 
 // Load Table -> Column x3 -> Series -> three named plots, shown in the
-// "Plot Lab" UI (2D plot on top, this graph below) so the picker in the plot
+// "plot-lab" scene (2D plot on top, this graph below) so the picker in the plot
 // pane switches between them.
 CommandResult BuildPlotsDemo(AppState& s) {
     GraphSystem& gs = s.GraphSys();
@@ -330,13 +414,9 @@ CommandResult BuildPlotsDemo(AppState& s) {
           linkByName(*sHist, "series", *pHist, "s1")})
         if (!err.empty()) return CommandResult::Error("demo wiring failed: " + err);
 
-    // Show it in the Plot Lab UI (2D plot over the node graph) and run once so
-    // the plots exist immediately.
-    for (int i = 0; i < (int)s.uis.size(); ++i)
-        if (s.uis[i].name == "Plot Lab") {
-            s.activeUI = i;
-            s.resetLayoutRequested = true;
-        }
+    // Show it in the plot-lab scene (2D plot over the node graph) and run once
+    // so the plots exist immediately.
+    gs.ShowLayout(s, "plot-lab");
     s.PanelOpen("node_graph") = true;
     s.PanelOpen("plot_2d") = true;
     gs.Run(s);
@@ -424,45 +504,19 @@ CommandResult CanvasFileCommand(AppState& s, const CommandArgs& a) {
 }  // namespace
 
 void RegisterGraphCommands(CommandRegistry& r) {
-    r.Register({"graph", "graph <new|save|load|list|run|auto|demo|add|link|set|clear|python|show|hide|reset|panels> ...",
+    r.Register({"graph", "graph <new|save|load|list|run|auto|demo|add|link|set|clear|python> ...",
                 "Node graph: `graph new [name]` opens a blank Graph Canvas to play in, `graph save [name]` / "
                 "`graph load <name>` / `graph list` keep named graphs under graphs/. The rest drive the Node "
-                "Graph panel: run it, build a demo, clear it, set the python interpreter, or open/reset a "
-                "panel's graph (`graph show structure_view`).",
+                "Graph panel: run it, build a demo, clear it, or set the python interpreter.",
                 "calculate", [](AppState& s, const CommandArgs& a) {
                     GraphSystem& gs = s.GraphSys();
-                    const char* usage = "usage: graph <new|save|load|list|run|auto|demo|add|link|set|clear|python|show|hide|reset|panels> ...";
+                    const char* usage = "usage: graph <new|save|load|list|run|auto|demo|add|link|set|clear|python> ...";
                     if (a.size() < 1) return CommandResult::Error(usage);
                     if (a[0] == "new" || a[0] == "save" || a[0] == "load" || a[0] == "list")
                         return CanvasFileCommand(s, a);
                     if (a[0] == "run") {
-                        if (a.size() > 1) {   // graph run <panel-id>: force one panel graph
-                            const std::string err = gs.RunPanel(s, a[1], true);
-                            return err.empty() ? CommandResult::Ok(fmt::format("{} graph evaluated", a[1]))
-                                               : CommandResult::Error(fmt::format("{} graph: {}", a[1], err));
-                        }
                         const std::string summary = gs.Run(s);
                         return gs.lastRunOk ? CommandResult::Ok(summary) : CommandResult::Error(summary);
-                    }
-                    if (a[0] == "show" || a[0] == "hide") {
-                        if (a.size() < 2) return CommandResult::Error(fmt::format("usage: graph {} <panel-id>", a[0]));
-                        s.graphViewOpen[a[1]] = a[0] == "show";
-                        return CommandResult::Ok(fmt::format("{} graph {}", a[1], a[0] == "show" ? "shown" : "hidden"));
-                    }
-                    if (a[0] == "reset") {
-                        if (a.size() < 2) return CommandResult::Error("usage: graph reset <panel-id>");
-                        gs.ResetPanel(s, a[1]);
-                        return CommandResult::Ok(fmt::format("{} graph reset to its default", a[1]));
-                    }
-                    if (a[0] == "panels") {
-                        std::string out;
-                        for (const auto& [id, pg] : gs.panelGraphs)
-                            out += fmt::format("{}: {} node{}, {} link{}{}\n", id, pg.graph.nodes.size(),
-                                               pg.graph.nodes.size() == 1 ? "" : "s", pg.graph.links.size(),
-                                               pg.graph.links.size() == 1 ? "" : "s",
-                                               pg.lastError.empty() ? "" : " -- error: " + pg.lastError);
-                        if (!out.empty()) out.pop_back();
-                        return CommandResult::Ok(out.empty() ? "no panel graphs yet" : out);
                     }
                     if (a[0] == "demo") {
                         const std::string which = a.size() > 1 ? a[1] : "distance";
@@ -545,6 +599,118 @@ void RegisterGraphCommands(CommandRegistry& r) {
                                                             : "Canvas auto-run off (run on click)");
                     }
                     return CommandResult::Error(usage);
+                }});
+    r.Register({"scene", "scene [list|<name>|<name> graph|graph|layout <name>|layout add <name> [layout-id]|new <name> [layout-id]|save [graph-name]|delete <name>|builder]",
+                "Scenes: `scene <name>` shows that scene (or the layout of that name in any scene), `scene <name> graph` "
+                "(or `scene graph` for the current one) opens the scene graph, `scene list` lists scenes and their "
+                "layouts. `scene layout <name>` switches layouts within the current scene, `scene layout add <name> "
+                "[layout-id]` adds one. `scene new <name> [layout-id]` makes a scene (`classic` is built in), "
+                "`scene save` writes the current scene to scenes/<graph-name>.json, `scene builder` opens the UI Builder.",
+                "view", [](AppState& s, const CommandArgs& a) {
+                    GraphSystem& gs = s.GraphSys();
+                    auto layoutIds = [] {
+                        std::string ids;
+                        for (const LayoutDef& l : BuiltinLayouts()) ids += (ids.empty() ? "" : ", ") + l.id;
+                        return ids;
+                    };
+                    if (a.size() < 1 || a[0] == "list") {
+                        std::string out = "Scenes:";
+                        for (int i = 0; i < (int)gs.scenes.size(); ++i) {
+                            Scene& sc = gs.scenes[(size_t)i];
+                            const Node* active = ActiveLayoutNode(sc);
+                            std::string layouts;
+                            for (const Node* n : LayoutNodes(sc.graph))
+                                layouts += fmt::format("{}{}{} [{}]", layouts.empty() ? "" : ", ", LayoutName(*n),
+                                                       n == active && gs.activeScene == i ? "*" : "",
+                                                       TextParamOr(*n, "layout", "single"));
+                            out += fmt::format("\n  {}{}  graph '{}', {} node{}{}\n      layouts: {}", SceneName(sc),
+                                               gs.activeScene == i ? "  (active)" : "", sc.graphName,
+                                               sc.graph.nodes.size(), sc.graph.nodes.size() == 1 ? "" : "s",
+                                               sc.builtin ? ", built-in" : "", layouts);
+                        }
+                        return CommandResult::Ok(out);
+                    }
+                    if (a[0] == "builder") {
+                        s.uiBuilder.open = true;
+                        return CommandResult::Ok("UI Builder opened");
+                    }
+                    if (a[0] == "graph") {
+                        Scene& sc = gs.ActiveScene();
+                        sc.graphOpen = true;
+                        return CommandResult::Ok(fmt::format("Scene graph '{}' opened", SceneName(sc)));
+                    }
+                    if (a[0] == "layout") {
+                        Scene& sc = gs.ActiveScene();
+                        if (a.size() < 2) {
+                            const Node* n = ActiveLayoutNode(sc);
+                            return CommandResult::Ok(fmt::format("Layout: {} (scene {})", n ? LayoutName(*n) : "none", SceneName(sc)));
+                        }
+                        if (a[1] == "add") {
+                            if (a.size() < 3) return CommandResult::Error("usage: scene layout add <name> [layout-id]");
+                            if (FindLayoutNode(sc.graph, a[2])) return CommandResult::Error(fmt::format("layout '{}' already exists in this scene", a[2]));
+                            UIDefinition ui;
+                            ui.name = a[2];
+                            ui.layoutId = a.size() > 3 ? a[3] : "single";
+                            const LayoutDef* def = FindLayout(ui.layoutId);
+                            if (!def) return CommandResult::Error(fmt::format("unknown layout '{}' (one of: {})", ui.layoutId, layoutIds()));
+                            ui.FitToLayout(*def);
+                            Node& n = SetLayoutUI(sc.graph, nullptr, ui);
+                            sc.activeLayout = n.id;
+                            sc.graphOpen = true;
+                            gs.SwitchScene(s, gs.activeScene);
+                            return CommandResult::Ok(fmt::format("Layout '{}' ({}) added to scene '{}': wire Panel nodes into its slots", a[2], ui.layoutId, SceneName(sc)));
+                        }
+                        Node* n = FindLayoutNode(sc.graph, a[1]);
+                        if (!n) return CommandResult::Error(fmt::format("No layout '{}' in scene '{}' (try `scene list`)", a[1], SceneName(sc)));
+                        sc.activeLayout = n->id;
+                        gs.SwitchScene(s, gs.activeScene);
+                        return CommandResult::Ok(fmt::format("Layout: {}", a[1]));
+                    }
+                    if (a[0] == "save") {
+                        Scene& sc = gs.ActiveScene();
+                        if (a.size() > 1) sc.graphName = a[1];
+                        std::string err;
+                        if (!SaveScene(sc, err)) return CommandResult::Error(err);
+                        sc.builtin = false;
+                        return CommandResult::Ok(fmt::format("Scene '{}' saved to {}", SceneName(sc), ScenePath(sc.graphName)));
+                    }
+                    if (a[0] == "new") {
+                        if (a.size() < 2) return CommandResult::Error("usage: scene new <name> [layout-id]");
+                        if (gs.FindScene(a[1]) >= 0) return CommandResult::Error(fmt::format("a scene called '{}' already exists", a[1]));
+                        UIDefinition ui;
+                        ui.name = a[1];
+                        ui.layoutId = a.size() > 2 ? a[2] : "single";
+                        const LayoutDef* layout = FindLayout(ui.layoutId);
+                        if (!layout) return CommandResult::Error(fmt::format("unknown layout '{}' (one of: {})", ui.layoutId, layoutIds()));
+                        ui.FitToLayout(*layout);
+                        gs.scenes.push_back(MakeScene(ui, false));
+                        Scene& sc = gs.scenes.back();
+                        sc.graphOpen = true;
+                        std::string err;
+                        if (!SaveScene(sc, err)) return CommandResult::Error(err);
+                        gs.SwitchScene(s, (int)gs.scenes.size() - 1);
+                        return CommandResult::Ok(fmt::format("Scene '{}' created on layout '{}' (empty: wire Panel nodes into the "
+                                                             "Layout slots, or use the UI Builder); saved to {}",
+                                                             ui.name, ui.layoutId, ScenePath(sc.graphName)));
+                    }
+                    if (a[0] == "delete") {
+                        if (a.size() < 2) return CommandResult::Error("usage: scene delete <name>");
+                        const int i = gs.FindScene(a[1]);
+                        if (i < 0) return CommandResult::Error(fmt::format("No scene named '{}'", a[1]));
+                        std::string err;
+                        if (!gs.RemoveScene(s, i, err)) return CommandResult::Error(err);
+                        return CommandResult::Ok(fmt::format("Scene '{}' removed", a[1]));
+                    }
+                    if (a.size() > 1 && a[1] == "graph") {
+                        const int i = gs.FindScene(a[0]);
+                        if (i < 0) return CommandResult::Error(fmt::format("No scene named '{}' (try `scene list`)", a[0]));
+                        gs.scenes[(size_t)i].graphOpen = true;
+                        return CommandResult::Ok(fmt::format("Scene graph '{}' opened", a[0]));
+                    }
+                    if (a.size() > 1) return CommandResult::Error(fmt::format("usage: scene {} [graph]", a[0]));
+                    if (!gs.ShowLayout(s, a[0]))
+                        return CommandResult::Error(fmt::format("No scene or layout named '{}' (try `scene list`)", a[0]));
+                    return CommandResult::Ok(fmt::format("Scene: {}", a[0]));
                 }});
 }
 

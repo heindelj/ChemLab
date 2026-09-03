@@ -153,17 +153,15 @@ struct AppState {
     bool showMetrics = false;
     bool showInputDebug = false;
     UITheme theme = UITheme::Mocha;   // crosshairs + numbers for diagnosing mouse/DPI mismatches
-    bool resetLayoutRequested = false;   // re-dock and reset panel visibility from the active UI
+    bool resetLayoutRequested = false;   // re-dock and reset panel visibility from the active scene
     bool quitRequested = false;
 
     // ---- UI system ----
-    // The current arrangement is one UIDefinition among several: a layout
-    // (how the dockspace splits into slots) plus panels assigned to slots.
-    // See ui/ui_spec.h, ui/panel_registry.h and ui/ui_builder.h.
-    std::vector<UIDefinition> uis;           // built-in + user-defined UIs
-    int activeUI = 0;                        // index into `uis`
+    // The arrangement on screen is the active *scene* (graph/scene.h, held by
+    // the GraphSystem): a graph whose Layout node picks a layout (how the
+    // dockspace splits into slots) and assigns panels to slots. See
+    // ui/ui_spec.h, ui/panel_registry.h and ui/ui_builder.h.
     std::map<std::string, bool> panelOpen;   // panel id -> window currently shown
-    std::map<std::string, bool> graphViewOpen;   // panel id -> its "Graph: <panel>" window is shown
     UIBuilderState uiBuilder;
     bool& PanelOpen(const char* id);
 
