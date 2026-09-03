@@ -1,21 +1,30 @@
 // Node Graph panel: draws graph::Graph with imgui-node-editor and lets the
 // user wire data sources, scripts and analyses together. All graph/data logic
 // lives in src/graph -- this file is only the canvas. The same canvas draws
-// the per-panel graphs in their "Graph: <panel>" windows
-// (DrawPanelGraphWindows), one editor context per graph.
+// the Graph Canvas panel (DrawGraphCanvasPanel) and the per-panel graphs in their
+// "Graph: <panel>" windows (DrawPanelGraphWindows), one editor context per
+// graph. Nodes are coloured by their kind (graph::NodeKind): build orange,
+// simulate purple, analyze green, visualize cyan, other grey.
 
+#include <algorithm>
+#include <cctype>
 #include <map>
+#include <set>
 #include <string>
+#include <vector>
 
 #include <fmt/format.h>
 
 #include "imgui.h"
+#include "imgui_internal.h"   // SetFontRasterizerDensity
+#include "imgui_stdlib.h"
 #include "imgui_node_editor.h"
 
 #include "app/app_state.h"
 #include "graph/graph_system.h"
 #include "graph/py_runner.h"
 #include "ui/panel_registry.h"
+#include "ui/theme.h"
 #include "ui/ui.h"
 
 namespace ed = ax::NodeEditor;
@@ -55,37 +64,158 @@ ImVec4 TypeColor(graph::ValueType t) {
     }
 }
 
-void DrawNode(AppState& state, graph::Graph& g, graph::Node& node) {
+// Header tint: the node's kind (build / simulate / analyze / visualize / other).
+ImVec4 KindTint(const graph::NodeTypeSpec* spec) {
+    const graph::KindColor c = graph::ColorOf(spec ? spec->kind : graph::NodeKind::Other);
+    return {c.r, c.g, c.b, c.a};
+}
+
+// The kind colour itself (menu headers, legend), optionally with another alpha.
+ImVec4 KindColor(graph::NodeKind k, float alpha = 1.0f) {
+    const graph::KindColor c = graph::ColorOf(k);
+    return {c.r, c.g, c.b, alpha};
+}
+
+ImVec4 Mix(const ImVec4& a, const ImVec4& b, float t) {
+    return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t};
+}
+
+// Editor chrome derived from the active theme, pushed around every canvas.
+struct EditorStyleScope {
+    int colors = 0, vars = 0;
+    explicit EditorStyleScope(UITheme theme) {
+        const UIPalette p = ThemePalette(theme);
+        auto col = [&](ed::StyleColor idx, const ImVec4& c) { ed::PushStyleColor(idx, c); ++colors; };
+        auto var = [&](ed::StyleVar idx, auto v) { ed::PushStyleVar(idx, v); ++vars; };
+        col(ed::StyleColor_Bg, p.bg);
+        col(ed::StyleColor_Grid, ImVec4(p.border.x, p.border.y, p.border.z, 0.5f));
+        col(ed::StyleColor_NodeBg, ImVec4(p.bgPanel.x, p.bgPanel.y, p.bgPanel.z, 0.97f));
+        col(ed::StyleColor_NodeBorder, ImVec4(p.border.x, p.border.y, p.border.z, 1.0f));
+        col(ed::StyleColor_HovNodeBorder, p.accentHover);
+        col(ed::StyleColor_SelNodeBorder, p.accent);
+        col(ed::StyleColor_NodeSelRect, ImVec4(p.accent.x, p.accent.y, p.accent.z, 0.15f));
+        col(ed::StyleColor_NodeSelRectBorder, ImVec4(p.accent.x, p.accent.y, p.accent.z, 0.6f));
+        col(ed::StyleColor_HovLinkBorder, p.accentHover);
+        col(ed::StyleColor_SelLinkBorder, p.accent);
+        col(ed::StyleColor_HighlightLinkBorder, p.accentActive);
+        col(ed::StyleColor_LinkSelRect, ImVec4(p.accent.x, p.accent.y, p.accent.z, 0.15f));
+        col(ed::StyleColor_LinkSelRectBorder, ImVec4(p.accent.x, p.accent.y, p.accent.z, 0.6f));
+        col(ed::StyleColor_PinRect, ImVec4(p.accent.x, p.accent.y, p.accent.z, 0.25f));
+        col(ed::StyleColor_PinRectBorder, ImVec4(p.accent.x, p.accent.y, p.accent.z, 0.5f));
+        col(ed::StyleColor_Flow, p.accentHover);
+        col(ed::StyleColor_FlowMarker, p.accentHover);
+        var(ed::StyleVar_NodePadding, ImVec4(10, 6, 10, 8));
+        var(ed::StyleVar_NodeRounding, 6.0f);
+        var(ed::StyleVar_NodeBorderWidth, 1.0f);
+        var(ed::StyleVar_HoveredNodeBorderWidth, 2.0f);
+        var(ed::StyleVar_SelectedNodeBorderWidth, 2.0f);
+        var(ed::StyleVar_HoveredNodeBorderOffset, 0.0f);
+        var(ed::StyleVar_SelectedNodeBorderOffset, 0.0f);
+        var(ed::StyleVar_PinRounding, 4.0f);
+        var(ed::StyleVar_PinBorderWidth, 0.0f);
+        var(ed::StyleVar_LinkStrength, 120.0f);
+        var(ed::StyleVar_GridSize, ImVec2(24.0f, 24.0f));   // ImVec2 in this fork, not a float
+    }
+    ~EditorStyleScope() {
+        ed::PopStyleVar(vars);
+        ed::PopStyleColor(colors);
+    }
+};
+
+// Text inside the canvas is laid out at the base font size and its vertices
+// are scaled by the view; without this the glyph bitmaps are stretched too
+// (blurry zoomed in, aliased zoomed out). ImGui 1.92 bakes glyphs per
+// (size, density), so ask for the density that matches the on-screen scale.
+// Zoom levels are discrete, so only a handful of bakes ever exist.
+struct CanvasFontDensity {
+    float base;
+    CanvasFontDensity() : base(ImGui::GetFontRasterizerDensity()) { Apply(); }
+    void Apply() const {
+        const float zoom = ed::GetCurrentZoom();   // canvas units per screen pixel
+        const float scale = zoom > 0.0f ? 1.0f / zoom : 1.0f;
+        ImGui::SetFontRasterizerDensity(base * std::clamp(scale, 0.25f, 4.0f));
+    }
+    void Restore() const { ImGui::SetFontRasterizerDensity(base); }
+    ~CanvasFontDensity() { Restore(); }
+};
+
+constexpr float kPinRadius = 5.0f;
+
+// A pin: a dot (filled when connected) next to its name. The pivot sits on
+// the dot so links end on it rather than on the text.
+void DrawPin(uint64_t pinId, ed::PinKind kind, const graph::PinSpec& pin, bool connected) {
+    const ImVec4 color = TypeColor(pin.type);
+    const ImU32 col32 = ImGui::ColorConvertFloat4ToU32(color);
+    const float lineH = ImGui::GetTextLineHeight();
+    const ImVec2 dotSize(kPinRadius * 2.0f + 2.0f, lineH);
+
+    ed::BeginPin(pinId, kind);
+    ImGui::BeginGroup();
+    if (kind == ed::PinKind::Input) {
+        const ImVec2 dotPos = ImGui::GetCursorScreenPos();
+        ImGui::Dummy(dotSize);
+        ImGui::SameLine(0.0f, 5.0f);
+        ImGui::TextColored(color, "%s", pin.name.c_str());
+        const ImVec2 c(dotPos.x + kPinRadius + 1.0f, dotPos.y + lineH * 0.5f);
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        if (connected) dl->AddCircleFilled(c, kPinRadius, col32);
+        else dl->AddCircle(c, kPinRadius - 0.5f, col32, 0, 1.5f);
+        ed::PinPivotRect(c, c);
+    } else {
+        ImGui::TextColored(color, "%s", pin.name.c_str());
+        ImGui::SameLine(0.0f, 5.0f);
+        const ImVec2 dotPos = ImGui::GetCursorScreenPos();
+        ImGui::Dummy(dotSize);
+        const ImVec2 c(dotPos.x + kPinRadius + 1.0f, dotPos.y + lineH * 0.5f);
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        if (connected) dl->AddCircleFilled(c, kPinRadius, col32);
+        else dl->AddCircle(c, kPinRadius - 0.5f, col32, 0, 1.5f);
+        ed::PinPivotRect(c, c);
+    }
+    ImGui::EndGroup();
+    ed::EndPin();
+}
+
+void DrawNode(AppState& state, graph::Graph& g, graph::Node& node, const std::set<uint64_t>& connectedPins) {
     const graph::NodeTypeSpec* spec = graph::NodeTypes().Find(node.typeId);
     if (node.posDirty) {
         ed::SetNodePosition(node.id, ImVec2(node.posX, node.posY));
         node.posDirty = false;
     }
+    const ImVec4 headerCol = KindTint(spec);
+
     ed::BeginNode(node.id);
     ImGui::PushID((int)node.id);
-    ImGui::TextUnformatted(node.title.c_str());
-    ImGui::Spacing();
 
-    ImGui::BeginGroup();   // inputs
+    // ---- header: title (and the type name when it differs) ----
+    ImGui::TextUnformatted(node.title.c_str());
+    if (spec && spec->name != node.title) {
+        ImGui::SameLine(0.0f, 8.0f);
+        ImGui::TextDisabled("%s", spec->name.c_str());
+    }
+    const float headerBottom = ImGui::GetCursorScreenPos().y + 2.0f;   // a little breathing room
+    ImGui::Dummy(ImVec2(0.0f, 4.0f));
+
+    // ---- pins: inputs left, outputs right ----
+    ImGui::BeginGroup();
     for (size_t i = 0; i < node.inputs.size(); ++i) {
-        ed::BeginPin(graph::InPinId(node.id, (int)i), ed::PinKind::Input);
-        ImGui::TextColored(TypeColor(node.inputs[i].type), "-> %s", node.inputs[i].name.c_str());
-        ed::EndPin();
+        const uint64_t pid = graph::InPinId(node.id, (int)i);
+        DrawPin(pid, ed::PinKind::Input, node.inputs[i], connectedPins.count(pid) > 0);
     }
     if (node.inputs.empty()) ImGui::Dummy(ImVec2(1, 1));
     ImGui::EndGroup();
-    ImGui::SameLine(0.0f, 24.0f);
-    ImGui::BeginGroup();   // outputs
+    ImGui::SameLine(0.0f, 28.0f);
+    ImGui::BeginGroup();
     for (size_t i = 0; i < node.outputs.size(); ++i) {
-        ed::BeginPin(graph::OutPinId(node.id, (int)i), ed::PinKind::Output);
-        ImGui::TextColored(TypeColor(node.outputs[i].type), "%s ->", node.outputs[i].name.c_str());
-        ed::EndPin();
+        const uint64_t pid = graph::OutPinId(node.id, (int)i);
+        DrawPin(pid, ed::PinKind::Output, node.outputs[i], connectedPins.count(pid) > 0);
     }
     if (node.outputs.empty()) ImGui::Dummy(ImVec2(1, 1));
     ImGui::EndGroup();
 
+    // ---- body ----
     if (spec && spec->drawBody) {
-        ImGui::Spacing();
+        ImGui::Dummy(ImVec2(0.0f, 2.0f));
         if (spec->drawBody(state, node)) g.Touch();   // a parameter changed: re-evaluate
     }
     if (!node.error.empty()) {
@@ -97,6 +227,27 @@ void DrawNode(AppState& state, graph::Graph& g, graph::Node& node) {
     }
     ImGui::PopID();
     ed::EndNode();
+
+    // ---- header band, drawn behind the content once the node's size is known ----
+    const ImVec2 nodePos = ed::GetNodePosition(node.id);
+    const ImVec2 nodeSize = ed::GetNodeSize(node.id);
+    ImDrawList* bg = nodeSize.x > 0.0f && nodeSize.y > 0.0f ? ed::GetNodeBackgroundDrawList(node.id) : nullptr;
+    if (bg) {
+        const float rounding = ed::GetStyle().NodeRounding;
+        const float border = ed::GetStyle().NodeBorderWidth * 0.5f;
+        const ImVec2 a(nodePos.x + border, nodePos.y + border);
+        const ImVec2 b(nodePos.x + nodeSize.x - border, headerBottom);
+        const ImVec4 bandCol = Mix(headerCol, ThemePalette(state.theme).bgPanel, 0.35f);
+        bg->AddRectFilled(a, b, ImGui::ColorConvertFloat4ToU32(ImVec4(bandCol.x, bandCol.y, bandCol.z, 1.0f)), rounding,
+                          ImDrawFlags_RoundCornersTop);
+        // Thin accent line under the header.
+        bg->AddLine(ImVec2(a.x, b.y), ImVec2(b.x, b.y), ImGui::ColorConvertFloat4ToU32(headerCol), 1.0f);
+        if (!node.error.empty()) {
+            // Error badge at the top-right corner.
+            const ImVec2 c(b.x - 10.0f, a.y + (b.y - a.y) * 0.5f);
+            bg->AddCircleFilled(c, 4.0f, IM_COL32(255, 110, 100, 255));
+        }
+    }
 }
 
 void HandleLinkCreation(graph::Graph& g) {
@@ -152,20 +303,41 @@ void AddNodePopup(graph::Graph& g, const ImVec2& canvasPos) {
         spawnPos = canvasPos;
     }
     if (ImGui::BeginPopup("Add Node")) {
-        std::string lastCategory;
-        for (const auto& t : graph::NodeTypes().All()) {
-            if (t.category != lastCategory) {
-                if (!lastCategory.empty()) ImGui::Separator();
-                ImGui::TextDisabled("%s", t.category.c_str());
-                lastCategory = t.category;
-            }
-            if (ImGui::MenuItem(t.name.c_str())) {
-                graph::Node* n = g.AddNode(t.id, spawnPos.x, spawnPos.y);
-                (void)n;
-            }
-            if (ImGui::IsItemHovered() && ImGui::BeginTooltip()) {
-                ImGui::TextUnformatted(t.description.c_str());
-                ImGui::EndTooltip();
+        // Grouped by kind (build / simulate / analyze / visualize / other),
+        // each kind headed in its colour; categories inside a kind are shown
+        // as a dim prefix so related nodes stay together.
+        using graph::NodeKind;
+        bool first = true;
+        for (NodeKind kind : {NodeKind::Build, NodeKind::Simulate, NodeKind::Analyze, NodeKind::Visualize, NodeKind::Other}) {
+            std::vector<const graph::NodeTypeSpec*> types;
+            for (const auto& t : graph::NodeTypes().All())
+                if (t.kind == kind) types.push_back(&t);
+            if (types.empty()) continue;
+            std::stable_sort(types.begin(), types.end(), [](const graph::NodeTypeSpec* x, const graph::NodeTypeSpec* y) {
+                return x->category < y->category;
+            });
+            if (!first) ImGui::Separator();
+            first = false;
+            std::string label = graph::KindName(kind);
+            label[0] = (char)toupper(label[0]);
+            ImGui::TextColored(KindColor(kind), "%s", label.c_str());
+            std::string lastCategory;
+            for (const graph::NodeTypeSpec* t : types) {
+                if (t->category != lastCategory) {
+                    ImGui::TextDisabled("  %s", t->category.c_str());
+                    lastCategory = t->category;
+                }
+                ImGui::Indent(12.0f);
+                if (ImGui::MenuItem(t->name.c_str())) {
+                    graph::Node* n = g.AddNode(t->id, spawnPos.x, spawnPos.y);
+                    (void)n;
+                }
+                if (ImGui::IsItemHovered() && ImGui::BeginTooltip()) {
+                    ImGui::TextUnformatted(t->description.c_str());
+                    ImGui::TextDisabled("%s", t->id.c_str());
+                    ImGui::EndTooltip();
+                }
+                ImGui::Unindent(12.0f);
             }
         }
         ImGui::EndPopup();
@@ -175,21 +347,51 @@ void AddNodePopup(graph::Graph& g, const ImVec2& canvasPos) {
 // The editor canvas for one graph. `key` names the editor context.
 void DrawGraphCanvas(AppState& state, graph::Graph& g, const std::string& key, const char* settingsFile) {
     ed::SetCurrentEditor(Editor(key, settingsFile));
-    ed::Begin(key.c_str(), ImVec2(0, 0));
-    const ImVec2 mouseCanvas = ed::ScreenToCanvas(ImGui::GetMousePos());
+    // Scoped in its own block: the style pops must run while this editor is
+    // still current (popping after SetCurrentEditor(nullptr) dereferences a
+    // null editor).
+    {
+        EditorStyleScope styleScope(state.theme);
+        ed::Begin(key.c_str(), ImVec2(0, 0));
+        const ImVec2 mouseCanvas = ed::ScreenToCanvas(ImGui::GetMousePos());
 
-    for (auto& node : g.nodes) DrawNode(state, g, node);
-    for (const auto& link : g.links)
-        ed::Link(link.id, graph::OutPinId(link.fromNode, link.fromPin), graph::InPinId(link.toNode, link.toPin));
+        std::set<uint64_t> connectedPins;
+        for (const auto& link : g.links) {
+            connectedPins.insert(graph::OutPinId(link.fromNode, link.fromPin));
+            connectedPins.insert(graph::InPinId(link.toNode, link.toPin));
+        }
 
-    HandleLinkCreation(g);
-    HandleDeletion(g);
+        {
+            CanvasFontDensity density;   // crisp glyphs at the current zoom
+            for (auto& node : g.nodes) {
+                DrawNode(state, g, node, connectedPins);
+                // Keep the model's positions current so `graph save` sees
+                // where the user actually dragged things.
+                const ImVec2 p = ed::GetNodePosition(node.id);
+                node.posX = p.x;
+                node.posY = p.y;
+            }
+            for (const auto& link : g.links) {
+                ImVec4 color(0.75f, 0.75f, 0.75f, 1.0f);
+                if (const graph::Node* from = g.FindNode(link.fromNode))
+                    if (link.fromPin >= 0 && link.fromPin < (int)from->outputs.size())
+                        color = TypeColor(from->outputs[link.fromPin].type);
+                color.w = 0.9f;
+                ed::Link(link.id, graph::OutPinId(link.fromNode, link.fromPin), graph::InPinId(link.toNode, link.toPin), color, 2.5f);
+            }
 
-    ed::Suspend();
-    AddNodePopup(g, mouseCanvas);
-    ed::Resume();
+            HandleLinkCreation(g);
+            HandleDeletion(g);
 
-    ed::End();
+            density.Restore();   // popups are drawn in screen space
+            ed::Suspend();
+            AddNodePopup(g, mouseCanvas);
+            ed::Resume();
+            density.Apply();
+        }
+
+        ed::End();
+    }
     ed::SetCurrentEditor(nullptr);
 }
 
@@ -221,6 +423,81 @@ void DrawNodeGraphPanel(AppState& state) {
 
     // ---- canvas ----
     DrawGraphCanvas(state, gs.graph, "chemlab_node_graph", "chemlab_nodes.json");
+}
+
+// Graph Canvas panel: a second free-form graph for sketching build ->
+// simulate -> analyze -> visualize pipelines. `graph new [name]` opens it
+// blank; graphs are saved by name under graphs/<name>.json (node positions
+// included -- the editor context itself keeps nothing on disk) and any saved
+// graph can be loaded back from the Load dropdown.
+void DrawGraphCanvasPanel(AppState& state) {
+    graph::GraphSystem& gs = state.GraphSys();
+    graph::CanvasGraph& cv = gs.canvas;
+
+    // ---- toolbar: run ----
+    if (ImGui::Button("Run")) gs.RunCanvas(state);
+    ImGui::SameLine();
+    ImGui::Checkbox("Auto", &cv.autoRun);
+    if (cv.autoRun) {
+        ImGui::SameLine();
+        ImGui::PushItemWidth(70.0f);
+        ImGui::DragFloat("fps", &gs.autoRunFps, 0.5f, 0.1f, 120.0f, "%.1f");
+        ImGui::PopItemWidth();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("New")) gs.NewCanvas(state, "untitled");
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Start a blank graph (same as `graph new`). Unsaved changes are dropped.");
+
+    // ---- toolbar: name + save / load ----
+    ImGui::SameLine(0.0f, 24.0f);
+    ImGui::TextDisabled("name");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(180.0f);
+    const bool nameEntered = ImGui::InputText("##canvas_name", &cv.name, ImGuiInputTextFlags_EnterReturnsTrue);
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+    if (ImGui::Button("Save") || nameEntered) gs.SaveCanvas(cv.name);
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Save as %s", graph::GraphPath(cv.name).c_str());
+    ImGui::SameLine();
+    ImGui::PushItemWidth(180.0f);
+    if (ImGui::BeginCombo("##canvas_load", "Load...")) {   // scanned on open, so new files show up
+        const std::vector<std::string> names = graph::SavedGraphNames();
+        if (names.empty()) ImGui::TextDisabled("no saved graphs in %s/", graph::GraphsDir().c_str());
+        for (const std::string& n : names)
+            if (ImGui::Selectable(n.c_str(), n == cv.name)) gs.LoadCanvas(state, n);
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+    ImGui::TextDisabled("%zu nodes, %zu links | right-click the canvas to add", cv.graph.nodes.size(),
+                        cv.graph.links.size());
+    if (!cv.lastIoMessage.empty()) {
+        ImGui::SameLine();
+        ImGui::TextColored(cv.lastIoOk ? ImVec4(0.55f, 0.9f, 0.55f, 1) : ImVec4(1.0f, 0.45f, 0.4f, 1), "%s",
+                           cv.lastIoMessage.c_str());
+    }
+    if (cv.runCount > 0) {
+        const ImVec4 col = cv.lastRunOk ? ImVec4(0.55f, 0.9f, 0.55f, 1) : ImVec4(1.0f, 0.45f, 0.4f, 1);
+        ImGui::PushStyleColor(ImGuiCol_Text, col);
+        ImGui::TextWrapped("%s", cv.lastRunSummary.c_str());
+        ImGui::PopStyleColor();
+    }
+    // ---- legend ----
+    {
+        using graph::NodeKind;
+        bool first = true;
+        for (NodeKind k : {NodeKind::Build, NodeKind::Simulate, NodeKind::Analyze, NodeKind::Visualize, NodeKind::Other}) {
+            if (!first) ImGui::SameLine(0.0f, 14.0f);
+            first = false;
+            ImGui::TextColored(KindColor(k), "%s", "\xe2\x96\xa0");   // U+25A0 black square
+            ImGui::SameLine(0.0f, 4.0f);
+            ImGui::TextDisabled("%s", graph::KindName(k));
+        }
+    }
+    ImGui::Separator();
+
+    // ---- canvas ---- (no editor settings file: positions live in the saved graph)
+    DrawGraphCanvas(state, cv.graph, "chemlab_graph_canvas", nullptr);
 }
 
 // One "Graph: <panel>" window per panel whose graph the user opened

@@ -21,6 +21,10 @@ struct PanelInfo {
 const std::vector<PanelInfo>& PanelCatalog();
 const PanelInfo* FindPanel(const std::string& id);
 
+// The Node Graph and Graph Canvas panels *are* graph canvases: they have no panel
+// graph of their own and no "panel.<id>" wrapper node.
+inline bool IsFreeGraphPanel(const std::string& id) { return id == "node_graph" || id == "graph_canvas"; }
+
 // Register one "panel.<id>" node type per panel (category "Panels"): the
 // default graph of a panel that has not been decomposed into real nodes yet
 // is that single wrapper node. Call once at startup (UIInit).

@@ -364,6 +364,7 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
                     else if (n == "active" || n == "active_structure") flag = &s.PanelOpen("active_structure");
                     else if (n == "console") flag = &s.PanelOpen("console");
                     else if (n == "graph" || n == "nodes" || n == "node_graph") flag = &s.PanelOpen("node_graph");
+                    else if (n == "canvas" || n == "graph_canvas") flag = &s.PanelOpen("graph_canvas");
                     if (!flag) return CommandResult::Error("Unknown panel '" + n + "'");
                     if (a.size() < 2 || a[1] == "toggle") *flag = !*flag;
                     else if (a[1] == "show") *flag = true;

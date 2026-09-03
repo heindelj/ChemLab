@@ -352,22 +352,22 @@ bool BodyPlot2D(AppState& s, Node& n) {
 }  // namespace
 
 void RegisterPlotNodes(NodeTypeRegistry& r) {
-    r.Register({"data.load_table", "Load Table", "Data",
+    r.Register({"data.load_table", "Load Table", NodeKind::Build, "Data",
                 "Reads a CSV/TSV/whitespace-delimited file into a table (first row = header).",
                 {},
                 {{"table", ValueType::Table}, {"rows", ValueType::Int}},
                 &EvalLoadTable, &BodyLoadTable});
-    r.Register({"data.column", "Column", "Data",
+    r.Register({"data.column", "Column", NodeKind::Analyze, "Data",
                 "One column of a table, by name or 1-based index.",
                 {{"table", ValueType::Table}},
                 {{"values", ValueType::FloatVec}, {"name", ValueType::Text}},
                 &EvalColumn, &BodyColumn});
-    r.Register({"plot.series", "Series", "Plot",
+    r.Register({"plot.series", "Series", NodeKind::Visualize, "Plot",
                 "Turns x/y values into a line, scatter, bar, stairs, stem or histogram series.",
                 {{"x", ValueType::FloatVec}, {"y", ValueType::FloatVec}, {"label", ValueType::Text}},
                 {{"series", ValueType::Series}},
                 &EvalSeries, &BodySeries});
-    r.Register({"plot.plot2d", "Plot 2D", "Plot",
+    r.Register({"plot.plot2d", "Plot 2D", NodeKind::Visualize, "Plot",
                 "Publishes its series as a named plot selectable in the 2D Plot panel.",
                 {{"s1", ValueType::Series}, {"s2", ValueType::Series}, {"s3", ValueType::Series}, {"s4", ValueType::Series}},
                 {},

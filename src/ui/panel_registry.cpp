@@ -19,6 +19,9 @@ const std::vector<PanelInfo>& PanelCatalog() {
         {"export", PanelName::Export, "Screenshots and xyz export.", &DrawExportPanel},
         {"console", PanelName::Console, "Command log and console.", &DrawConsolePanel},
         {"node_graph", PanelName::NodeGraph, "Node graph: chain data sources, scripts and analyses.", &DrawNodeGraphPanel},
+        {"graph_canvas", PanelName::GraphCanvas,
+         "Graph canvas: a blank graph to sketch build -> simulate -> analyze -> visualize pipelines in; saved by name.",
+         &DrawGraphCanvasPanel},
     };
     return catalog;
 }
@@ -31,10 +34,11 @@ const PanelInfo* FindPanel(const std::string& id) {
 
 void RegisterPanelNodes() {
     for (const PanelInfo& p : PanelCatalog()) {
-        if (std::string(p.id) == "node_graph") continue;   // the free-form graph is not a panel graph
+        if (IsFreeGraphPanel(p.id)) continue;   // the free-form graphs are not panel graphs
         graph::NodeTypeSpec spec;
         spec.id = std::string("panel.") + p.id;
         spec.name = p.title;
+        spec.kind = graph::NodeKind::Visualize;
         spec.category = "Panels";
         spec.description = std::string(p.description) + " (the whole panel as one node)";
         spec.evaluate = [](AppState&, graph::Node&, const std::vector<const graph::Value*>&, std::vector<graph::Value>&) {

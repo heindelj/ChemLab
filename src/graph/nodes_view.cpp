@@ -459,34 +459,34 @@ const Atoms* ViewAtoms(AppState& state) {
 }
 
 void RegisterViewNodes(NodeTypeRegistry& r) {
-    r.Register({"view.structure", "Structure", "View",
+    r.Register({"view.structure", "Structure", NodeKind::Build, "View",
                 "The active structure (or one by index) as a handle to its frames.",
                 {},
                 {{"structure", ValueType::Structure}},
                 &EvalStructure, &BodyStructure});
-    r.Register({"view.select_frame", "Select Frame", "View",
+    r.Register({"view.select_frame", "Select Frame", NodeKind::Build, "View",
                 "One frame of a structure (the active frame, or a fixed one) as ChemicalData.",
                 {{"structure", ValueType::Structure}},
                 {{"chem", ValueType::Chem}, {"frame", ValueType::Int}},
                 &EvalSelectFrame, &BodySelectFrame});
-    r.Register({"view.render3d", "Render 3D", "View",
+    r.Register({"view.render3d", "Render 3D", NodeKind::Visualize, "View",
                 "Draws the incoming ChemicalData in the Structure View (style, grid, ...).",
                 {{"chem", ValueType::Chem}},
                 {},
                 &EvalRender3D, &BodyRender3D});
-    r.Register({"view.load_structure", "Load Structure", "View",
+    r.Register({"view.load_structure", "Load Structure", NodeKind::Build, "View",
                 "Reads an xyz file into the structure list.",
                 {},
                 {{"structure", ValueType::Structure}},
                 &EvalLoadStructure, &BodyLoadStructure});
     std::vector<PinSpec> listPins;
     for (int k = 0; k < kStructureListPins; ++k) listPins.push_back({fmt::format("s{}", k + 1), ValueType::Structure});
-    r.Register({"view.structure_list", "Structure List", "View",
+    r.Register({"view.structure_list", "Structure List", NodeKind::Other, "View",
                 "The loaded structures; pick the active one. Feeds the Active Structure panel.",
                 listPins,
                 {{"active", ValueType::Structure}},
                 &EvalStructureList, &BodyStructureList});
-    r.Register({"view.plot_view", "Plot View", "View",
+    r.Register({"view.plot_view", "Plot View", NodeKind::Visualize, "View",
                 "Which plot the 2D Plot panel shows: a built-in per-frame plot or a published one.",
                 {},
                 {},

@@ -6,7 +6,6 @@
 #include <cstring>
 #include <string>
 
-#include "raylib.h"
 
 // Embedded Roboto-Medium (Apache 2.0), generated at build time from ImGui's
 // misc/fonts by binary_to_compressed_c.
@@ -42,9 +41,10 @@ void LoadChemLabFonts(float sizePixels) {
     io.Fonts->Clear();
     ImFontConfig cfg;
     cfg.FontDataOwnedByAtlas = false;
-    // Rasterise at the backing scale so text is crisp on Retina/HiDPI.
-    const float density = GetWindowScaleDPI().y > 0.0f ? GetWindowScaleDPI().y : 1.0f;
-    cfg.RasterizerDensity = density;
+    // No RasterizerDensity here: rlImGui reports ImGuiBackendFlags_RendererHasTextures
+    // and io.DisplayFramebufferScale, so ImGui 1.92 already bakes glyphs at the
+    // backing scale. Setting it as well baked at 4x on Retina and the GPU then
+    // minified the glyphs, which softened all text.
     std::strncpy(cfg.Name, "Roboto Medium", sizeof(cfg.Name) - 1);
     ImFont* font = io.Fonts->AddFontFromMemoryCompressedTTF(roboto_medium_compressed_data, (int)roboto_medium_compressed_size,
                                                            sizePixels, &cfg);
@@ -53,11 +53,7 @@ void LoadChemLabFonts(float sizePixels) {
 }
 
 // One palette per theme; the layout code below is shared.
-struct Palette {
-    ImVec4 bg, bgPanel, bgInput, border, text, textDim, accent, accentHover, accentActive, header, headerHover, selection;
-};
-
-static Palette PaletteFor(UITheme theme) {
+UIPalette ThemePalette(UITheme theme) {
     switch (theme) {
         case UITheme::Darcula:
             return {Hex(0x1e1f22), Hex(0x2b2d30), Hex(0x1a1b1e), Hex(0x3c3f41), Hex(0xbcbec4), Hex(0x7a7e85),
@@ -76,7 +72,7 @@ static Palette PaletteFor(UITheme theme) {
 void ApplyChemLabTheme(UITheme theme) {
     ImGuiStyle& style = ImGui::GetStyle();
     ImVec4* c = style.Colors;
-    const Palette p = PaletteFor(theme);
+    const UIPalette p = ThemePalette(theme);
 
     const ImVec4 bg = p.bg;
     const ImVec4 bgPanel = p.bgPanel;

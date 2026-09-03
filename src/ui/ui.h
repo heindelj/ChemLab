@@ -19,6 +19,7 @@ void DrawCalculatePanel(AppState& state);
 void DrawOutputPanel(AppState& state);
 void DrawExportPanel(AppState& state);
 void DrawNodeGraphPanel(AppState& state);
+void DrawGraphCanvasPanel(AppState& state);   // the Graph Canvas: sketch, run, save/load by name
 // The "Graph: <panel>" windows (state.graphViewOpen), one per panel graph.
 void DrawPanelGraphWindows(AppState& state);
 void NodeGraphShutdown();   // destroys the node editor contexts (UIShutdown)
@@ -48,4 +49,5 @@ inline constexpr const char* Output = "Calculation Output";
 inline constexpr const char* Export = "Export";
 inline constexpr const char* Console = "Console";
 inline constexpr const char* NodeGraph = "Node Graph";
+inline constexpr const char* GraphCanvas = "Graph Canvas";
 }  // namespace PanelName

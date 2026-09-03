@@ -8,6 +8,7 @@
 #include <fmt/format.h>
 
 #include "imgui.h"
+#include "imgui_stdlib.h"
 
 #include "app/actions.h"
 #include "app/app_state.h"
@@ -278,59 +279,86 @@ bool BodyWatch(AppState&, Node& n) {
     return false;
 }
 
+// ---- Text: a free-form note that also emits its text ----
+std::string EvalText(AppState&, Node& n, const std::vector<const Value*>&, std::vector<Value>& out) {
+    auto it = n.params.find("text");
+    out[0] = Value::S(it == n.params.end() ? std::string{} : (it->second.AsText() ? *it->second.AsText() : std::string{}));
+    return "";
+}
+
+bool BodyText(AppState&, Node& n) {
+    auto it = n.params.find("text");
+    std::string text = (it != n.params.end() && it->second.AsText()) ? *it->second.AsText() : std::string{};
+    // Size the box to its contents (with a floor) so notes grow as you type.
+    int lines = 1;
+    for (char c : text) lines += c == '\n';
+    const ImVec2 size(std::max(220.0f, ImGui::CalcTextSize(text.c_str()).x + 24.0f),
+                      ImGui::GetTextLineHeight() * (float)std::clamp(lines + 1, 3, 24) + 8.0f);
+    if (ImGui::InputTextMultiline("##text", &text, size)) {
+        n.params["text"] = Value::S(text);
+        return true;
+    }
+    return false;
+}
+
 }  // namespace
 
 void RegisterBuiltinNodes(NodeTypeRegistry& r) {
-    r.Register({"core.active_frame", "Active Frame", "Sources",
+    r.Register({"core.active_frame", "Active Frame", NodeKind::Build, "Sources",
                 "Positions and labels of the active structure's current frame.",
                 {},
                 {{"positions", ValueType::Positions}, {"labels", ValueType::Labels}},
                 &EvalActiveFrame, &BodyActiveFrame});
-    r.Register({"core.atom_pair", "Atom Pair", "Sources",
+    r.Register({"core.atom_pair", "Atom Pair", NodeKind::Build, "Sources",
                 "Two atom indices (1-based here, 0-based on the output pins).",
                 {},
                 {{"i", ValueType::Int}, {"j", ValueType::Int}},
                 &EvalAtomPair, &BodyAtomPair});
-    r.Register({"core.chemical_data", "Chemical Data", "Sources",
+    r.Register({"core.chemical_data", "Chemical Data", NodeKind::Build, "Sources",
                 "Active frame as a ChemicalData object (R, Z, bonds topology).",
                 {},
                 {{"chem", ValueType::Chem}},
                 &EvalChemicalData, &BodyChemicalData});
-    r.Register({"core.selected_atoms", "Selected Atoms", "Sources",
+    r.Register({"core.selected_atoms", "Selected Atoms", NodeKind::Build, "Sources",
                 "The current selection as 0-based atom indices.",
                 {},
                 {{"indices", ValueType::IntVec}},
                 &EvalSelectedAtoms, &BodySelectedAtoms});
-    r.Register({"core.float", "Float", "Sources",
+    r.Register({"core.float", "Float", NodeKind::Build, "Sources",
                 "A constant number, set on the node.",
                 {},
                 {{"value", ValueType::Float}},
                 &EvalFloat, &BodyFloat});
-    r.Register({"core.atom_index", "Atom Index", "Sources",
+    r.Register({"core.atom_index", "Atom Index", NodeKind::Build, "Sources",
                 "One atom index (1-based here, 0-based on the output pin).",
                 {},
                 {{"i", ValueType::Int}},
                 &EvalAtomIndex, &BodyAtomIndex});
-    r.Register({"core.bonded_atoms", "Bonded Atoms", "Compute",
+    r.Register({"core.bonded_atoms", "Bonded Atoms", NodeKind::Analyze, "Compute",
                 "Atoms bonded to a given atom, from a chemdata topology.",
                 {{"chem", ValueType::Chem}, {"i", ValueType::Int}},
                 {{"indices", ValueType::IntVec}},
                 &EvalBondedAtoms, &BodyBondedAtoms});
-    r.Register({"core.highlight_alpha", "Highlight Alpha", "Compute",
+    r.Register({"core.highlight_alpha", "Highlight Alpha", NodeKind::Analyze, "Compute",
                 "Per-atom alphas: 1.0 for the given indices, a dim alpha elsewhere.",
                 {{"chem", ValueType::Chem}, {"indices", ValueType::IntVec}, {"alpha", ValueType::Float}},
                 {{"alphas", ValueType::FloatVec}},
                 &EvalHighlightAlpha, &BodyHighlightAlpha});
-    r.Register({"core.apply_atom_alpha", "Apply Atom Alpha", "Render",
+    r.Register({"core.apply_atom_alpha", "Apply Atom Alpha", NodeKind::Visualize, "Render",
                 "Applies per-atom alphas to the 3D view (runs when the graph runs).",
                 {{"alphas", ValueType::FloatVec}},
                 {},
                 &EvalApplyAtomAlpha, &BodyApplyAtomAlpha});
-    r.Register({"core.watch", "Watch", "Output",
+    r.Register({"core.watch", "Watch", NodeKind::Visualize, "Output",
                 "Shows the value arriving at its input.",
                 {{"value", ValueType::Any}},
                 {},
                 &EvalWatch, &BodyWatch});
+    r.Register({"core.text", "Text", NodeKind::Other, "Notes",
+                "Free-form text: annotate a workflow, or feed the text to another node.",
+                {},
+                {{"text", ValueType::Text}},
+                &EvalText, &BodyText});
 }
 
 }  // namespace graph

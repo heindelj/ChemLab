@@ -217,6 +217,7 @@ add_executable(${PROJECT_NAME}
     src/graph/node_python.cpp
     src/graph/py_runner.cpp
     src/graph/graph_commands.cpp
+    src/graph/graph_io.cpp
     src/ui/theme.cpp
     src/ui/ui.cpp
     src/ui/ui_spec.cpp

@@ -128,12 +128,23 @@ std::string DescribePythonNode(AppState& s, Node& n) {
     n.outValues.assign(n.outputs.size(), Value{});
     if (spec.contains("name") && spec["name"].is_string())
         n.title = fmt::format("{} {}", spec["name"].get<std::string>(), n.id);
-    gs.graph.PruneLinks();   // links into pins that no longer exist
+    // Drop links into pins that no longer exist -- on whichever graph owns
+    // this node (the Node Graph, the Graph Canvas, or a panel graph).
+    auto owns = [&](Graph& g) {
+        for (const Node& other : g.nodes)
+            if (&other == &n) return true;
+        return false;
+    };
+    if (owns(gs.graph)) gs.graph.PruneLinks();
+    else if (owns(gs.canvas.graph)) gs.canvas.graph.PruneLinks();
+    else
+        for (auto& [id, pg] : gs.panelGraphs)
+            if (owns(pg.graph)) { pg.graph.PruneLinks(); break; }
     return "";
 }
 
 void RegisterPythonNode(NodeTypeRegistry& r) {
-    r.Register({"script.python", "Python Script", "Scripting",
+    r.Register({"script.python", "Python Script", NodeKind::Other, "Scripting",
                 "Run an external script; pins come from `script --describe`.",
                 {}, {},   // pins are per-instance, discovered from the script
                 &EvalPython, &BodyPython});

@@ -4,9 +4,13 @@
 // graphs and the store of node-generated data, so everything about their
 // internals can change without touching the app.
 //
-// There are two kinds of graph:
+// There are three kinds of graph:
 //   - `graph`: the free-form graph shown in the Node Graph panel (demos,
 //     scratch analyses, the Plot Lab).
+//   - `canvas`: the free-form graph shown in the Graph Canvas panel -- the
+//     place to sketch build -> simulate -> analyze -> visualize pipelines.
+//     Opened blank by `graph new`, saved by name under graphs/<name>.json
+//     (graph_io.h) from the panel or `graph save/load`.
 //   - one *panel graph* per UI panel, keyed by panel id ("structure_view",
 //     "active_structure", ...). Every panel is, underneath, a small graph:
 //     the 3D view is Structure -> Select Frame -> Render 3D, the Active
@@ -18,6 +22,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include "core/molecule.h"
 #include "graph/data_store.h"
@@ -43,8 +48,23 @@ struct View3DRequest {
     std::string label;   // "<structure> | frame i/n", shown in the view badge
 };
 
+// The Graph Canvas panel's graph and its run state. Its outputs land in the
+// shared store under a "canvas/" prefix so they never collide with `graph`'s.
+struct CanvasGraph {
+    Graph graph;
+    std::string name = "untitled";        // saved as graphs/<name>.json (see GraphPath)
+    std::string lastRunSummary;
+    bool lastRunOk = true;
+    uint64_t runCount = 0;
+    bool autoRun = false;                 // re-run at GraphSystem::autoRunFps
+    double lastAutoRun = 0.0;
+    std::string lastIoMessage;            // result of the last save/load, shown in the panel
+    bool lastIoOk = true;
+};
+
 struct GraphSystem {
     Graph graph;
+    CanvasGraph canvas;
     DataStore store;
     std::map<std::string, PanelGraph> panelGraphs;   // panel id -> its graph
     View3DRequest view3d;
@@ -59,6 +79,14 @@ struct GraphSystem {
     // Evaluate `graph` into `store`; fills lastRunSummary/lastRunOk and
     // returns the summary.
     std::string Run(AppState& state);
+    // Same for the Graph Canvas (fills canvas.lastRunSummary/lastRunOk).
+    std::string RunCanvas(AppState& state);
+    // Start a blank canvas called `name` (and open the panel).
+    void NewCanvas(AppState& state, const std::string& name);
+    // Save/load the canvas graph as graphs/<name>.json; the name is remembered
+    // in canvas.name. Both fill canvas.lastIoMessage and return its success.
+    bool SaveCanvas(const std::string& name);
+    bool LoadCanvas(AppState& state, const std::string& name);
 
     // The graph behind a panel, seeded with that panel's default graph on
     // first use (SeedPanelGraph).
@@ -87,11 +115,18 @@ void OnStructureRemoved(AppState& state, const std::string& path);
 // view then falls back to the active frame).
 const Atoms* ViewAtoms(AppState& state);
 
-// `graph <run|demo|clear|python|show|reset>` commands (graph_commands.cpp).
+// Where named canvas graphs live: "graphs/" in the working directory.
+// GraphPath("rdf") == "graphs/rdf.json"; SavedGraphNames lists what is there.
+std::string GraphsDir();
+std::string GraphPath(const std::string& name);
+std::vector<std::string> SavedGraphNames();
+
+// `graph <run|new|save|load|list|demo|clear|...>` and `canvas <run|save|load|...>`
+// commands (graph_commands.cpp).
 void RegisterGraphCommands(CommandRegistry& r);
 
-// Called once per frame (main loop): re-runs the graph at autoRunFps when
-// auto-run is on. A no-op when auto-run is off (run-on-click only).
+// Called once per frame (main loop): re-runs the graph (and the canvas) at
+// autoRunFps when their auto-run is on. A no-op otherwise (run-on-click only).
 void UpdateGraphAutoRun(AppState& state);
 
 }  // namespace graph

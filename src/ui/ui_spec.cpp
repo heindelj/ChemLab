@@ -108,7 +108,7 @@ std::vector<UIDefinition> BuiltinUIs() {
     lab.builtin = true;
     lab.slots = {
         {{"plot_2d"}},                                   // 0: top
-        {{"node_graph"}, {"console", false}},            // 1: bottom (tabs)
+        {{"node_graph"}, {"graph_canvas", false}, {"console", false}},   // 1: bottom (tabs)
     };
     return {def, lab};
 }

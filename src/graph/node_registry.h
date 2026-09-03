@@ -20,6 +20,23 @@ struct PinSpec {
     ValueType type = ValueType::Any;
 };
 
+// The coarse role of a node in a workflow. Drives the node colour in the
+// canvas and the top-level grouping of the add-node menu; `category` below is
+// the finer grouping inside a kind.
+//   Build      -- creates input data, primarily molecular structures
+//   Simulate   -- runs a simulation on input data, producing many kinds of output
+//   Analyze    -- processes molecular (or other) data, often but not only from a simulation
+//   Visualize  -- shows data; usually a ChemLab panel or plot
+//   Other      -- glue that fits none of the above (scripts, notes, plumbing)
+enum class NodeKind { Build, Simulate, Analyze, Visualize, Other };
+
+const char* KindName(NodeKind k);                 // "build", "simulate", ...
+bool KindFromName(const std::string& s, NodeKind& out);
+// Display colour (r, g, b, a in 0..1): build orange, simulate purple, analyze
+// green, visualize cyan, other grey.
+struct KindColor { float r, g, b, a; };
+KindColor ColorOf(NodeKind k);
+
 // Evaluate one node. inputs[i] is the value arriving at input pin i (null when
 // unconnected or empty); outputs is pre-sized to the node's output pins.
 // Returns "" on success or an error message shown on the node.
@@ -34,7 +51,8 @@ using BodyFn = std::function<bool(AppState&, Node&)>;
 struct NodeTypeSpec {
     std::string id;                 // stable id ("core.active_frame")
     std::string name;               // display name ("Active Frame")
-    std::string category;           // add-node menu grouping ("Sources", ...)
+    NodeKind kind = NodeKind::Other; // build / simulate / analyze / visualize / other
+    std::string category;           // add-node menu grouping inside the kind ("Sources", ...)
     std::string description;        // one-liner for the add-node menu
     std::vector<PinSpec> inputs;    // static pins copied onto new nodes;
     std::vector<PinSpec> outputs;   //   script nodes replace them per instance
@@ -56,7 +74,7 @@ private:
 NodeTypeRegistry& NodeTypes();
 
 // Implemented in nodes_builtin.cpp / node_python.cpp:
-void RegisterBuiltinNodes(NodeTypeRegistry& r);
+void RegisterBuiltinNodes(NodeTypeRegistry& r);   // nodes_builtin.cpp: sources, small computes, Watch, Text
 void RegisterPlotNodes(NodeTypeRegistry& r);   // nodes_plot.cpp: tables, series, named plots
 void RegisterViewNodes(NodeTypeRegistry& r);   // nodes_view.cpp: the nodes behind the panels
 void RegisterPythonNode(NodeTypeRegistry& r);

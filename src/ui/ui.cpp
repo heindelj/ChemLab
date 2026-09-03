@@ -127,7 +127,7 @@ void DrawMenuBar(AppState& state) {
         }
         if (ImGui::BeginMenu("Panel graphs")) {
             for (const PanelInfo& p : PanelCatalog()) {
-                if (std::string(p.id) == "node_graph") continue;
+                if (IsFreeGraphPanel(p.id)) continue;
                 ImGui::MenuItem(p.title, nullptr, &state.graphViewOpen[p.id]);
             }
             ImGui::EndMenu();
@@ -192,7 +192,7 @@ void PanelTitleContextMenu(AppState& state, const PanelInfo& p, bool& open) {
     if (ImGui::BeginPopup(popupId.c_str())) {
         ImGui::TextDisabled("%s", p.title);
         ImGui::Separator();
-        const bool hasGraph = std::string(p.id) != "node_graph";
+        const bool hasGraph = !IsFreeGraphPanel(p.id);
         if (ImGui::MenuItem("View graph", nullptr, false, hasGraph)) state.graphViewOpen[p.id] = true;
         if (ImGui::MenuItem("Reset graph to default", nullptr, false, hasGraph)) state.GraphSys().ResetPanel(state, p.id);
         ImGui::Separator();
