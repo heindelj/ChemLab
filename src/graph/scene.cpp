@@ -391,7 +391,11 @@ std::vector<Scene> BuiltinScenes() {
 // ---------------------------------------------------------------------------
 // Files
 // ---------------------------------------------------------------------------
-std::string ScenesDir() { return "scenes"; }
+namespace {
+std::string gScenesDir;   // "" = the default below
+}
+std::string ScenesDir() { return gScenesDir.empty() ? "scenes" : gScenesDir; }
+void SetScenesDir(const std::string& dir) { gScenesDir = dir; }
 std::string ScenePath(const std::string& graphName) { return ScenesDir() + "/" + graphName + ".json"; }
 
 bool SaveScene(Scene& s, std::string& err) {
@@ -433,9 +437,14 @@ std::vector<Scene> LoadUserScenes(std::vector<std::string>& errors) {
 
 std::string ActiveSceneFile() { return kActiveFile; }
 
-void ReadActiveScene(std::string& scene, std::string& layout) {
+void ReadActiveScene(AppState& state, std::string& scene, std::string& layout) {
     scene.clear();
     layout.clear();
+    if (state.project) {
+        scene = state.project->config.scene.active;
+        layout = state.project->config.scene.layout;
+        return;
+    }
     try {
         if (!std::filesystem::exists(kActiveFile)) return;
         const toml::table t = toml::parse_file(kActiveFile);
@@ -445,7 +454,16 @@ void ReadActiveScene(std::string& scene, std::string& layout) {
     }
 }
 
-void WriteActiveScene(const std::string& scene, const std::string& layout) {
+void WriteActiveScene(AppState& state, const std::string& scene, const std::string& layout) {
+    if (state.project) {
+        ProjectSceneSettings& s = state.project->config.scene;
+        if (s.active != scene || s.layout != layout) {
+            s.active = scene;
+            s.layout = layout;
+            state.projectDirty = true;
+        }
+        return;
+    }
     std::ofstream f(kActiveFile, std::ios::trunc);
     if (f)
         f << "# ChemLab: the scene and layout shown at startup (see `scene list`).\nactive = \"" << scene

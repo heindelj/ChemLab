@@ -66,7 +66,15 @@ Mac. `lldb -- ./build/ChemLab` then `bt` gives a usable backtrace there.
   named after the first. `scene <name>` switches, `scene <name> graph` / the
   Graph button open the scene graph. Built-in scenes: `classic`, `plot-lab`;
   user scenes are `scenes/<graph>.json`, the active
-  one is remembered in `chemlab_scene.toml`. Panels have no graphs of their own.
+  one is remembered in `chemlab_scene.toml` -- or, with a project open, in the
+  project's `[scene]` table. Panels have no graphs of their own.
+- A *project* (`app/project.h`, `chemlab.toml`) makes its root the process cwd
+  while open (`EnterProjectEnvironment` in actions.cpp): `ScenesDir()` /
+  `GraphsDir()` are pointed at its folders, `GraphSystem::pythonExe/pythonEnv`
+  at its `[python]`, the dock ini at its `layout.ini`, and `LoadScenes` is
+  re-run. `project close` undoes all of that. Bare structure names go through
+  `Project::FindData` (the `[paths].data` list), bare script names through
+  `FindScript`, and bare `screenshot`/`export` names land in `paths.output`.
 - The Node Graph and Graph Canvas panels are free-form graphs. Nodes have a
   `kind` (build / simulate / analyze / visualize / other) that colours them.
 - Visualize nodes (Render 3D, Plot 2D) open their own dockable window

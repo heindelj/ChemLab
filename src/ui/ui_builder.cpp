@@ -391,8 +391,8 @@ void MigrateUserUIsToScenes(AppState& state) {
     if (activeName == "Default") activeName = "classic";
     else if (activeName == "Plot Lab") activeName = "plot-lab";
     std::string haveScene, haveLayout;
-    graph::ReadActiveScene(haveScene, haveLayout);
-    if (!activeName.empty() && haveScene.empty()) graph::WriteActiveScene(activeName, "");
+    graph::ReadActiveScene(state, haveScene, haveLayout);
+    if (!activeName.empty() && haveScene.empty()) graph::WriteActiveScene(state, activeName, "");
     std::error_code ec;
     std::filesystem::rename(kLegacyUIsFile, std::string(kLegacyUIsFile) + ".migrated", ec);
     if (migrated > 0)

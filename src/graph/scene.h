@@ -84,17 +84,21 @@ void SetSceneUI(Scene& s, const UIDefinition& ui);   // the active layout
 Scene MakeScene(const UIDefinition& ui, bool builtin);
 std::vector<Scene> BuiltinScenes();
 
-// Where user scenes live: "scenes/" in the working directory.
+// Where user scenes live: "scenes/" in the working directory, or the open
+// project's scenes folder (SetScenesDir; "" restores the default).
 std::string ScenesDir();
+void SetScenesDir(const std::string& dir);
 std::string ScenePath(const std::string& graphName);
 bool SaveScene(Scene& s, std::string& err);                            // scenes/<graphName>.json
 bool LoadSceneFile(const std::string& path, Scene& out, std::string& err);   // false when not a scene
 std::vector<Scene> LoadUserScenes(std::vector<std::string>& errors);
 
-// The file the active scene/layout is remembered in between runs.
+// Where the active scene/layout is remembered between runs: the open
+// project's [scene] table (marking it dirty), else chemlab_scene.toml in the
+// working directory.
 std::string ActiveSceneFile();
-void ReadActiveScene(std::string& scene, std::string& layout);
-void WriteActiveScene(const std::string& scene, const std::string& layout);
+void ReadActiveScene(AppState& state, std::string& scene, std::string& layout);
+void WriteActiveScene(AppState& state, const std::string& scene, const std::string& layout);
 
 // The Layout, Tabs and Panel node types (registered with the other built-ins).
 void RegisterSceneNodes(NodeTypeRegistry& r);

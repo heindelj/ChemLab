@@ -31,6 +31,14 @@ std::string TextParam(const Node& n, const std::string& key) {
     return s ? *s : "";
 }
 
+// The script file to run: inside a project a bare name is also looked for in
+// the project's scripts folder, so graphs can refer to "rdf.py".
+std::string ScriptPath(const AppState& s, const Node& n) {
+    const std::string script = TextParam(n, "script");
+    if (script.empty() || !s.project) return script;
+    return s.project->FindScript(script).string();
+}
+
 bool ParsePins(const json& arr, std::vector<PinSpec>& out, std::string& err) {
     out.clear();
     if (arr.is_null()) return true;
@@ -54,7 +62,7 @@ bool ParsePins(const json& arr, std::vector<PinSpec>& out, std::string& err) {
 }
 
 std::string EvalPython(AppState& s, Node& n, const std::vector<const Value*>& in, std::vector<Value>& out) {
-    const std::string script = TextParam(n, "script");
+    const std::string script = ScriptPath(s, n);
     if (script.empty()) return "no script set";
     if (n.inputs.empty() && n.outputs.empty()) return "script not described yet (press Reload)";
 
@@ -65,7 +73,7 @@ std::string EvalPython(AppState& s, Node& n, const std::vector<const Value*>& in
         req["inputs"][n.inputs[i].name] = ValueToJson(*in[i]);
     }
 
-    RunResult r = RunScript(s.GraphSys().pythonExe, script, "", req.dump());
+    RunResult r = RunScript(s.GraphSys().pythonExe, script, "", req.dump(), s.GraphSys().pythonEnv);
     if (!r.ok) return r.error;
 
     json resp = json::parse(r.output, nullptr, false);
@@ -90,11 +98,13 @@ bool BodyPython(AppState& s, Node& n) {
     ImGui::Text("%s", script.empty() ? "<no script>" : fs::path(script).filename().string().c_str());
 #if !defined(__EMSCRIPTEN__)
     if (ImGui::SmallButton("Browse...")) {
-        auto sel = pfd::open_file("Choose a node script", ".",
+        const std::string start = s.project ? s.project->ScriptsDir().string() : ".";
+        auto sel = pfd::open_file("Choose a node script", start,
                                   {"Python scripts", "*.py", "All files", "*"})
                        .result();
         if (!sel.empty()) {
-            n.params["script"] = Value::S(sel.front());
+            // Keep scripts inside the project relative to it, so the graph moves with the project.
+            n.params["script"] = Value::S(s.project ? s.project->Relativise(sel.front()) : sel.front());
             n.error = DescribePythonNode(s, n);
             changed = true;
         }
@@ -112,10 +122,10 @@ bool BodyPython(AppState& s, Node& n) {
 }  // namespace
 
 std::string DescribePythonNode(AppState& s, Node& n) {
-    const std::string script = TextParam(n, "script");
+    const std::string script = ScriptPath(s, n);
     if (script.empty()) return "no script set";
     GraphSystem& gs = s.GraphSys();
-    RunResult r = RunScript(gs.pythonExe, script, "--describe", "");
+    RunResult r = RunScript(gs.pythonExe, script, "--describe", "", gs.pythonEnv);
     if (!r.ok) return r.error;
     json spec = json::parse(r.output, nullptr, false);
     if (spec.is_discarded() || !spec.is_object()) return "--describe did not print a JSON object";

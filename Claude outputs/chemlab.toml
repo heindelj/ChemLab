@@ -1,0 +1,63 @@
+# ChemLab project.
+# All paths are relative to the folder containing this file, which becomes the
+# working directory while the project is open (so bare file names in `load`,
+# `screenshot`, `export`, scripts and file dialogs resolve here).
+
+[project]
+name = "chemlab"
+description = ""
+format = 1                     # schema version, for future migrations
+
+# Where the project keeps things. Each is created on `project new`/`open` if
+# missing. `data` accepts a list so a project can point at several folders
+# (e.g. a big read-only trajectory store outside the project).
+[paths]
+data    = ["data"]             # structures, trajectories, cubes ...
+scenes  = "scenes"             # scene graphs (layouts + panels + tabs), one .json each
+graphs  = "graphs"             # named node graphs from the Graph Canvas
+scripts = "scripts"            # python node scripts / analysis scripts
+output  = "output"             # screenshots, exports, plot images
+layout  = "layout.ini"         # Dear ImGui dock state for this project
+
+# Replaces the global chemlab_scene.toml: which scene and layout to show when
+# the project opens. Built-ins ("classic", "plot-lab") or a file in `scenes/`.
+[scene]
+active = "classic"
+layout = "classic"
+
+[view]
+style          = "ball-and-stick"   # ball-and-stick | sticks | spheres | wireframe
+background     = "#1e1e1e"
+grid           = true
+atom_numbers   = false
+ball_scale     = 0.25
+stick_radius   = 0.2
+sphere_scale   = 1.0
+plot           = "energy"           # energy | measurements
+bond_tolerance = 0.4
+
+# Interpreter used for python nodes and scripts in this project. A relative
+# path (e.g. ".venv/bin/python") is resolved against the project root.
+[python]
+interpreter = "python3"
+env = {}                             # extra environment variables for scripts
+
+# Loaded structures. `path` is relative to the project root or to any of
+# paths.data (searched in order). `frame` and `measurements` are 1-based.
+#
+# [[structures]]
+# path = "caffeine.xyz"
+# name = "caffeine"
+# frame = 1
+# measurements = [[1, 2], [1, 2, 3]]
+structures = []
+active_structure = 1
+
+# Scripts registered with the project (relative to paths.scripts). Each shows
+# up as a node type in the graph editors while the project is open.
+[scripts]
+files = []
+
+# Command-bar commands run after everything above is loaded.
+[startup]
+commands = []

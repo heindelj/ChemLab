@@ -220,15 +220,23 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
 
     // ---- project ----
     r.Register({"project", "project <new dir [name]|open path|save|close|info>",
-                "Create, open, save or close a project folder (chemlab.toml + relative data).", "project",
+                "Create, open, save or close a project folder (chemlab.toml; its root becomes the working directory).", "project",
                 [](AppState& s, const CommandArgs& a) {
                     if (a.size() == 0 || a[0] == "info") {
                         if (!s.project) return CommandResult::Ok("No project open (scratch session)");
                         const Project& p = *s.project;
-                        std::string out = fmt::format("project: {}\nroot: {}\nconfig: {}\nlayout: {}\nstructures: {}{}",
-                                                      p.config.name, p.Root().string(), p.ConfigPath().string(),
-                                                      p.LayoutPath().string(), s.structures.size(),
-                                                      s.projectDirty ? "\n(unsaved changes)" : "");
+                        std::string data;
+                        for (const auto& d : p.DataDirs()) data += (data.empty() ? "" : ", ") + d.string();
+                        std::string scripts;
+                        for (const auto& f : p.config.scripts) scripts += (scripts.empty() ? "" : ", ") + f;
+                        std::string out = fmt::format(
+                            "project: {}\nroot (cwd): {}\nconfig: {}\nlayout: {}\nscene: {}{}\ndata: {}\nscenes: {}\ngraphs: {}\n"
+                            "scripts: {}{}\noutput: {}\npython: {}\nstructures: {}{}",
+                            p.config.name, p.Root().string(), p.ConfigPath().string(), p.LayoutPath().string(),
+                            p.config.scene.active, p.config.scene.layout.empty() ? "" : " / " + p.config.scene.layout, data,
+                            p.ScenesDir().string(), p.GraphsDir().string(), p.ScriptsDir().string(),
+                            scripts.empty() ? "" : " [" + scripts + "]", p.OutputDir().string(), p.PythonExe(),
+                            s.structures.size(), s.projectDirty ? "\n(unsaved changes)" : "");
                         return CommandResult::Ok(out);
                     }
                     if (a[0] == "new") return NewProject(s, a.size() > 1 ? a[1] : "", a.size() > 2 ? a[2] : "");

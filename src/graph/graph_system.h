@@ -24,6 +24,7 @@
 #include "core/molecule.h"
 #include "graph/data_store.h"
 #include "graph/graph.h"
+#include "graph/py_runner.h"
 #include "graph/scene.h"
 
 struct AppState;
@@ -73,7 +74,8 @@ struct GraphSystem {
     std::vector<Scene> scenes;                       // built-in first, then scenes/*.json
     int activeScene = 0;                             // index into `scenes`
     std::map<uint64_t, NodeView> nodeViews;          // node uid -> its window (see NodeView)
-    std::string pythonExe = "python3";   // interpreter used by script nodes
+    std::string pythonExe = "python3";   // interpreter used by script nodes (the project's when one is open)
+    ScriptEnv pythonEnv;                 // extra environment for them ([python] env)
     bool autoRun = false;                // re-run `graph` continuously...
     float autoRunFps = 10.0f;            // ...at this rate (see UpdateGraphAutoRun)
     double lastAutoRun = 0.0;
@@ -124,9 +126,11 @@ struct GraphSystem {
 const Graph* OwningGraph(const GraphSystem& gs, const Node& n);
 Graph* OwningGraph(GraphSystem& gs, const Node& n);
 
-// Where named canvas graphs live: "graphs/" in the working directory.
+// Where named canvas graphs live: "graphs/" in the working directory, or the
+// open project's graphs folder (SetGraphsDir; "" restores the default).
 // GraphPath("rdf") == "graphs/rdf.json"; SavedGraphNames lists what is there.
 std::string GraphsDir();
+void SetGraphsDir(const std::string& dir);
 std::string GraphPath(const std::string& name);
 std::vector<std::string> SavedGraphNames();
 

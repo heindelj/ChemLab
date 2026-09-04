@@ -48,7 +48,7 @@ std::string ReadAll(const std::string& path, size_t maxBytes = 4000) {
 }  // namespace
 
 RunResult RunScript(const std::string& python, const std::string& script, const std::string& args,
-                    const std::string& stdinData) {
+                    const std::string& stdinData, const ScriptEnv& env) {
     RunResult r;
     if (script.empty()) {
         r.error = "no script set";
@@ -75,7 +75,14 @@ RunResult RunScript(const std::string& python, const std::string& script, const 
     }
     // Quoting is POSIX-shell style; fine on macOS/Linux. (Windows would want
     // CreateProcess instead of cmd.exe quoting -- revisit if/when it matters.)
-    const std::string cmd = fmt::format("\"{}\" \"{}\"{}{} < \"{}\" 2> \"{}\"", python, script,
+    std::string envPrefix;   // VAR='value' ... before the command (single quotes: no expansion)
+    for (const auto& [k, v] : env) {
+        std::string quoted = "'";
+        for (char ch : v) quoted += ch == '\'' ? std::string("'\\''") : std::string(1, ch);
+        quoted += "'";
+        envPrefix += fmt::format("{}={} ", k, quoted);
+    }
+    const std::string cmd = fmt::format("{}\"{}\" \"{}\"{}{} < \"{}\" 2> \"{}\"", envPrefix, python, script,
                                         args.empty() ? "" : " ", args, inFile.string(), errFile.string());
     FILE* pipe = POPEN(cmd.c_str(), "r");
     if (!pipe) {

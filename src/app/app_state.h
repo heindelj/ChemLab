@@ -75,6 +75,7 @@ struct AppState {
 
     // ---- project ----
     std::optional<Project> project;   // none = scratch session
+    std::string cwdBeforeProject;     // restored by `project close` (a project makes its root the cwd)
     std::string iniFileName = "chemlab_imgui.ini";   // backing store for io.IniFilename
     std::string pendingIniFile;       // switch ImGui settings to this file before the next frame
     bool projectDirty = false;

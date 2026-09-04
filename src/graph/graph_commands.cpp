@@ -115,7 +115,11 @@ std::string GraphSystem::RunCanvas(AppState& state) {
     return canvas.lastRunSummary;
 }
 
-std::string GraphsDir() { return "graphs"; }
+namespace {
+std::string gGraphsDir;   // "" = the default below
+}
+std::string GraphsDir() { return gGraphsDir.empty() ? "graphs" : gGraphsDir; }
+void SetGraphsDir(const std::string& dir) { gGraphsDir = dir; }
 
 std::string GraphPath(const std::string& name) { return GraphsDir() + "/" + name + ".json"; }
 
@@ -200,7 +204,7 @@ void GraphSystem::LoadScenes(AppState& state) {
     for (const std::string& e : errors) Log(state, LogLevel::Warning, "scenes/: " + e);
     activeScene = 0;
     std::string wantedScene, wantedLayout;
-    ReadActiveScene(wantedScene, wantedLayout);
+    ReadActiveScene(state, wantedScene, wantedLayout);
     if (!wantedScene.empty()) {
         const int i = FindScene(wantedScene);
         if (i >= 0) {
@@ -230,7 +234,7 @@ bool GraphSystem::SwitchScene(AppState& state, int index) {
     state.resetLayoutRequested = true;
     Scene& sc = scenes[(size_t)index];
     const Node* layout = ActiveLayoutNode(sc);
-    WriteActiveScene(SceneName(sc), layout ? LayoutName(*layout) : "");
+    WriteActiveScene(state, SceneName(sc), layout ? LayoutName(*layout) : "");
     return true;
 }
 

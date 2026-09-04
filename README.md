@@ -136,32 +136,57 @@ loaded at startup and the scene/layout shown last is remembered in
 
 ## Projects
 
-A project is a folder with a `chemlab.toml` at its root; everything it
-references is stored relative to that folder so it can be moved, zipped or
-committed as a unit:
+A project is a folder with a `chemlab.toml` at its root. While it is open the
+folder is the working directory, so bare file names everywhere (`load`,
+`screenshot`, `export`, script nodes, file dialogs) resolve inside it, and
+everything the project references is stored relative to it, so it can be
+moved, zipped or committed as a unit:
 
 ```
 my_project/
-  chemlab.toml     # name, view settings, structures (+ frame, measurements), startup commands
+  chemlab.toml     # name, folders, scene, view settings, python, structures, startup commands
   layout.ini       # the dock layout, written by ChemLab for this project
-  data/traj.xyz    # referenced as "data/traj.xyz"
+  data/            # structures; bare names in [[structures]] and `load` are searched here
+  scenes/          # scene graphs (`scene save`), replaces the global scenes/ while open
+  graphs/          # named node graphs (`graph save`)
+  scripts/         # python node scripts; a bare script name in a graph is looked up here
+  output/          # where `screenshot` / `export` land when given a bare name
 ```
 
-`File > New project...` adopts whatever is loaded into a new folder,
-`File > Open project...` (or `./build/ChemLab my_project`) restores it, and
-`Ctrl+Shift+S` saves. The same is available as `project new|open|save|close|info`
-on the command bar. The file is meant to be hand-edited; for example:
+`File > New project...` adopts whatever is loaded (and the scene on screen)
+into a new folder, `File > Open project...` (or `./build/ChemLab my_project`)
+restores it, and `Ctrl+Shift+S` saves. The same is available as
+`project new|open|save|close|info` on the command bar. Switching scenes or
+changing view settings marks the project dirty (`*` in the title) until saved;
+`project close` restores the previous working directory. The file is written
+with comments and meant to be hand-edited:
 
 ```toml
 [project]
 name = "Water cages"
 
+[paths]                       # all optional; these are the defaults
+data = ["data"]               # a list: add a shared trajectory store outside the project
+scenes = "scenes"
+graphs = "graphs"
+scripts = "scripts"
+output = "output"
+layout = "layout.ini"
+
+[scene]
+active = "plot-lab"           # built-in or scenes/<name>.json
+layout = ""                   # a layout within the scene ("" = its first)
+
 [view]
 style = "sticks"
 background = "#202030"
 
+[python]
+interpreter = ".venv/bin/python"   # relative to the project, or a command on PATH
+env = { OMP_NUM_THREADS = "4" }
+
 [[structures]]
-path = "data/w20.xyz"
+path = "w20.xyz"              # found in data/
 frame = 42
 measurements = [[1, 4], [1, 4, 7]]
 
@@ -169,7 +194,8 @@ measurements = [[1, 4], [1, 4, 7]]
 commands = ["plot measurements", "rotate on 15"]
 ```
 
-`[scripts] files = [...]` is reserved for per-project analysis scripts.
+`[scripts] files = [...]` lists the project's scripts (relative to
+`paths.scripts`); `project info` shows them along with every resolved folder.
 
 ## Source layout
 

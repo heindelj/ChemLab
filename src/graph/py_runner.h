@@ -16,8 +16,12 @@
 // (numpy, ASE, a subprocess of its own, another language entirely).
 
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace graph {
+
+using ScriptEnv = std::vector<std::pair<std::string, std::string>>;   // extra environment variables
 
 struct RunResult {
     bool ok = false;        // process spawned and exited with status 0
@@ -28,7 +32,7 @@ struct RunResult {
 
 // Blocking; stdinData is piped to the script via a temp file.
 RunResult RunScript(const std::string& python, const std::string& script, const std::string& args,
-                    const std::string& stdinData);
+                    const std::string& stdinData, const ScriptEnv& env = {});
 
 // False in the web build (no subprocesses there).
 bool ScriptingAvailable();

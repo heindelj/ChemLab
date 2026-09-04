@@ -11,6 +11,8 @@
 #include "core/math_utils.h"
 #include "core/xyz_io.h"
 #include "graph/graph_system.h"
+#include "graph/scene.h"
+#include "ui/ui_builder.h"
 
 // ---------------------------------------------------------------------------
 // Logging
@@ -35,10 +37,45 @@ static void ClearSession(AppState& state) {
     state.modelDirty = true;
 }
 
+// Point everything that lives "in the working directory" at the project:
+// the cwd itself, the scenes/graphs folders, the script interpreter.
+static void EnterProjectEnvironment(AppState& state) {
+    const Project& p = *state.project;
+    std::error_code ec;
+    if (state.cwdBeforeProject.empty()) state.cwdBeforeProject = std::filesystem::current_path(ec).string();
+    std::filesystem::current_path(p.Root(), ec);
+    if (ec) LogError(state, fmt::format("Could not change directory to {}: {}", p.Root().string(), ec.message()));
+    p.EnsureFolders();
+    graph::SetScenesDir(p.ScenesDir().string());
+    graph::SetGraphsDir(p.GraphsDir().string());
+    graph::GraphSystem& gs = state.GraphSys();
+    gs.pythonExe = p.PythonExe();
+    gs.pythonEnv = p.config.python.env;
+    // Scenes come from the project's folder; [scene] picks the active one.
+    gs.LoadScenes(state);
+    ApplyUIVisibility(state, graph::SceneUI(state.GraphSys().ActiveScene()));
+    state.pendingIniFile = p.LayoutPath().string();
+}
+
+static void LeaveProjectEnvironment(AppState& state) {
+    std::error_code ec;
+    if (!state.cwdBeforeProject.empty()) std::filesystem::current_path(state.cwdBeforeProject, ec);
+    state.cwdBeforeProject.clear();
+    graph::SetScenesDir("");
+    graph::SetGraphsDir("");
+    graph::GraphSystem& gs = state.GraphSys();
+    gs.pythonExe = "python3";
+    gs.pythonEnv.clear();
+    gs.LoadScenes(state);
+    ApplyUIVisibility(state, graph::SceneUI(state.GraphSys().ActiveScene()));
+    state.pendingIniFile = std::filesystem::absolute("chemlab_imgui.ini").string();   // back in the restored cwd
+}
+
 // Push the project's config onto the live session.
 static void ApplyProjectToState(AppState& state) {
     const Project& p = *state.project;
     const ProjectConfig& c = p.config;
+    EnterProjectEnvironment(state);
 
     RenderStyle style;
     if (ParseRenderStyle(c.view.style.c_str(), style)) state.render.style = style;
@@ -54,7 +91,7 @@ static void ApplyProjectToState(AppState& state) {
 
     ClearSession(state);
     for (const ProjectStructureEntry& entry : c.structures) {
-        const std::string path = p.Resolve(entry.path).string();
+        const std::string path = p.FindData(entry.path).string();
         CommandResult r = LoadStructureFile(state, path, false);
         if (!r.ok) continue;
         Structure& s = state.structures.back();
@@ -77,7 +114,6 @@ static void ApplyProjectToState(AppState& state) {
             }
         }
     }
-    state.pendingIniFile = p.LayoutPath().string();
     for (const std::string& cmd : c.startupCommands) {
         Log(state, LogLevel::Command, "> " + cmd);
         CommandResult r = state.commands.ExecuteScript(state, cmd);
@@ -119,6 +155,14 @@ void CaptureProjectState(AppState& state) {
     c.activeStructure = std::max(0, state.activeStructure);
 }
 
+std::filesystem::path OutputPath(const AppState& state, const std::string& path) {
+    // A bare file name lands in the project's output folder; anything with a
+    // directory part is taken as given.
+    const std::filesystem::path p = path;
+    if (!state.project || p.has_parent_path()) return p;
+    return state.project->OutputDir() / p;
+}
+
 std::string ProjectRelative(const AppState& state, const std::string& absolutePath) {
     if (!state.project) return absolutePath;
     return state.project->Relativise(absolutePath);
@@ -129,11 +173,18 @@ CommandResult NewProject(AppState& state, const std::string& directory, const st
     std::string error;
     auto project = Project::Create(directory, name, error);
     if (!project) return CommandResult::Error(error);
-    // A new project adopts whatever is loaded right now.
+    // A new project adopts whatever is loaded right now, including the scene
+    // on screen (captured before LoadScenes re-reads the scene list).
     state.project = std::move(project);
+    {
+        graph::Scene& sc = state.GraphSys().ActiveScene();
+        const graph::Node* layout = graph::ActiveLayoutNode(sc);
+        state.project->config.scene.active = graph::SceneName(sc);
+        state.project->config.scene.layout = layout ? graph::LayoutName(*layout) : "";
+    }
     CaptureProjectState(state);
     if (!state.project->Save(error)) return CommandResult::Error(error);
-    state.pendingIniFile = state.project->LayoutPath().string();
+    EnterProjectEnvironment(state);
     state.projectDirty = false;
     const std::string msg = fmt::format("Created project '{}' at {}", state.project->config.name, state.project->Root().string());
     LogInfo(state, msg);
@@ -169,8 +220,9 @@ CommandResult CloseProject(AppState& state) {
     if (!state.project) return CommandResult::Error("No project open");
     const std::string name = state.project->config.name;
     state.project.reset();
+    state.projectDirty = false;
     ClearSession(state);
-    state.pendingIniFile = "chemlab_imgui.ini";
+    LeaveProjectEnvironment(state);
     return CommandResult::Ok(fmt::format("Closed project '{}'", name));
 }
 
@@ -184,7 +236,9 @@ static void OnActiveFrameChanged(AppState& state) {
     state.modelDirty = true;
 }
 
-CommandResult LoadStructureFile(AppState& state, const std::string& path, bool makeActive) {
+CommandResult LoadStructureFile(AppState& state, const std::string& pathIn, bool makeActive) {
+    // Inside a project a bare name is also looked for in the [paths].data folders.
+    const std::string path = state.project ? state.project->FindData(pathIn).string() : pathIn;
     Structure s;
     try {
         s.frames = ReadXYZ(path);
@@ -535,7 +589,7 @@ CommandResult RecomputeBonds(AppState& state) {
 CommandResult SaveScreenshot(AppState& state, const std::string& pathIn, int width, int height, bool transparent) {
     if (state.modelDirty) RebuildModel(state);
     if (!state.model.IsLoaded()) return CommandResult::Error("No structure loaded");
-    std::filesystem::path path = pathIn.empty() ? "screenshot.png" : pathIn;
+    std::filesystem::path path = OutputPath(state, pathIn.empty() ? "screenshot.png" : pathIn);
     if (path.extension().empty()) path.replace_extension(".png");
     ViewportScene scene;
     scene.model = &state.model;
@@ -556,7 +610,7 @@ CommandResult SaveScreenshot(AppState& state, const std::string& pathIn, int wid
 CommandResult ExportXYZ(AppState& state, const std::string& pathIn, bool allFrames) {
     Structure* s = state.ActiveStructure();
     if (!s) return CommandResult::Error("No structure loaded");
-    std::filesystem::path path = pathIn.empty() ? "export.xyz" : pathIn;
+    std::filesystem::path path = OutputPath(state, pathIn.empty() ? "export.xyz" : pathIn);
     if (path.extension().empty()) path.replace_extension(".xyz");
     if (!WriteXYZ(path.string(), s->frames, allFrames ? -1 : s->activeFrame))
         return CommandResult::Error("Failed to write " + path.string());

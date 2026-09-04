@@ -265,6 +265,9 @@ void UIInit(AppState& state) {
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigDockingWithShift = false;
+    // Absolute, so opening a project (which changes the cwd) still writes the
+    // scratch layout back where it was read from.
+    state.iniFileName = std::filesystem::absolute(state.iniFileName).string();
     io.IniFilename = state.iniFileName.c_str();
     rlImGuiEndInitImGui();
     ImPlot::CreateContext();
@@ -346,7 +349,7 @@ void UIFrame(AppState& state) {
             ApplyUIVisibility(state, ui);
             // Remember which scene/layout the saved dock arrangement belongs to.
             const graph::Node* layout = graph::ActiveLayoutNode(scene);
-            graph::WriteActiveScene(graph::SceneName(scene), layout ? graph::LayoutName(*layout) : "");
+            graph::WriteActiveScene(state, graph::SceneName(scene), layout ? graph::LayoutName(*layout) : "");
         }
         scene.appliedLayout = layoutStamp;
         gLayoutInitialised = true;
