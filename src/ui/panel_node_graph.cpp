@@ -364,6 +364,38 @@ void AddNodePopup(graph::Graph& g, const ImVec2& canvasPos) {
     }
 }
 
+// Hovering a link shows what flows along it: the type carried by the source
+// pin, the two endpoints, and (once the graph has been evaluated) a preview
+// of the value itself. Must be called between ed::Suspend()/Resume() -- the
+// tooltip is a popup and lives in screen space.
+void LinkHoverTooltip(const graph::Graph& g) {
+    const ed::LinkId hovered = ed::GetHoveredLink();
+    if (!hovered) return;
+    const uint32_t linkId = (uint32_t)hovered.Get();
+    const graph::Link* link = nullptr;
+    for (const auto& l : g.links)
+        if (l.id == linkId) { link = &l; break; }
+    if (!link) return;
+
+    const graph::Node* from = g.FindNode(link->fromNode);
+    const graph::Node* to = g.FindNode(link->toNode);
+    if (!from || link->fromPin < 0 || link->fromPin >= (int)from->outputs.size()) return;
+    const graph::PinSpec& outPin = from->outputs[(size_t)link->fromPin];
+
+    if (!ImGui::BeginTooltip()) return;
+    ImGui::TextColored(TypeColor(outPin.type), "%s", graph::TypeName(outPin.type));
+    if (to && link->toPin >= 0 && link->toPin < (int)to->inputs.size())
+        ImGui::TextDisabled("%s.%s \xe2\x86\x92 %s.%s", from->title.c_str(), outPin.name.c_str(),
+                            to->title.c_str(), to->inputs[(size_t)link->toPin].name.c_str());
+    else
+        ImGui::TextDisabled("%s.%s", from->title.c_str(), outPin.name.c_str());
+    if (link->fromPin < (int)from->outValues.size() && !from->outValues[(size_t)link->fromPin].Empty()) {
+        ImGui::Separator();
+        ImGui::TextUnformatted(from->outValues[(size_t)link->fromPin].Preview().c_str());
+    }
+    ImGui::EndTooltip();
+}
+
 }  // namespace
 
 // The editor canvas for one graph. `key` names the editor context.
@@ -408,6 +440,7 @@ void DrawGraphEditor(AppState& state, graph::Graph& g, const std::string& key, c
 
             density.Restore();   // popups are drawn in screen space
             ed::Suspend();
+            LinkHoverTooltip(g);
             AddNodePopup(g, mouseCanvas);
             ed::Resume();
             density.Apply();
