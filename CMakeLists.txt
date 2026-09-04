@@ -210,6 +210,8 @@ add_executable(${PROJECT_NAME}
     ${CHEMLAB_FONT_SRC}
     src/main.cpp
     src/core/molecule.cpp
+    src/core/chemical_data.cpp
+    src/core/element.cpp
     src/core/xyz_io.cpp
     src/render/shaders.cpp
     src/render/impostor_renderer.cpp
@@ -222,8 +224,6 @@ add_executable(${PROJECT_NAME}
     src/app/project.cpp
     src/plot/plot_spec.cpp
     src/graph/value.cpp
-    src/graph/chemical_data.cpp
-    src/graph/chem_convert.cpp
     src/graph/graph.cpp
     src/graph/node_registry.cpp
     src/graph/nodes_builtin.cpp

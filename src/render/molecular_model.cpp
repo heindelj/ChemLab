@@ -7,6 +7,7 @@
 #include "raymath.h"
 #include "rlgl.h"
 
+#include "core/element.h"
 #include "core/math_utils.h"
 
 const char* RenderStyleName(RenderStyle style) {
@@ -37,39 +38,43 @@ void MolecularModel::Unload() {
     halfBonds.clear();
 }
 
-void MolecularModel::Build(const Atoms& atoms, const RenderSettings& settings) {
+void MolecularModel::Build(const ChemicalData& atoms, const RenderSettings& settings) {
     Unload();
     loaded = true;
     atomColors.resize(atoms.natoms);
-    for (uint32_t i = 0; i < atoms.natoms; ++i) atomColors[i] = atoms.renderData[i].color;
+    for (uint32_t i = 0; i < atoms.natoms; ++i) atomColors[i] = ElementColor(atoms.Z[i]);
     UpdateGeometry(atoms, settings);
 }
 
-void MolecularModel::UpdateGeometry(const Atoms& atoms, const RenderSettings& settings) {
+void MolecularModel::UpdateGeometry(const ChemicalData& atoms, const RenderSettings& settings) {
     atomPositions.resize(atoms.natoms);
     atomRadii.resize(atoms.natoms);
     if (atomColors.size() != atoms.natoms) {
         atomColors.resize(atoms.natoms);
-        for (uint32_t i = 0; i < atoms.natoms; ++i) atomColors[i] = atoms.renderData[i].color;
+        for (uint32_t i = 0; i < atoms.natoms; ++i) atomColors[i] = ElementColor(atoms.Z[i]);
     }
 
     const float sphereScale = settings.style == RenderStyle::Spheres ? settings.sphereScale
                             : settings.style == RenderStyle::Sticks ? 0.0f
                             : settings.ballScale;
     for (uint32_t i = 0; i < atoms.natoms; ++i) {
-        float r = atoms.renderData[i].vdwRadius * sphereScale;
+        float r = VdwRadius(atoms.Z[i]) * sphereScale;
         if (settings.style == RenderStyle::Sticks) r = settings.stickRadius;  // round caps on the sticks
         atomRadii[i] = r;
-        atomPositions[i] = atoms.xyz[i];
+        atomPositions[i] = AtomPos(atoms, i);
     }
 
     halfBonds.clear();
-    halfBonds.reserve(atoms.covalentBondList.pairs.size() * 2);
-    for (const auto& [a, b] : atoms.covalentBondList.pairs) {
-        const Vector3 mid = midpoint(atoms.xyz[a], atoms.xyz[b]);
-        if (norm(atoms.xyz[b] - atoms.xyz[a]) < 1e-6f) continue;
-        halfBonds.push_back({a, b, atoms.xyz[a], mid});
-        halfBonds.push_back({b, a, atoms.xyz[b], mid});
+    const Topology* bonds = atoms.FindTopology("bonds");
+    if (!bonds) return;
+    halfBonds.reserve(bonds->pairs.size() * 2);
+    for (const auto& [ia, ib] : bonds->pairs) {
+        if (ia < 0 || ib < 0 || ia >= (int32_t)atoms.natoms || ib >= (int32_t)atoms.natoms) continue;
+        const uint32_t a = (uint32_t)ia, b = (uint32_t)ib;
+        const Vector3 mid = midpoint(atomPositions[a], atomPositions[b]);
+        if (norm(atomPositions[b] - atomPositions[a]) < 1e-6f) continue;
+        halfBonds.push_back({a, b, atomPositions[a], mid});
+        halfBonds.push_back({b, a, atomPositions[b], mid});
     }
 }
 

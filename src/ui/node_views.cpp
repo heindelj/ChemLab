@@ -48,14 +48,15 @@ struct View3DInstance {
 
 std::map<uint64_t, std::unique_ptr<View3DInstance>> gInstances;
 
-void FrameAtoms(OrbitCamera& orbit, const Atoms& atoms) {
+void FrameAtoms(OrbitCamera& orbit, const ChemicalData& atoms) {
     if (atoms.natoms == 0) {
         orbit.Reset(Vector3Zero(), 20.0f);
         return;
     }
     Vector3 lo{std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
     Vector3 hi{-lo.x, -lo.y, -lo.z};
-    for (const Vector3& p : atoms.xyz) {
+    for (uint32_t i = 0; i < atoms.natoms; ++i) {
+        const Vector3 p = AtomPos(atoms, i);
         lo = Vector3Min(lo, p);
         hi = Vector3Max(hi, p);
     }
@@ -145,8 +146,8 @@ void Draw3DWindowContents(AppState& state, graph::NodeView& view, View3DInstance
         const Vector2 vp{(m.x - imageMin.x) * dpi, (m.y - imageMin.y) * dpi};
         const int hit = inst.model.PickAtom(inst.viewport.ViewportRay(vp));
         if (hit >= 0 && hit < (int)view.atoms.natoms) {
-            const Vector3& p = view.atoms.xyz[(size_t)hit];
-            ImGui::SetTooltip("%d. %s  (%.3f, %.3f, %.3f)", hit + 1, view.atoms.labels[(size_t)hit].c_str(), p.x, p.y, p.z);
+            const Vector3 p = AtomPos(view.atoms, (size_t)hit);
+            ImGui::SetTooltip("%d. %s  (%.3f, %.3f, %.3f)", hit + 1, view.atoms.Label((size_t)hit).c_str(), p.x, p.y, p.z);
         }
     }
 
@@ -154,7 +155,7 @@ void Draw3DWindowContents(AppState& state, graph::NodeView& view, View3DInstance
     dl->PushClipRect(imageMin, imageMax, true);
     if (state.drawAtomNumbers) {
         for (uint32_t i = 0; i < view.atoms.natoms; ++i) {
-            const Vector2 v = inst.viewport.WorldToViewport(view.atoms.xyz[i]);
+            const Vector2 v = inst.viewport.WorldToViewport(AtomPos(view.atoms, i));
             dl->AddText(ImVec2(imageMin.x + v.x / dpi + 4, imageMin.y + v.y / dpi - 6), IM_COL32(140, 255, 140, 255),
                         std::to_string(i + 1).c_str());
         }

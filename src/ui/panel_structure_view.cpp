@@ -53,10 +53,10 @@ void DrawLabel(ImDrawList* dl, ImVec2 pos, const std::string& text, ImU32 color)
     dl->AddText(pos, color, text.c_str());
 }
 
-void DrawMeasurementOverlay(ImDrawList* dl, const AppState& state, const Atoms& atoms, const int* idx, int count, ImU32 color,
+void DrawMeasurementOverlay(ImDrawList* dl, const AppState& state, const ChemicalData& atoms, const int* idx, int count, ImU32 color,
                             bool toCursor) {
     std::vector<ImVec2> pts;
-    for (int i = 0; i < count; ++i) pts.push_back(ToScreen(state, atoms.xyz[idx[i]]));
+    for (int i = 0; i < count; ++i) pts.push_back(ToScreen(state, AtomPos(atoms, idx[i])));
     for (size_t i = 0; i + 1 < pts.size(); ++i) DrawDashedLine(dl, pts[i], pts[i + 1], color, 2.0f);
     if (toCursor && !pts.empty()) DrawDashedLine(dl, pts.back(), ImGui::GetMousePos(), color, 1.5f);
     if (!state.drawMeasurements) return;
@@ -73,7 +73,7 @@ void DrawMeasurementOverlay(ImDrawList* dl, const AppState& state, const Atoms& 
     }
 }
 
-void DrawOverlays(AppState& state, const Atoms& atoms) {
+void DrawOverlays(AppState& state, const ChemicalData& atoms) {
     ImDrawList* dl = ImGui::GetWindowDrawList();
     dl->PushClipRect(gView.imageMin, gView.imageMax, true);
 
@@ -86,7 +86,7 @@ void DrawOverlays(AppState& state, const Atoms& atoms) {
 
     if (state.drawAtomNumbers) {
         for (uint32_t i = 0; i < atoms.natoms; ++i) {
-            const ImVec2 p = ToScreen(state, atoms.xyz[i]);
+            const ImVec2 p = ToScreen(state, AtomPos(atoms, i));
             dl->AddText(ImVec2(p.x + 4, p.y - 6), IM_COL32(140, 255, 140, 255), std::to_string(i + 1).c_str());
         }
     }
@@ -108,7 +108,7 @@ void DrawOverlays(AppState& state, const Atoms& atoms) {
     dl->PopClipRect();
 }
 
-void HandleViewportInput(AppState& state, const Atoms& atoms) {
+void HandleViewportInput(AppState& state, const ChemicalData& atoms) {
     ImGuiIO& io = ImGui::GetIO();
     const bool hovered = ImGui::IsItemHovered();
     OrbitCamera& orbit = state.viewport.orbit;
@@ -118,8 +118,8 @@ void HandleViewportInput(AppState& state, const Atoms& atoms) {
     if (hovered && !gView.leftDragging) {
         state.hoveredAtom = state.model.PickAtom(state.viewport.ViewportRay(MouseInViewport()));
         if (state.hoveredAtom >= 0) {
-            const Vector3& p = atoms.xyz[state.hoveredAtom];
-            ImGui::SetTooltip("%d. %s  (%.3f, %.3f, %.3f)", state.hoveredAtom + 1, atoms.labels[state.hoveredAtom].c_str(), p.x, p.y, p.z);
+            const Vector3 p = AtomPos(atoms, state.hoveredAtom);
+            ImGui::SetTooltip("%d. %s  (%.3f, %.3f, %.3f)", state.hoveredAtom + 1, atoms.Label(state.hoveredAtom).c_str(), p.x, p.y, p.z);
         }
     }
 
@@ -202,7 +202,7 @@ void DrawToolbar(AppState& state) {
 
 void DrawStructureViewPanel(AppState& state) {
     if (state.modelDirty) RebuildModel(state);
-    const Atoms* atoms = state.ActiveAtoms();
+    const ChemicalData* atoms = state.ActiveChem();
 
     DrawToolbar(state);
 

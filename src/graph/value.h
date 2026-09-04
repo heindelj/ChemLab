@@ -13,7 +13,7 @@
 
 #include <nlohmann/json_fwd.hpp>
 
-#include "graph/chemical_data.h"
+#include "core/chemical_data.h"
 #include "plot/plot_spec.h"
 
 namespace graph {

@@ -43,9 +43,9 @@ public:
     MolecularModel(const MolecularModel&) = delete;
     MolecularModel& operator=(const MolecularModel&) = delete;
 
-    void Build(const Atoms& atoms, const RenderSettings& settings);
+    void Build(const ChemicalData& atoms, const RenderSettings& settings);
     // Update geometry after positions/bonds changed, keeping colours.
-    void UpdateGeometry(const Atoms& atoms, const RenderSettings& settings);
+    void UpdateGeometry(const ChemicalData& atoms, const RenderSettings& settings);
     void Unload();
 
     // Must be called inside BeginMode3D. Opaque impostors draw first; any

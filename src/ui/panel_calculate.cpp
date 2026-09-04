@@ -27,9 +27,9 @@ void DrawCalculatePanel(AppState& state) {
         ImGui::PopItemWidth();
         if (ImGui::Button("Recompute bonds", ImVec2(160, 0))) RunCommandLine(state, "bonds");
         if (s) {
-            const Atoms* a = state.ActiveAtoms();
+            const ChemicalData* a = state.ActiveChem();
             ImGui::SameLine();
-            ImGui::TextDisabled("%zu bonds in this frame", a ? a->covalentBondList.pairs.size() : 0);
+            ImGui::TextDisabled("%zu bonds in this frame", a ? a->BondCount() : 0);
         }
     }
 

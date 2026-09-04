@@ -179,8 +179,8 @@ struct AppState {
     Structure* ActiveStructure();
     const Structure* ActiveStructure() const;
     Frames* ActiveFrames();
-    Atoms* ActiveAtoms();
-    const Atoms* ActiveAtoms() const;
+    ChemicalData* ActiveChem();
+    const ChemicalData* ActiveChem() const;
     int ActiveFrameIndex() const;
     int FrameCount() const;
 };

@@ -15,7 +15,7 @@
 
 void DrawOutputPanel(AppState& state) {
     const Structure* s = state.ActiveStructure();
-    const Atoms* atoms = state.ActiveAtoms();
+    const ChemicalData* atoms = state.ActiveChem();
     if (!s || !atoms) {
         ImGui::TextDisabled("No structure loaded.");
         return;
@@ -23,13 +23,13 @@ void DrawOutputPanel(AppState& state) {
 
     // ---- composition ----
     std::map<std::string, int> counts;
-    for (const std::string& l : atoms->labels) counts[l]++;
+    for (uint32_t i = 0; i < atoms->natoms; ++i) counts[atoms->Label(i)]++;
     std::string formula;
     for (const auto& [el, n] : counts) formula += n > 1 ? fmt::format("{}{} ", el, n) : fmt::format("{} ", el);
     ImGui::Text("%s", s->name.c_str());
     ImGui::SameLine();
     ImGui::TextDisabled("frame %d/%u  |  %u atoms  |  %zu bonds  |  %s", s->activeFrame + 1, s->frames.nframes, atoms->natoms,
-                        atoms->covalentBondList.pairs.size(), formula.c_str());
+                        atoms->BondCount(), formula.c_str());
     ImGui::Separator();
 
     // ---- per-frame table ----
@@ -65,7 +65,7 @@ void DrawOutputPanel(AppState& state) {
                 else ImGui::TextDisabled("-");
                 for (const Measurement& m : state.measurements) {
                     ImGui::TableNextColumn();
-                    const double v = MeasurementValue(s->frames.atoms[i], m);
+                    const double v = MeasurementValue(s->frames.data[i], m);
                     ImGui::Text(m.count == 2 ? "%.4f" : "%.2f", v);
                 }
             }

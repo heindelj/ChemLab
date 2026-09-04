@@ -309,9 +309,9 @@ CommandResult BuildDistanceDemo(AppState& s) {
         if (!err.empty()) return CommandResult::Error("demo wiring failed: " + err);
 
     std::string msg = "Demo graph created: Active Frame + Atom Pair -> atom_distance.py -> Watch. Run with `graph run`.";
-    if (const Atoms* a = s.ActiveAtoms(); a && a->natoms >= 2) {
+    if (const ChemicalData* a = s.ActiveChem(); a && a->natoms >= 2) {
         // C++ reference value for the same pair, to check the script against.
-        const float d = Distance(a->xyz[0], a->xyz[1]);
+        const float d = Distance(AtomPos(*a, 0), AtomPos(*a, 1));
         msg += fmt::format("\nReference C++ distance, atoms 1-2: {:.6f} A", d);
     }
     s.PanelOpen("node_graph") = true;

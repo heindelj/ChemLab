@@ -8,6 +8,7 @@
 
 #include <fmt/format.h>
 
+#include "core/element.h"
 #include "core/math_utils.h"
 #include "core/xyz_io.h"
 #include "graph/graph_system.h"
@@ -98,7 +99,7 @@ static void ApplyProjectToState(AppState& state) {
         if (!entry.name.empty()) s.name = entry.name;
         if (entry.frame >= 0 && entry.frame < (int)s.frames.nframes) s.activeFrame = entry.frame;
         if (state.calc.bondTolerance != 0.4f)
-            for (Atoms& a : s.frames.atoms) a.covalentBondList = MakeCovalentBondList(a, state.calc.bondTolerance);
+            for (ChemicalData& a : s.frames.data) PerceiveBonds(a, state.calc.bondTolerance);
     }
     if (!state.structures.empty()) {
         const int active = std::clamp(c.activeStructure, 0, (int)state.structures.size() - 1);
@@ -254,7 +255,7 @@ CommandResult LoadStructureFile(AppState& state, const std::string& pathIn, bool
     const int index = (int)state.structures.size() - 1;
     const auto& loaded = state.structures[index];
     const std::string msg = fmt::format("Loaded {} ({} frame{}, {} atoms)", loaded.name, loaded.frames.nframes,
-                                        loaded.frames.nframes == 1 ? "" : "s", loaded.frames.atoms[0].natoms);
+                                        loaded.frames.nframes == 1 ? "" : "s", loaded.frames.data[0].natoms);
     LogInfo(state, msg);
     if (makeActive) {
         SetActiveStructure(state, index);
@@ -307,7 +308,7 @@ CommandResult SetFrame(AppState& state, int frameIndex) {
     if (frameIndex == s->activeFrame) return CommandResult::Ok();
     // Keep the selection across frames of the same size: comparing frames of a
     // trajectory is the whole point of stepping through them.
-    const bool sameSize = s->frames.atoms[frameIndex].natoms == s->frames.atoms[s->activeFrame].natoms;
+    const bool sameSize = s->frames.data[frameIndex].natoms == s->frames.data[s->activeFrame].natoms;
     s->activeFrame = frameIndex;
     if (sameSize) {
         state.modelDirty = true;
@@ -366,7 +367,7 @@ void UpdateFileWatch(AppState& state) {
 
 void RebuildModel(AppState& state) {
     state.modelDirty = false;
-    const Atoms* atoms = state.ActiveAtoms();
+    const ChemicalData* atoms = state.ActiveChem();
     if (!atoms) { state.model.Unload(); return; }
     // Preserve custom colours when the atom count is unchanged (trajectory).
     if (state.model.IsLoaded() && state.model.AtomCount() == atoms->natoms) {
@@ -382,14 +383,15 @@ void MarkGeometryChanged(AppState& state) { state.modelDirty = true; }
 // Camera
 // ---------------------------------------------------------------------------
 void ResetCamera(AppState& state) {
-    const Atoms* atoms = state.ActiveAtoms();
+    const ChemicalData* atoms = state.ActiveChem();
     if (!atoms || atoms->natoms == 0) {
         state.viewport.orbit.Reset(Vector3Zero(), 20.0f);
         return;
     }
     Vector3 lo{std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
     Vector3 hi{-lo.x, -lo.y, -lo.z};
-    for (const Vector3& p : atoms->xyz) {
+    for (uint32_t i = 0; i < atoms->natoms; ++i) {
+        const Vector3 p = AtomPos(*atoms, i);
         lo = Vector3Min(lo, p);
         hi = Vector3Max(hi, p);
     }
@@ -406,7 +408,7 @@ static CommandResult SelectionSummary(const AppState& state) {
 }
 
 CommandResult SelectAtoms(AppState& state, const std::set<int>& atoms, bool add) {
-    const Atoms* a = state.ActiveAtoms();
+    const ChemicalData* a = state.ActiveChem();
     if (!a) return CommandResult::Error("No structure loaded");
     if (!add) state.selected.clear();
     for (int i : atoms) {
@@ -418,16 +420,16 @@ CommandResult SelectAtoms(AppState& state, const std::set<int>& atoms, bool add)
 }
 
 CommandResult SelectByElement(AppState& state, const std::string& element, bool add) {
-    const Atoms* a = state.ActiveAtoms();
+    const ChemicalData* a = state.ActiveChem();
     if (!a) return CommandResult::Error("No structure loaded");
     if (!add) state.selected.clear();
     for (uint32_t i = 0; i < a->natoms; ++i)
-        if (a->labels[i] == element) state.selected.insert((int)i);
+        if (a->Label(i) == element || ZToSymbol(a->Z[i]) == element) state.selected.insert((int)i);
     return SelectionSummary(state);
 }
 
 CommandResult SelectAll(AppState& state) {
-    const Atoms* a = state.ActiveAtoms();
+    const ChemicalData* a = state.ActiveChem();
     if (!a) return CommandResult::Error("No structure loaded");
     for (uint32_t i = 0; i < a->natoms; ++i) state.selected.insert((int)i);
     return SelectionSummary(state);
@@ -439,7 +441,7 @@ CommandResult SelectNone(AppState& state) {
 }
 
 CommandResult InvertSelection(AppState& state) {
-    const Atoms* a = state.ActiveAtoms();
+    const ChemicalData* a = state.ActiveChem();
     if (!a) return CommandResult::Error("No structure loaded");
     std::set<int> inverted;
     for (uint32_t i = 0; i < a->natoms; ++i)
@@ -482,10 +484,10 @@ CommandResult SetSelectionAlpha(AppState& state, float alpha) {
 }
 
 CommandResult ResetColors(AppState& state) {
-    const Atoms* a = state.ActiveAtoms();
+    const ChemicalData* a = state.ActiveChem();
     if (!a || !state.model.IsLoaded()) return CommandResult::Error("No structure loaded");
     for (uint32_t i = 0; i < a->natoms && i < state.model.atomColors.size(); ++i)
-        state.model.atomColors[i] = a->renderData[i].color;
+        state.model.atomColors[i] = ElementColor(a->Z[i]);
     return CommandResult::Ok("Colours reset to element defaults");
 }
 
@@ -506,7 +508,7 @@ void CommitPendingMeasurement(AppState& state) {
         m.count = state.pendingCount;
         state.measurements.push_back(m);
         state.measurementsVersion++;
-        const Atoms* a = state.ActiveAtoms();
+        const ChemicalData* a = state.ActiveChem();
         if (a) LogInfo(state, fmt::format("{} = {:.4f}", MeasurementLabel(m), MeasurementValue(*a, m)));
     }
     CancelPendingMeasurement(state);
@@ -518,7 +520,7 @@ void CancelPendingMeasurement(AppState& state) {
 }
 
 CommandResult AddMeasurement(AppState& state, const std::vector<int>& atoms) {
-    const Atoms* a = state.ActiveAtoms();
+    const ChemicalData* a = state.ActiveChem();
     if (!a) return CommandResult::Error("No structure loaded");
     if (atoms.size() < 2 || atoms.size() > 4) return CommandResult::Error("measure needs 2, 3 or 4 atoms");
     Measurement m;
@@ -548,14 +550,14 @@ CommandResult ClearMeasurements(AppState& state) {
     return CommandResult::Ok(fmt::format("Cleared {} measurement{}", n, n == 1 ? "" : "s"));
 }
 
-double MeasurementValue(const Atoms& atoms, const Measurement& m) {
+double MeasurementValue(const ChemicalData& atoms, const Measurement& m) {
     for (int i = 0; i < m.count; ++i)
         if (m.atoms[i] < 0 || m.atoms[i] >= (int)atoms.natoms) return std::numeric_limits<double>::quiet_NaN();
-    const auto& p = atoms.xyz;
+    const auto p = [&](int k) { return AtomPos(atoms, (size_t)m.atoms[k]); };
     switch (m.count) {
-        case 2: return Distance(p[m.atoms[0]], p[m.atoms[1]]);
-        case 3: return AngleDeg(p[m.atoms[0]], p[m.atoms[1]], p[m.atoms[2]]);
-        case 4: return DihedralDeg(p[m.atoms[0]], p[m.atoms[1]], p[m.atoms[2]], p[m.atoms[3]]);
+        case 2: return Distance(p(0), p(1));
+        case 3: return AngleDeg(p(0), p(1), p(2));
+        case 4: return DihedralDeg(p(0), p(1), p(2), p(3));
         default: return std::numeric_limits<double>::quiet_NaN();
     }
 }
@@ -574,9 +576,9 @@ CommandResult RecomputeBonds(AppState& state) {
     Structure* s = state.ActiveStructure();
     if (!s) return CommandResult::Error("No structure loaded");
     size_t total = 0;
-    for (Atoms& a : s->frames.atoms) {
-        a.covalentBondList = MakeCovalentBondList(a, state.calc.bondTolerance);
-        total += a.covalentBondList.pairs.size();
+    for (ChemicalData& a : s->frames.data) {
+        PerceiveBonds(a, state.calc.bondTolerance);
+        total += a.BondCount();
     }
     MarkGeometryChanged(state);
     return CommandResult::Ok(fmt::format("Recomputed bonds (tolerance {:.2f} A): {} bonds over {} frames",

@@ -81,7 +81,7 @@ void UpdateMeasurementPlotCache(AppState& state, const Structure& s) {
     for (size_t k = 0; k < state.measurements.size(); ++k) {
         cache.series[k].resize(s.frames.nframes);
         for (uint32_t i = 0; i < s.frames.nframes; ++i)
-            cache.series[k][i] = MeasurementValue(s.frames.atoms[i], state.measurements[k]);
+            cache.series[k][i] = MeasurementValue(s.frames.data[i], state.measurements[k]);
     }
 }
 

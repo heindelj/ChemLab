@@ -80,7 +80,7 @@ void RenderingControls(AppState& state) {
     if (ImGui::Button("Reset camera")) ResetCamera(state);
 }
 
-void SelectionControls(AppState& state, const Atoms& atoms) {
+void SelectionControls(AppState& state, const ChemicalData& atoms) {
     ImGui::Text("%zu of %u atoms selected", state.selected.size(), atoms.natoms);
     HelpMarker("Shift-click atoms in the 3D view, or use the `select` command.");
     if (ImGui::SmallButton("All")) SelectAll(state);
@@ -90,7 +90,8 @@ void SelectionControls(AppState& state, const Atoms& atoms) {
     if (ImGui::SmallButton("Invert")) InvertSelection(state);
     ImGui::SameLine();
     // Element picker built from what is actually in the frame.
-    std::set<std::string> elements(atoms.labels.begin(), atoms.labels.end());
+    std::set<std::string> elements;
+    for (uint32_t i = 0; i < atoms.natoms; ++i) elements.insert(atoms.Label(i));
     ImGui::SetNextItemWidth(90.0f);
     if (ImGui::BeginCombo("##element", "element...")) {
         for (const std::string& e : elements)
@@ -105,7 +106,7 @@ void SelectionControls(AppState& state, const Atoms& atoms) {
     if (ImGui::Button("Reset colours")) ResetColors(state);
 }
 
-void MeasurementControls(AppState& state, const Atoms& atoms) {
+void MeasurementControls(AppState& state, const ChemicalData& atoms) {
     ImGui::TextWrapped("Click two, three or four atoms in the 3D view for a distance, angle or dihedral. "
                        "Enter keeps a partial selection, Escape cancels.");
     if (state.measurements.empty()) {
@@ -168,7 +169,7 @@ void DrawControlsPanel(AppState& state) {
         ImGui::PopStyleColor();
         return;
     }
-    const Atoms* atoms = state.ActiveAtoms();
+    const ChemicalData* atoms = state.ActiveChem();
 
     if (ImGui::CollapsingHeader("Frames", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent(4.0f);

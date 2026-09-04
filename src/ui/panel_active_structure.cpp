@@ -30,7 +30,7 @@ void DrawActiveStructurePanel(AppState& state) {
         ImGui::PushID((int)i);
         const bool active = (int)i == state.activeStructure;
         const std::string label = fmt::format("{}  ({} frame{}, {} atoms)", s.name, s.frames.nframes,
-                                              s.frames.nframes == 1 ? "" : "s", s.frames.atoms.empty() ? 0 : s.frames.atoms[0].natoms);
+                                              s.frames.nframes == 1 ? "" : "s", s.frames.data.empty() ? 0 : s.frames.data[0].natoms);
         if (ImGui::Selectable(label.c_str(), active, ImGuiSelectableFlags_AllowDoubleClick)) SetActiveStructure(state, (int)i);
         if (ImGui::IsItemHovered() && !s.path.empty()) ImGui::SetTooltip("%s", s.path.c_str());
         if (ImGui::BeginPopupContextItem("structure_context")) {

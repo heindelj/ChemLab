@@ -22,18 +22,18 @@ Frames* AppState::ActiveFrames() {
     return s ? &s->frames : nullptr;
 }
 
-Atoms* AppState::ActiveAtoms() {
+ChemicalData* AppState::ActiveChem() {
     Structure* s = ActiveStructure();
     if (!s || s->frames.nframes == 0) return nullptr;
     if (s->activeFrame < 0 || s->activeFrame >= (int)s->frames.nframes) s->activeFrame = 0;
-    return &s->frames.atoms[s->activeFrame];
+    return &s->frames.data[s->activeFrame];
 }
 
-const Atoms* AppState::ActiveAtoms() const {
+const ChemicalData* AppState::ActiveChem() const {
     const Structure* s = ActiveStructure();
     if (!s || s->frames.nframes == 0) return nullptr;
     const int f = (s->activeFrame < 0 || s->activeFrame >= (int)s->frames.nframes) ? 0 : s->activeFrame;
-    return &s->frames.atoms[f];
+    return &s->frames.data[f];
 }
 
 int AppState::ActiveFrameIndex() const {

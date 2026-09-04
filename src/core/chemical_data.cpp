@@ -1,9 +1,13 @@
-#include "graph/chemical_data.h"
+#include "core/chemical_data.h"
+
+#include <algorithm>
+#include <cctype>
+#include <unordered_map>
+
+#include "core/element.h"
 
 #include <fmt/format.h>
 #include <nlohmann/json.hpp>
-
-namespace graph {
 
 using nlohmann::json;
 
@@ -48,6 +52,8 @@ std::string ChemicalData::Validate() const {
             if (a < 0 || b < 0 || a >= (int32_t)natoms || b >= (int32_t)natoms)
                 return fmt::format("topology '{}' has pair ({}, {}) out of range 0..{}", t.name, a, b,
                                    (int)natoms - 1);
+    if (!labels.empty() && labels.size() != natoms)
+        return fmt::format("labels has {} entries, expected natoms = {}", labels.size(), natoms);
     for (const FieldSpec& f : fields)
         if (f.byteOffset + f.count * DTypeSize(f.dtype) > bytes.size())
             return fmt::format("field '{}' extends past the byte buffer", f.name);
@@ -58,6 +64,28 @@ const Topology* ChemicalData::FindTopology(const std::string& name) const {
     for (const auto& t : topologies)
         if (t.name == name) return &t;
     return nullptr;
+}
+
+std::string ChemicalData::Label(size_t i) const {
+    if (i < labels.size()) return labels[i];
+    return i < Z.size() ? ZToSymbol(Z[i]) : "?";
+}
+
+Topology* ChemicalData::FindTopology(const std::string& name) {
+    for (auto& t : topologies)
+        if (t.name == name) return &t;
+    return nullptr;
+}
+
+Topology& ChemicalData::Topo(const std::string& name) {
+    if (Topology* t = FindTopology(name)) return *t;
+    topologies.push_back(Topology{name, {}});
+    return topologies.back();
+}
+
+size_t ChemicalData::BondCount() const {
+    const Topology* t = FindTopology("bonds");
+    return t ? t->pairs.size() : 0;
 }
 
 const FieldSpec* ChemicalData::FindField(const std::string& name) const {
@@ -170,6 +198,7 @@ json ChemicalDataToJson(const ChemicalData& c) {
     }
     if (c.cell) j["cell"] = *c.cell;
     else j["cell"] = nullptr;
+    if (!c.labels.empty()) j["labels"] = c.labels;
     j["fields"] = json::array();
     for (const FieldSpec& f : c.fields)
         j["fields"].push_back(
@@ -203,6 +232,7 @@ bool ChemicalDataFromJson(const json& j, ChemicalData& out, std::string& err) {
             std::copy(cell.begin(), cell.end(), a.begin());
             out.cell = a;
         }
+        if (j.contains("labels") && j["labels"].is_array()) out.labels = j["labels"].get<std::vector<std::string>>();
         if (j.contains("bytes") && j["bytes"].is_string() && !B64Decode(j["bytes"].get<std::string>(), out.bytes)) {
             err = "bytes is not valid base64";
             return false;
@@ -223,4 +253,74 @@ bool ChemicalDataFromJson(const json& j, ChemicalData& out, std::string& err) {
     return err.empty();
 }
 
-}  // namespace graph
+// ---------------------------------------------------------------------------
+// Bond perception
+// ---------------------------------------------------------------------------
+
+void PerceiveBonds(ChemicalData& c, float tolerance) {
+    // Eq. (1) of "A rule-based algorithm for automatic bond type perception",
+    // J. Cheminformatics 4, 26 (2012). Only the distance criterion for now.
+    // Implemented with a uniform cell grid (cell size = max cutoff) so the
+    // search is O(N) instead of O(N^2); large systems load interactively.
+    Topology& bonds = c.Topo("bonds");
+    bonds.pairs.clear();
+    const uint32_t n = c.natoms;
+    if (n < 2 || c.R.size() < (size_t)n * 3) return;
+
+    std::vector<float> rcov(n);
+    float maxCovalent = 0.0f;
+    double lo[3], hi[3];
+    for (int k = 0; k < 3; ++k) lo[k] = hi[k] = c.R[k];
+    for (uint32_t i = 0; i < n; i++) {
+        rcov[i] = i < c.Z.size() ? CovalentRadius(c.Z[i]) : 0.0f;
+        maxCovalent = std::max(maxCovalent, rcov[i]);
+        for (int k = 0; k < 3; ++k) {
+            lo[k] = std::min(lo[k], c.R[3 * i + k]);
+            hi[k] = std::max(hi[k], c.R[3 * i + k]);
+        }
+    }
+    const double cell = std::max(2.0 * maxCovalent + tolerance, 1e-3);
+
+    const auto cellIndex = [&](uint32_t i, int& cx, int& cy, int& cz) {
+        cx = (int)((c.R[3 * i] - lo[0]) / cell);
+        cy = (int)((c.R[3 * i + 1] - lo[1]) / cell);
+        cz = (int)((c.R[3 * i + 2] - lo[2]) / cell);
+    };
+    // Cells run 0..n-1; the neighbour search touches -1..n, so the key uses
+    // n+2 per axis (a smaller stride would alias neighbouring cells and
+    // count pairs twice).
+    const int64_t ny = (int64_t)((hi[1] - lo[1]) / cell) + 3;
+    const int64_t nz = (int64_t)((hi[2] - lo[2]) / cell) + 3;
+
+    // Bucket atoms by cell (hash map keeps memory bounded for sparse systems).
+    std::unordered_map<int64_t, std::vector<uint32_t>> grid;
+    grid.reserve(n);
+    const auto key = [&](int cx, int cy, int cz) -> int64_t {
+        return (((int64_t)cx + 1) * ny + (cy + 1)) * nz + (cz + 1);
+    };
+    for (uint32_t i = 0; i < n; i++) {
+        int cx, cy, cz;
+        cellIndex(i, cx, cy, cz);
+        grid[key(cx, cy, cz)].push_back(i);
+    }
+
+    for (uint32_t i = 0; i < n; i++) {
+        int cx, cy, cz;
+        cellIndex(i, cx, cy, cz);
+        for (int dx = -1; dx <= 1; dx++)
+        for (int dy = -1; dy <= 1; dy++)
+        for (int dz = -1; dz <= 1; dz++) {
+            const auto it = grid.find(key(cx + dx, cy + dy, cz + dz));
+            if (it == grid.end()) continue;
+            for (uint32_t j : it->second) {
+                if (j <= i) continue;   // each pair once
+                const double cutoff = rcov[i] + rcov[j] + tolerance;
+                const double ddx = c.R[3 * i] - c.R[3 * j], ddy = c.R[3 * i + 1] - c.R[3 * j + 1],
+                             ddz = c.R[3 * i + 2] - c.R[3 * j + 2];
+                if (ddx * ddx + ddy * ddy + ddz * ddz < cutoff * cutoff)
+                    bonds.pairs.emplace_back((int32_t)i, (int32_t)j);
+            }
+        }
+    }
+    std::sort(bonds.pairs.begin(), bonds.pairs.end());
+}

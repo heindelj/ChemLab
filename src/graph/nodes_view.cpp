@@ -16,7 +16,6 @@
 
 #include "app/actions.h"
 #include "app/app_state.h"
-#include "graph/chem_convert.h"
 #include "graph/graph_system.h"
 #include "graph/node_registry.h"
 
@@ -119,9 +118,7 @@ std::string EvalSelectFrame(AppState& s, Node& n, const std::vector<const Value*
     if (IntParam(n, "follow", 1) == 0) frame = (int)IntParam(n, "frame", 1) - 1;
     if (frame < 0 || frame >= (int)st.frames.nframes)
         return fmt::format("frame {} out of range 1..{}", frame + 1, st.frames.nframes);
-    ChemicalData c;
-    std::string err;
-    if (!AtomsToChemicalData(st.frames.atoms[(size_t)frame], c, err)) return err;
+    ChemicalData c = st.frames.data[(size_t)frame];
     n.params["_label"] = Value::S(st.frames.nframes > 1 ? fmt::format("{}  |  frame {}/{}", st.name, frame + 1, st.frames.nframes)
                                                         : st.name);
     out[0].v = std::move(c);
@@ -155,9 +152,11 @@ std::string EvalRender3D(AppState& s, Node& n, const std::vector<const Value*>& 
     if (!in[0]) return "input 'chem' not connected";
     const ChemicalData* chem = in[0]->AsChem();
     if (!chem) return "wrong input type on 'chem'";
-    std::string err;
-    Atoms atoms;
-    if (!ChemicalDataToAtoms(*chem, atoms, err, s.calc.bondTolerance)) return err;
+    if (std::string v = chem->Validate(); !v.empty()) return v;
+    ChemicalData atoms = *chem;
+    // Anything producing ChemicalData without bonds -- a script, an analysis
+    // -- still gets drawn with perceived bonds.
+    if (!atoms.FindTopology("bonds")) PerceiveBonds(atoms, s.calc.bondTolerance);
     // The label travels out-of-band: the Select Frame node upstream knows
     // which structure/frame this is, the ChemicalData does not.
     std::string label;
@@ -207,7 +206,7 @@ bool BodyRender3D(AppState& s, Node& n) {
     if (ImGui::Checkbox("grid", &s.drawGrid)) changed = true;
     ImGui::SameLine();
     if (ImGui::Checkbox("atom numbers", &s.drawAtomNumbers)) changed = true;
-    if (view) ImGui::TextDisabled("drawing %u atoms, %zu bonds", view->atoms.natoms, view->atoms.covalentBondList.pairs.size());
+    if (view) ImGui::TextDisabled("drawing %u atoms, %zu bonds", view->atoms.natoms, view->atoms.BondCount());
     else ImGui::TextDisabled("(nothing to draw)");
     return changed;
 }

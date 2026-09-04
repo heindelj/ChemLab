@@ -62,7 +62,7 @@ CommandResult AddMeasurement(AppState& state, const std::vector<int>& atoms);
 CommandResult RemoveMeasurement(AppState& state, int index);
 CommandResult ClearMeasurements(AppState& state);
 // Value of a measurement for the given frame, or NaN.
-double MeasurementValue(const Atoms& atoms, const Measurement& m);
+double MeasurementValue(const ChemicalData& atoms, const Measurement& m);
 std::string MeasurementLabel(const Measurement& m);
 
 // ---- calculations ----

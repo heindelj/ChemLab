@@ -211,11 +211,11 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
     r.Register({"status", "status", "Summarise what is loaded and shown.", "general", [](AppState& s, const CommandArgs&) {
                     const Structure* st = s.ActiveStructure();
                     if (!st) return CommandResult::Ok("No structure loaded");
-                    const Atoms& a = st->frames.atoms[st->activeFrame];
+                    const ChemicalData& a = st->frames.data[st->activeFrame];
                     return CommandResult::Ok(fmt::format(
                         "structure: {} ({}/{} structures)\nframe: {}/{}\natoms: {}  bonds: {}\nstyle: {}\nselected: {}\nmeasurements: {}",
                         st->name, s.activeStructure + 1, s.structures.size(), st->activeFrame + 1, st->frames.nframes, a.natoms,
-                        a.covalentBondList.pairs.size(), RenderStyleName(s.render.style), s.selected.size(), s.measurements.size()));
+                        a.BondCount(), RenderStyleName(s.render.style), s.selected.size(), s.measurements.size()));
                 }});
 
     // ---- project ----
@@ -456,7 +456,7 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
                 "measure", [](AppState& s, const CommandArgs& a) {
                     if (a.size() >= 1 && a[0] == "clear") return ClearMeasurements(s);
                     if (a.size() == 0 || a[0] == "list") {
-                        const Atoms* atoms = s.ActiveAtoms();
+                        const ChemicalData* atoms = s.ActiveChem();
                         if (!atoms) return CommandResult::Error("No structure loaded");
                         std::string out;
                         for (const Measurement& m : s.measurements)

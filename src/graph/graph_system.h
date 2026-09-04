@@ -61,7 +61,7 @@ struct NodeView {
     bool open = true;          // the window is shown
     uint64_t version = 0;      // bumped whenever the data below changes
     // View3D
-    Atoms atoms;
+    ChemicalData atoms;
     std::string label;         // badge: "<structure> | frame i/n"
     // Plot
     plot::NamedPlot plot;

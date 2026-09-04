@@ -7,6 +7,8 @@
 
 #include <fmt/format.h>
 
+#include "core/element.h"
+
 Frames ReadXYZ(const std::string& file) {
     if (!std::filesystem::exists(file))
         throw std::filesystem::filesystem_error("Could not find geometry file (.xyz)", file, std::error_code());
@@ -34,26 +36,34 @@ Frames ReadXYZ(const std::string& file) {
         lineNumber++;
         frames.headers.push_back(line);
 
-        Atoms atoms;
-        atoms.natoms = natoms;
-        atoms.xyz.reserve(natoms);
+        ChemicalData chem;
+        chem.natoms = natoms;
+        chem.R.reserve((size_t)natoms * 3);
+        chem.Z.reserve(natoms);
+        chem.labels.reserve(natoms);
+        bool plainLabels = true;   // every label is exactly its element symbol
         for (uint32_t i = 0; i < natoms; ++i) {
             if (!std::getline(infile, line))
                 throw std::runtime_error(fmt::format("{}: unexpected end of file inside frame {}", file, frames.nframes + 1));
             lineNumber++;
             std::istringstream iss(line);
             std::string atomLabel;
-            float x, y, z;
+            double x, y, z;
             if (!(iss >> atomLabel >> x >> y >> z))
                 throw std::runtime_error(fmt::format("{}:{}: expected 'label x y z', got '{}'", file, lineNumber, line));
-            if (!IsKnownElement(atomLabel))
+            const int32_t zNum = SymbolToZ(atomLabel);
+            if (zNum == 0 || !HasElementData(zNum))
                 throw std::runtime_error(fmt::format("{}:{}: unknown element '{}'", file, lineNumber, atomLabel));
-            atoms.labels.push_back(atomLabel);
-            atoms.renderData.push_back(GetRenderData(atomLabel));
-            atoms.xyz.push_back(Vector3{x, y, z});
+            plainLabels = plainLabels && atomLabel == ZToSymbol(zNum);
+            chem.labels.push_back(std::move(atomLabel));
+            chem.Z.push_back(zNum);
+            chem.R.push_back(x);
+            chem.R.push_back(y);
+            chem.R.push_back(z);
         }
-        atoms.covalentBondList = MakeCovalentBondList(atoms);
-        frames.atoms.push_back(std::move(atoms));
+        if (plainLabels) chem.labels.clear();   // nothing beyond Z to keep
+        PerceiveBonds(chem);
+        frames.data.push_back(std::move(chem));
         frames.nframes++;
     }
     if (frames.nframes == 0)
@@ -62,10 +72,10 @@ Frames ReadXYZ(const std::string& file) {
     return frames;
 }
 
-std::string FormatXYZ(const Atoms& atoms, const std::string& header) {
-    std::string out = fmt::format("{}\n{}\n", atoms.natoms, header);
-    for (uint32_t i = 0; i < atoms.natoms; ++i)
-        out += fmt::format("{:<3} {:14.8f} {:14.8f} {:14.8f}\n", atoms.labels[i], atoms.xyz[i].x, atoms.xyz[i].y, atoms.xyz[i].z);
+std::string FormatXYZ(const ChemicalData& chem, const std::string& header) {
+    std::string out = fmt::format("{}\n{}\n", chem.natoms, header);
+    for (uint32_t i = 0; i < chem.natoms; ++i)
+        out += fmt::format("{:<3} {:14.8f} {:14.8f} {:14.8f}\n", chem.Label(i), chem.R[3 * i], chem.R[3 * i + 1], chem.R[3 * i + 2]);
     return out;
 }
 
@@ -74,10 +84,10 @@ bool WriteXYZ(const std::string& path, const Frames& frames, int frameIndex) {
     if (!out) return false;
     if (frameIndex >= 0) {
         if (frameIndex >= (int)frames.nframes) return false;
-        out << FormatXYZ(frames.atoms[frameIndex], frames.headers[frameIndex]);
+        out << FormatXYZ(frames.data[frameIndex], frames.headers[frameIndex]);
     } else {
         for (uint32_t i = 0; i < frames.nframes; ++i)
-            out << FormatXYZ(frames.atoms[i], frames.headers[i]);
+            out << FormatXYZ(frames.data[i], frames.headers[i]);
     }
     return static_cast<bool>(out);
 }
@@ -93,7 +103,7 @@ bool CheckForFileChangesAndUpdate(Frames& frames) {
                 // editor and watch it update" workflow.
                 Frames newFrames = ReadXYZ(file.string());
                 frames.nframes = newFrames.nframes;
-                frames.atoms = std::move(newFrames.atoms);
+                frames.data = std::move(newFrames.data);
                 frames.headers = std::move(newFrames.headers);
                 frames.energies = std::move(newFrames.energies);
                 frames.anyEnergy = newFrames.anyEnergy;

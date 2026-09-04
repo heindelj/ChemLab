@@ -8,7 +8,7 @@
 Frames ReadXYZ(const std::string& path);
 
 // Formats a single frame as xyz text.
-std::string FormatXYZ(const Atoms& atoms, const std::string& header = "");
+std::string FormatXYZ(const ChemicalData& chem, const std::string& header = "");
 
 // Writes one frame (frameIndex >= 0) or every frame (frameIndex < 0).
 // Returns false on failure.

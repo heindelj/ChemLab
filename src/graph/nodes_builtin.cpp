@@ -12,8 +12,7 @@
 
 #include "app/actions.h"
 #include "app/app_state.h"
-#include "graph/chem_convert.h"
-#include "graph/chemical_data.h"
+#include "core/chemical_data.h"
 #include "graph/graph.h"
 #include "graph/node_registry.h"
 
@@ -31,22 +30,20 @@ int64_t IntParam(const Node& n, const std::string& key, int64_t fallback) {
 // ---- Active Frame: positions + labels of the active structure's frame ----
 
 std::string EvalActiveFrame(AppState& s, Node&, const std::vector<const Value*>&, std::vector<Value>& out) {
-    const Atoms* a = s.ActiveAtoms();
+    const ChemicalData* a = s.ActiveChem();
     if (!a) return "no structure loaded";
     Positions p;
-    p.xyz.reserve((size_t)a->natoms * 3);
-    for (const Vector3& r : a->xyz) {
-        p.xyz.push_back(r.x);
-        p.xyz.push_back(r.y);
-        p.xyz.push_back(r.z);
-    }
+    p.xyz = a->R;
     out[0].v = std::move(p);
-    out[1].v = a->labels;
+    Labels labels;
+    labels.reserve(a->natoms);
+    for (uint32_t i = 0; i < a->natoms; ++i) labels.push_back(a->Label(i));
+    out[1].v = std::move(labels);
     return "";
 }
 
 bool BodyActiveFrame(AppState& s, Node&) {
-    const Atoms* a = s.ActiveAtoms();
+    const ChemicalData* a = s.ActiveChem();
     if (a)
         ImGui::TextDisabled("%u atoms, frame %d/%d", a->natoms, s.ActiveFrameIndex() + 1, s.FrameCount());
     else
@@ -59,7 +56,7 @@ bool BodyActiveFrame(AppState& s, Node&) {
 std::string EvalAtomPair(AppState& s, Node& n, const std::vector<const Value*>&, std::vector<Value>& out) {
     const int64_t i = IntParam(n, "i", 1), j = IntParam(n, "j", 2);
     if (i < 1 || j < 1) return "atom indices are 1-based";
-    if (const Atoms* a = s.ActiveAtoms()) {
+    if (const ChemicalData* a = s.ActiveChem()) {
         if (i > a->natoms || j > a->natoms)
             return fmt::format("index out of range (structure has {} atoms)", a->natoms);
     }
@@ -91,18 +88,15 @@ bool BodyAtomPair(AppState& s, Node& n) {
 // ---- Chemical Data: the active frame as a ChemicalData object ----
 
 std::string EvalChemicalData(AppState& s, Node&, const std::vector<const Value*>&, std::vector<Value>& out) {
-    const Atoms* a = s.ActiveAtoms();
+    const ChemicalData* a = s.ActiveChem();
     if (!a) return "no structure loaded";
-    ChemicalData c;
-    std::string err;
-    if (!AtomsToChemicalData(*a, c, err)) return err;
-    out[0].v = std::move(c);
+    out[0].v = *a;
     return "";
 }
 
 bool BodyChemicalData(AppState& s, Node&) {
-    if (const Atoms* a = s.ActiveAtoms())
-        ImGui::TextDisabled("%u atoms, %zu bonds", a->natoms, a->covalentBondList.pairs.size());
+    if (const ChemicalData* a = s.ActiveChem())
+        ImGui::TextDisabled("%u atoms, %zu bonds", a->natoms, a->BondCount());
     else
         ImGui::TextDisabled("no structure");
     return false;
@@ -200,7 +194,7 @@ bool BodyApplyAtomAlpha(AppState&, Node&) {
 std::string EvalAtomIndex(AppState& s, Node& n, const std::vector<const Value*>&, std::vector<Value>& out) {
     const int64_t i = IntParam(n, "i", 1);
     if (i < 1) return "atom index is 1-based";
-    if (const Atoms* a = s.ActiveAtoms())
+    if (const ChemicalData* a = s.ActiveChem())
         if (i > (int64_t)a->natoms) return fmt::format("index out of range (structure has {} atoms)", a->natoms);
     out[0] = Value::I(i - 1);
     return "";

@@ -1,5 +1,6 @@
 #pragma once
-// Plain molecular data: atoms, frames, bonds and element lookups.
+// Trajectories (Frames of ChemicalData), geometry helpers and xyz-header
+// energy parsing.
 // Nothing in here knows about rendering or the UI.
 
 #include <cstdint>
@@ -12,27 +13,12 @@
 
 #include "raylib.h"
 
-struct RenderData {
-    Color color;
-    float vdwRadius;
-    float covalentRadius;
-};
+#include "core/chemical_data.h"
 
-struct BondList {
-    std::vector<std::pair<uint32_t, uint32_t>> pairs;
-};
-
-struct Atoms {
-    uint32_t natoms = 0;
-    std::vector<Vector3> xyz;
-    std::vector<std::string> labels;
-    BondList covalentBondList;
-    std::vector<RenderData> renderData;
-};
-
+// A trajectory: one ChemicalData per frame plus per-frame metadata.
 struct Frames {
     uint32_t nframes = 0;
-    std::vector<Atoms> atoms;
+    std::vector<ChemicalData> data;
     std::vector<std::string> headers;
     // Energy parsed from each comment line (NaN when absent), cached at load
     // time: parsing 15k headers per rendered frame is what killed large files.
@@ -45,13 +31,10 @@ struct Frames {
     std::unordered_map<std::string, std::filesystem::file_time_type> loadedFiles;
 };
 
-// Element lookups (throws std::invalid_argument on an unknown label).
-RenderData GetRenderData(const std::string& atomLabel);
-bool IsKnownElement(const std::string& atomLabel);
-
-// Bond perception from covalent radii. `tolerance` is the slack added to the
-// sum of covalent radii (angstrom).
-BondList MakeCovalentBondList(const Atoms& atoms, float tolerance = 0.4f);
+// Position of atom i as a raylib vector (R is stored as doubles).
+inline Vector3 AtomPos(const ChemicalData& c, size_t i) {
+    return Vector3{(float)c.R[3 * i], (float)c.R[3 * i + 1], (float)c.R[3 * i + 2]};
+}
 
 // Geometry helpers
 float Distance(const Vector3& a, const Vector3& b);
