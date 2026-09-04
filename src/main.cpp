@@ -72,6 +72,7 @@ void RunFrame(void* userData) {
     UpdateFileWatch(state);
     UpdatePlayback(state);
     graph::UpdateGraphAutoRun(state);
+    graph::UpdateWorkflowTriggers(state);
     {
         static std::string lastTitle;
         const std::string title = state.project ? fmt::format("ChemLab - {}{}", state.project->config.name, state.projectDirty ? " *" : "")

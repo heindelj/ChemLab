@@ -65,6 +65,20 @@ void MigrateSavedLayoutForPlotPanel(ImGuiID dockspaceId, ImVec2 dockSize) {
     ImGui::DockBuilderFinish(dockspaceId);
 }
 
+// Same idea for the Workflows tab: a layout saved before it existed leaves
+// it floating, so tab it next to Calculate where the classic scene puts it.
+bool gWorkflowsPanelMigrated = false;
+void MigrateSavedLayoutForWorkflowsPanel(ImGuiID dockspaceId) {
+    if (gWorkflowsPanelMigrated) return;
+    if (gFramesSinceLayoutLoad < 1) return;
+    gWorkflowsPanelMigrated = true;
+    if (ImGui::FindWindowSettingsByID(ImHashStr(PanelName::Workflows))) return;
+    ImGuiWindowSettings* calc = ImGui::FindWindowSettingsByID(ImHashStr(PanelName::Calculate));
+    if (!calc || calc->DockId == 0 || !ImGui::DockBuilderGetNode(calc->DockId)) return;
+    ImGui::DockBuilderDockWindow(PanelName::Workflows, calc->DockId);
+    ImGui::DockBuilderFinish(dockspaceId);
+}
+
 // The arrangement on screen is the active scene's Layout node, read as a
 // UIDefinition and applied through ApplyUIDockLayout (ui_builder.h); the
 // old hard-coded dock layout is the built-in "classic" scene (ui_spec.cpp).
@@ -276,6 +290,7 @@ void UIInit(AppState& state) {
     RegisterBuiltinCommands(state.commands);
     MigrateUserUIsToScenes(state);   // chemlab_uis.toml from older builds -> scenes/*.json
     state.GraphSys().LoadScenes(state);
+    state.GraphSys().LoadWorkflows(state);
     ApplyUIVisibility(state, ActiveUI(state));
     LogInfo(state, "ChemLab ready. Type `help` in the command bar (Ctrl+K) for the command list.");
 }
@@ -344,6 +359,7 @@ void UIFrame(AppState& state) {
         if (state.resetLayoutRequested || ImGui::DockBuilderGetNode(gDockspaceId) == nullptr) {
             ApplyUIDockLayout(state, ui, gDockspaceId, dockSize);
             gPlotPanelMigrated = true;   // a freshly built layout already has the 2D Plot panel
+            gWorkflowsPanelMigrated = true;
         }
         if (state.resetLayoutRequested) {
             ApplyUIVisibility(state, ui);
@@ -356,6 +372,7 @@ void UIFrame(AppState& state) {
         state.resetLayoutRequested = false;
     }
     MigrateSavedLayoutForPlotPanel(gDockspaceId, dockSize);
+    MigrateSavedLayoutForWorkflowsPanel(gDockspaceId);
     UIBuilderPreDockspace(state, gDockspaceId, dockSize);
     ImGui::DockSpace(gDockspaceId, dockSize, ImGuiDockNodeFlags_None);
     ImGui::End();
@@ -378,6 +395,7 @@ void UIFrame(AppState& state) {
         }
     }
     DrawSceneGraphWindows(state);
+    DrawWorkflowGraphWindows(state);
     DrawNodeViewWindows(state);
     DrawUIBuilder(state);
     if (state.showImGuiDemo) ImGui::ShowDemoWindow(&state.showImGuiDemo);

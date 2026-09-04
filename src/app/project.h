@@ -34,6 +34,7 @@ struct ProjectPaths {
     std::vector<std::string> data = {"data"};   // searched in order for bare structure names
     std::string scenes = "scenes";
     std::string graphs = "graphs";
+    std::string workflows = "workflows";
     std::string scripts = "scripts";
     std::string output = "output";
     std::string layout = "layout.ini";          // ImGui dock state
@@ -101,6 +102,7 @@ public:
     std::filesystem::path LayoutPath() const { return Resolve(config.paths.layout); }
     std::filesystem::path ScenesDir() const { return Resolve(config.paths.scenes); }
     std::filesystem::path GraphsDir() const { return Resolve(config.paths.graphs); }
+    std::filesystem::path WorkflowsDir() const { return Resolve(config.paths.workflows); }
     std::filesystem::path ScriptsDir() const { return Resolve(config.paths.scripts); }
     std::filesystem::path OutputDir() const { return Resolve(config.paths.output); }
     std::vector<std::filesystem::path> DataDirs() const;

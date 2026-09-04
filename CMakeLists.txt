@@ -213,6 +213,7 @@ add_executable(${PROJECT_NAME}
     src/core/chemical_data.cpp
     src/core/element.cpp
     src/core/xyz_io.cpp
+    src/core/neighbor_list.cpp
     src/render/shaders.cpp
     src/render/impostor_renderer.cpp
     src/render/molecular_model.cpp
@@ -233,12 +234,18 @@ add_executable(${PROJECT_NAME}
     src/graph/py_runner.cpp
     src/graph/graph_commands.cpp
     src/graph/graph_io.cpp
+    src/graph/executor.cpp
+    src/graph/kernels_array.cpp
+    src/graph/kernels_chem.cpp
+    src/graph/nodes_workflow.cpp
+    src/graph/workflow.cpp
     src/graph/scene.cpp
     src/ui/theme.cpp
     src/ui/ui.cpp
     src/ui/ui_spec.cpp
     src/ui/ui_builder.cpp
     src/ui/panel_registry.cpp
+    src/ui/panel_workflows.cpp
     src/ui/node_views.cpp
     src/ui/command_bar.cpp
     src/ui/panel_controls.cpp

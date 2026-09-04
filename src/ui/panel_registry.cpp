@@ -13,6 +13,8 @@ const std::vector<PanelInfo>& PanelCatalog() {
          &DrawActiveStructurePanel},
         {"calculate", PanelName::Calculate, "Run calculations on the active structure.", &DrawCalculatePanel},
         {"output", PanelName::Output, "Output from calculations.", &DrawOutputPanel},
+        {"workflows", PanelName::Workflows, "Workflows: node-graph programs run by the executor, built-in and yours.",
+         &DrawWorkflowsPanel},
         {"export", PanelName::Export, "Screenshots and xyz export.", &DrawExportPanel},
         {"console", PanelName::Console, "Command log and console.", &DrawConsolePanel},
         {"node_graph", PanelName::NodeGraph, "Node graph: chain data sources, scripts and analyses.", &DrawNodeGraphPanel},

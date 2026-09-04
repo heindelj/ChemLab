@@ -56,8 +56,13 @@ struct NodeTypeSpec {
     std::string description;        // one-liner for the add-node menu
     std::vector<PinSpec> inputs;    // static pins copied onto new nodes;
     std::vector<PinSpec> outputs;   //   script nodes replace them per instance
-    EvalFn evaluate;
+    EvalFn evaluate;                // app-bound evaluation (sources, sinks, scripts, UI nodes)
     BodyFn drawBody;                // optional
+    // Native nodes: the id of the kernel in the KernelTable (executor.h)
+    // that computes this node. The executor calls the kernel directly; the
+    // Graph::Evaluate path calls it through the same function too, so a
+    // native node needs no EvalFn.
+    std::string kernel;
 };
 
 class NodeTypeRegistry {
@@ -77,6 +82,7 @@ NodeTypeRegistry& NodeTypes();
 void RegisterBuiltinNodes(NodeTypeRegistry& r);   // nodes_builtin.cpp: sources, small computes, Watch, Text
 void RegisterPlotNodes(NodeTypeRegistry& r);   // nodes_plot.cpp: tables, series, named plots
 void RegisterViewNodes(NodeTypeRegistry& r);   // nodes_view.cpp: the nodes behind the panels
+void RegisterWorkflowNodes(NodeTypeRegistry& r);   // nodes_workflow.cpp: array/chem kernels, Gate, Apply Topology
 void RegisterPythonNode(NodeTypeRegistry& r);
 // Re-run `script --describe` for a python node and rebuild its pins
 // (also used by `graph demo`). Returns "" or an error.

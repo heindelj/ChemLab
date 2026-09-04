@@ -26,6 +26,7 @@
 #include "graph/graph.h"
 #include "graph/py_runner.h"
 #include "graph/scene.h"
+#include "graph/workflow.h"
 
 struct AppState;
 class CommandRegistry;
@@ -73,6 +74,7 @@ struct GraphSystem {
     DataStore store;
     std::vector<Scene> scenes;                       // built-in first, then scenes/*.json
     int activeScene = 0;                             // index into `scenes`
+    std::vector<Workflow> workflows;                 // built-in first, then workflows/*.json
     std::map<uint64_t, NodeView> nodeViews;          // node uid -> its window (see NodeView)
     std::string pythonExe = "python3";   // interpreter used by script nodes (the project's when one is open)
     ScriptEnv pythonEnv;                 // extra environment for them ([python] env)
@@ -109,6 +111,16 @@ struct GraphSystem {
     std::string RunScene(AppState& state, Scene& scene);
     // Remove a user scene (and its file). Built-in scenes cannot be removed.
     bool RemoveScene(AppState& state, int index, std::string& err);
+
+    // ---- workflows ----
+    // Built-in workflows plus workflows/*.json; called with LoadScenes.
+    void LoadWorkflows(AppState& state);
+    int FindWorkflow(const std::string& name) const;   // -1 when absent
+    // Compile (when needed) and execute a workflow; fills its run state and
+    // returns the summary.
+    std::string RunWorkflow(AppState& state, Workflow& w);
+    // Remove a user workflow (and its file). Built-ins cannot be removed.
+    bool RemoveWorkflow(int index, std::string& err);
 
     // The node with this uid in any graph (null when it was deleted).
     Node* FindNodeByUid(uint64_t uid);

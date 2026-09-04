@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "graph/executor.h"
 #include "graph/node_registry.h"
 #include "graph/value.h"
 
@@ -29,6 +30,7 @@ struct Node {
     std::map<std::string, Value> params;  // widget state ("i", "script", ...)
     std::vector<Value> outValues;         // last evaluation, parallel to outputs
     std::string error;                    // last evaluation error ("" = ok)
+    bool skipped = false;                 // last execution skipped it (a Gate upstream was closed)
     float posX = 0, posY = 0;
     bool posDirty = false;                // panel should push posX/posY into the editor
 };
@@ -86,7 +88,11 @@ struct Graph {
 
     // Evaluate every node in dependency order and publish outputs into `store`
     // as "<keyPrefix><title>.<pin>". Returns "" or a description of the first error.
+    // Runs through the executor: the graph is compiled into `program` (once
+    // per version) and executed; nodes behind a closed Gate are skipped.
     std::string Evaluate(AppState& state, DataStore& store, const std::string& keyPrefix = "");
+    Program program;              // compiled form, refreshed when `version` moves
+    ExecStats lastStats;          // of the last Evaluate
 };
 
 }  // namespace graph

@@ -357,7 +357,7 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
                     LookDownAxis(s, axis - 'x', flip);
                     return CommandResult::Ok(fmt::format("Looking down {}", w));
                 }});
-    r.Register({"panel", "panel <name> [show|hide|toggle]", "Show or hide a panel (controls, structure, plot, calculate, output, export, active, console, graph).",
+    r.Register({"panel", "panel <name> [show|hide|toggle]", "Show or hide a panel (controls, structure, plot, calculate, output, workflows, export, active, console, graph, canvas).",
                 "view", [](AppState& s, const CommandArgs& a) {
                     if (a.size() < 1) return CommandResult::Error("usage: panel <name> [show|hide|toggle]");
                     bool* flag = nullptr;
@@ -373,6 +373,7 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
                     else if (n == "console") flag = &s.PanelOpen("console");
                     else if (n == "graph" || n == "nodes" || n == "node_graph") flag = &s.PanelOpen("node_graph");
                     else if (n == "canvas" || n == "graph_canvas") flag = &s.PanelOpen("graph_canvas");
+                    else if (n == "workflows") flag = &s.PanelOpen("workflows");
                     if (!flag) return CommandResult::Error("Unknown panel '" + n + "'");
                     if (a.size() < 2 || a[1] == "toggle") *flag = !*flag;
                     else if (a[1] == "show") *flag = true;
@@ -476,4 +477,5 @@ void RegisterBuiltinCommands(CommandRegistry& r) {
                 }});
 
     graph::RegisterGraphCommands(r);
+    graph::RegisterWorkflowCommands(r);
 }

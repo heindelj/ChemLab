@@ -364,8 +364,10 @@ void AddNodePopup(graph::Graph& g, const ImVec2& canvasPos) {
     }
 }
 
+}  // namespace
+
 // The editor canvas for one graph. `key` names the editor context.
-void DrawGraphCanvas(AppState& state, graph::Graph& g, const std::string& key, const char* settingsFile) {
+void DrawGraphEditor(AppState& state, graph::Graph& g, const std::string& key, const char* settingsFile) {
     ed::SetCurrentEditor(Editor(key, settingsFile));
     // Scoped in its own block: the style pops must run while this editor is
     // still current (popping after SetCurrentEditor(nullptr) dereferences a
@@ -416,8 +418,6 @@ void DrawGraphCanvas(AppState& state, graph::Graph& g, const std::string& key, c
     ed::SetCurrentEditor(nullptr);
 }
 
-}  // namespace
-
 void DrawNodeGraphPanel(AppState& state) {
     graph::GraphSystem& gs = state.GraphSys();
 
@@ -443,7 +443,7 @@ void DrawNodeGraphPanel(AppState& state) {
     ImGui::Separator();
 
     // ---- canvas ----
-    DrawGraphCanvas(state, gs.graph, "chemlab_node_graph", "chemlab_nodes.json");
+    DrawGraphEditor(state, gs.graph, "chemlab_node_graph", "chemlab_nodes.json");
 }
 
 // Graph Canvas panel: a second free-form graph for sketching build ->
@@ -518,7 +518,7 @@ void DrawGraphCanvasPanel(AppState& state) {
     ImGui::Separator();
 
     // ---- canvas ---- (no editor settings file: positions live in the saved graph)
-    DrawGraphCanvas(state, cv.graph, "chemlab_graph_canvas", nullptr);
+    DrawGraphEditor(state, cv.graph, "chemlab_graph_canvas", nullptr);
 }
 
 // One "Scene graph: <name>" window per scene whose graph is open (the Graph
@@ -602,7 +602,7 @@ void DrawSceneGraphWindows(AppState& state) {
                 ImGui::PopStyleColor();
             }
             ImGui::Separator();
-            DrawGraphCanvas(state, sc.graph, fmt::format("scene_graph_{}", i), nullptr);
+            DrawGraphEditor(state, sc.graph, fmt::format("scene_graph_{}", i), nullptr);
         }
         ImGui::End();
     }

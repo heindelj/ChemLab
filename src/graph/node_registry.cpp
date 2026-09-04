@@ -48,6 +48,7 @@ NodeTypeRegistry& NodeTypes() {
         RegisterBuiltinNodes(r);
         RegisterPlotNodes(r);
         RegisterViewNodes(r);
+        RegisterWorkflowNodes(r);
         RegisterSceneNodes(r);
         RegisterPythonNode(r);
         return true;

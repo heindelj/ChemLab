@@ -49,11 +49,13 @@ static void EnterProjectEnvironment(AppState& state) {
     p.EnsureFolders();
     graph::SetScenesDir(p.ScenesDir().string());
     graph::SetGraphsDir(p.GraphsDir().string());
+    graph::SetWorkflowsDir(p.WorkflowsDir().string());
     graph::GraphSystem& gs = state.GraphSys();
     gs.pythonExe = p.PythonExe();
     gs.pythonEnv = p.config.python.env;
     // Scenes come from the project's folder; [scene] picks the active one.
     gs.LoadScenes(state);
+    gs.LoadWorkflows(state);
     ApplyUIVisibility(state, graph::SceneUI(state.GraphSys().ActiveScene()));
     state.pendingIniFile = p.LayoutPath().string();
 }
@@ -64,10 +66,12 @@ static void LeaveProjectEnvironment(AppState& state) {
     state.cwdBeforeProject.clear();
     graph::SetScenesDir("");
     graph::SetGraphsDir("");
+    graph::SetWorkflowsDir("");
     graph::GraphSystem& gs = state.GraphSys();
     gs.pythonExe = "python3";
     gs.pythonEnv.clear();
     gs.LoadScenes(state);
+    gs.LoadWorkflows(state);
     ApplyUIVisibility(state, graph::SceneUI(state.GraphSys().ActiveScene()));
     state.pendingIniFile = std::filesystem::absolute("chemlab_imgui.ini").string();   // back in the restored cwd
 }

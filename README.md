@@ -134,6 +134,61 @@ Plot 2D node there opens a window of its own. User scenes in `scenes/` are
 loaded at startup and the scene/layout shown last is remembered in
 `chemlab_scene.toml`. `ui` is an alias of `scene`.
 
+### Workflows and the executor
+
+A *workflow* is a program written as a node graph and run by ChemLab itself.
+The graph is compiled once into a flat list of steps (`src/graph/executor.h`):
+for a native node the step holds the function pointer of its *kernel*, looked
+up in the kernel table by id (`workflow kernels` lists it); for an app-bound
+node (a source reading the active frame, a sink writing it, a script) the
+step wraps the node's evaluate function. Running is then a loop of function
+calls over the nodes' output slots -- no lookups, no re-sorting. The Node
+Graph panel and scene graphs go through the same executor.
+
+Kernels are pure (inputs + parameters in, outputs out; no AppState, no
+ImGui) and vectorised: they take and return whole arrays (`FloatVec`,
+`IntVec`, 0/1 masks), so a per-pair test over a hundred thousand pairs is one
+call, not a hundred thousand node evaluations. The building blocks so far:
+*Gather*, *Vector Math*, *Compare*, *Filter*, *Reduce*, *Math* (arrays),
+*Covalent Radii*, *VdW Radii*, *Neighbor List* (cell list), *Has Topology*,
+*Topology Pairs*, *With Topology* (structure), the *Gate* (control flow) and
+the *Apply Topology* sink.
+
+The built-in `covalent-bonds` workflow is the reference example:
+
+```
+Active Frame -> Has Topology("bonds") -> Gate(missing)
+   -> Covalent Radii -> 2*max + Tolerance -> Neighbor List
+   -> Gather(r_i), Gather(r_j) -> r_i + r_j + Tolerance
+   -> Compare(d < cutoff) -> Filter(i), Filter(j) -> Apply Topology("bonds")
+```
+
+Its *trigger* is `frame`: it runs whenever the active frame changes (and
+once at load). Whether it has anything to do is the graph's own business:
+the Gate closes when the frame already carries a `bonds` topology and every
+node behind it is skipped, so caching is expressed in the graph rather than
+hidden in the executor. `workflow bench [n]` times this graph against the
+hand-written `PerceiveBonds` on the active frame and checks both give the
+same pairs.
+
+The **Workflows** tab (right column of the classic scene) lists built-in and
+user workflows in two sections with their trigger, an enable box, a Run
+button and the last outcome; double-click a row to open the graph in its
+own window, where it can be edited and saved. User workflows live in
+`workflows/<name>.json` (a project's `paths.workflows`); saving a built-in
+makes a `<name>-copy` you own.
+
+```
+workflow                      list workflows, triggers and last outcomes
+workflow run covalent-bonds   run one now
+workflow graph covalent-bonds open its graph (same as double-clicking it)
+workflow trigger cb frame     run it on frame change (or `manual`)
+workflow new rdf; workflow save rdf     an empty user workflow, kept as workflows/rdf.json
+workflow steps covalent-bonds per-node times of the last run
+workflow kernels              the native kernel table
+workflow bench 20             covalent bonds: graph vs PerceiveBonds
+```
+
 ## Projects
 
 A project is a folder with a `chemlab.toml` at its root. While it is open the
@@ -149,6 +204,7 @@ my_project/
   data/            # structures; bare names in [[structures]] and `load` are searched here
   scenes/          # scene graphs (`scene save`), replaces the global scenes/ while open
   graphs/          # named node graphs (`graph save`)
+  workflows/       # workflows (`workflow save`), listed in the Workflows tab
   scripts/         # python node scripts; a bare script name in a graph is looked up here
   output/          # where `screenshot` / `export` land when given a bare name
 ```
@@ -169,6 +225,7 @@ name = "Water cages"
 data = ["data"]               # a list: add a shared trajectory store outside the project
 scenes = "scenes"
 graphs = "graphs"
+workflows = "workflows"
 scripts = "scripts"
 output = "output"
 layout = "layout.ini"
@@ -203,7 +260,7 @@ commands = ["plot measurements", "rotate on 15"]
 src/core     molecule data, xyz IO, geometry, element tables (no rendering)
 src/render   lighting shader, GPU molecular model, orbit camera, off-screen viewport
 src/app      AppState, actions (every state change), the command registry, projects (chemlab.toml)
-src/graph    node graph: values, node types (built-in, data/plot, python), evaluation, script protocol
+src/graph    node graph: values, node types (built-in, data/plot, python), executor + kernels, workflows, scenes, script protocol
 src/plot     UI-free description of a 2D plot (series, axes); named plots live in AppState::plots
 src/ui       ImGui: theme, dock layout, panels, command bar
 ```

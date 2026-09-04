@@ -96,7 +96,7 @@ std::vector<UIDefinition> BuiltinUIs() {
     def.slots = {
         {{"structure_view"}},                            // 0: centre
         {{"controls"}},                                  // 1: left column
-        {{"calculate"}, {"output"}, {"console", false}}, // 2: right column (tabs)
+        {{"calculate"}, {"output"}, {"workflows"}, {"console", false}}, // 2: right column (tabs)
         {{"export"}},                                    // 3: bottom-left
         {{"active_structure"}},                          // 4: top-right
         {{"plot_2d"}},                                   // 5: below the 3D view

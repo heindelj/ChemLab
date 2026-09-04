@@ -139,50 +139,14 @@ void Graph::Clear() {
 }
 
 std::string Graph::Evaluate(AppState& state, DataStore& store, const std::string& keyPrefix) {
-    // Kahn's algorithm over the link dependencies.
-    std::map<uint32_t, int> indegree;
-    for (const Node& n : nodes) indegree[n.id] = 0;
-    for (const Link& l : links) ++indegree[l.toNode];
-    std::deque<uint32_t> ready;
-    for (const auto& [id, deg] : indegree)
-        if (deg == 0) ready.push_back(id);
-    std::vector<uint32_t> order;
-    while (!ready.empty()) {
-        const uint32_t id = ready.front();
-        ready.pop_front();
-        order.push_back(id);
-        for (const Link& l : links)
-            if (l.fromNode == id && --indegree[l.toNode] == 0) ready.push_back(l.toNode);
+    if (const std::string err = EnsureCompiled(*this, program); !err.empty()) return err;
+    lastStats = Execute(state, program);
+    for (const Node& node : nodes) {
+        if (!node.error.empty() || node.skipped) continue;
+        for (size_t k = 0; k < node.outputs.size(); ++k)
+            store.Set(fmt::format("{}{}.{}", keyPrefix, node.title, node.outputs[k].name), node.outValues[k]);
     }
-    if (order.size() != nodes.size()) return "graph contains a cycle";
-
-    std::string firstError;
-    for (const uint32_t id : order) {
-        Node& node = *FindNode(id);
-        node.error.clear();
-        node.outValues.assign(node.outputs.size(), Value{});
-        const NodeTypeSpec* spec = NodeTypes().Find(node.typeId);
-        if (!spec) {
-            node.error = "unknown node type " + node.typeId;
-        } else {
-            std::vector<const Value*> ins(node.inputs.size(), nullptr);
-            for (size_t i = 0; i < node.inputs.size() && node.error.empty(); ++i) {
-                const Link* l = LinkInto(node.id, (int)i);
-                if (!l) continue;
-                const Node* up = FindNode(l->fromNode);
-                if (!up->error.empty()) node.error = fmt::format("upstream error in '{}'", up->title);
-                else if (!up->outValues[l->fromPin].Empty()) ins[i] = &up->outValues[l->fromPin];
-            }
-            if (node.error.empty() && spec->evaluate) node.error = spec->evaluate(state, node, ins, node.outValues);
-        }
-        if (node.error.empty()) {
-            for (size_t k = 0; k < node.outputs.size(); ++k)
-                store.Set(fmt::format("{}{}.{}", keyPrefix, node.title, node.outputs[k].name), node.outValues[k]);
-        } else if (firstError.empty()) {
-            firstError = fmt::format("{}: {}", node.title, node.error);
-        }
-    }
-    return firstError;
+    return lastStats.firstError;
 }
 
 }  // namespace graph

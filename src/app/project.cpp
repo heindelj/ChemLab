@@ -75,6 +75,7 @@ std::string SerialiseProjectConfig(const ProjectConfig& c) {
     line(fmt::format("data    = {}", QList(c.paths.data)));
     line(fmt::format("scenes  = {}             # scene graphs (layouts + panels + tabs), one .json each", Q(c.paths.scenes)));
     line(fmt::format("graphs  = {}             # named node graphs from the Graph Canvas", Q(c.paths.graphs)));
+    line(fmt::format("workflows = {}         # node-graph workflows run by the executor (Workflows panel)", Q(c.paths.workflows)));
     line(fmt::format("scripts = {}            # python node scripts / analysis scripts", Q(c.paths.scripts)));
     line(fmt::format("output  = {}             # screenshots, exports, plot images", Q(c.paths.output)));
     line(fmt::format("layout  = {}         # Dear ImGui dock state for this project", Q(c.paths.layout)));
@@ -201,6 +202,7 @@ bool ParseProjectConfig(const std::string& text, ProjectConfig& c, std::string& 
         if (p->contains("data")) c.paths.data = StringList((*p)["data"]);
         c.paths.scenes = (*p)["scenes"].value_or(d.scenes);
         c.paths.graphs = (*p)["graphs"].value_or(d.graphs);
+        c.paths.workflows = (*p)["workflows"].value_or(d.workflows);
         c.paths.scripts = (*p)["scripts"].value_or(d.scripts);
         c.paths.output = (*p)["output"].value_or(d.output);
         c.paths.layout = (*p)["layout"].value_or(c.paths.layout);
@@ -321,6 +323,7 @@ void Project::EnsureFolders() const {
         if (!d.empty() && Relativise(d) != d.string()) fs::create_directories(d, ec);   // only folders inside the project
     fs::create_directories(ScenesDir(), ec);
     fs::create_directories(GraphsDir(), ec);
+    fs::create_directories(WorkflowsDir(), ec);
     fs::create_directories(ScriptsDir(), ec);
     fs::create_directories(OutputDir(), ec);
 }

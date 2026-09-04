@@ -4,7 +4,13 @@
 // InitWindow, UIFrame every frame between BeginDrawing/EndDrawing, and
 // UIShutdown before CloseWindow.
 
+#include <string>
+
 #include "app/app_state.h"
+
+namespace graph {
+struct Graph;
+}
 
 void UIInit(AppState& state);
 void UIFrame(AppState& state);
@@ -20,6 +26,13 @@ void DrawOutputPanel(AppState& state);
 void DrawExportPanel(AppState& state);
 void DrawNodeGraphPanel(AppState& state);
 void DrawGraphCanvasPanel(AppState& state);   // the Graph Canvas: sketch, run, save/load by name
+void DrawWorkflowsPanel(AppState& state);     // built-in and user workflows; double-click opens a graph
+// The "Workflow: <name>" graph windows (graph::Workflow::graphOpen).
+void DrawWorkflowGraphWindows(AppState& state);
+// The node editor canvas for any graph, filling the rest of the current
+// window. `key` names the editor context (one per graph); `settingsFile`
+// persists the view (null = keep positions only in the graph).
+void DrawGraphEditor(AppState& state, graph::Graph& g, const std::string& key, const char* settingsFile);
 // The "Scene graph: <name>" windows (graph::Scene::graphOpen), one per scene.
 void DrawSceneGraphWindows(AppState& state);
 // A combo choosing which Layout node of scene `sceneIndex` is on screen.
@@ -59,4 +72,5 @@ inline constexpr const char* Export = "Export";
 inline constexpr const char* Console = "Console";
 inline constexpr const char* NodeGraph = "Node Graph";
 inline constexpr const char* GraphCanvas = "Graph Canvas";
+inline constexpr const char* Workflows = "Workflows";
 }  // namespace PanelName

@@ -66,6 +66,8 @@ const Graph* OwningGraph(const GraphSystem& gs, const Node& n) {
     if (contains(gs.canvas.graph)) return &gs.canvas.graph;
     for (const Scene& sc : gs.scenes)
         if (contains(sc.graph)) return &sc.graph;
+    for (const Workflow& w : gs.workflows)
+        if (contains(w.graph)) return &w.graph;
     return nullptr;
 }
 
@@ -83,6 +85,8 @@ Node* GraphSystem::FindNodeByUid(uint64_t uid) {
     if (Node* n = find(canvas.graph)) return n;
     for (Scene& sc : scenes)
         if (Node* n = find(sc.graph)) return n;
+    for (Workflow& w : workflows)
+        if (Node* n = find(w.graph)) return n;
     return nullptr;
 }
 
